@@ -1,6 +1,6 @@
 Key Conjurer
 =====
-![Key Conjurer Champion](docs/champion.png)*Note: art made by engineering professionals...not..er...the artists who makes Riots awesome artwork*
+![Key Conjurer Champion](docs/champion.png)
 
 Key Conjurer is a project designed to get rid of permanent AWS credentials. This was important to us as it bought down two related risks; compromise of permanent credentials and compromise of a users machines. Luckily, AWS provides their Security Token Service which allows users/services to generate temporary and just-in-time credentials. However, STS just handles the AWS side of the equation and we needed the process of generating tokens to be linked with both our identity provider and MFA. And for that we now haev Key Conjurer.
 
