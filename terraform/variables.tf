@@ -3,29 +3,29 @@ variable "settings" {
 }
 
 variable "frontend_certs" {
-	type = "map"
+    type = "map"
 }
 
 variable "api_certs" {
-	type = "map"
+    type = "map"
 }
 
 variable "vpc_config" {
-	type = "map"
+    type = "map"
 }
 
 variable "tags" {
-	type = "map"
+    type = "map"
 }
 
 variable "lambda_env" {
-	type = "map"
+    type = "map"
 }
 
 variable "frontend_domains" {
-  type = "map"
+    type = "map"
 }
 
 variable "api_domains" {
-  type = "map"
+    type = "map"
 }

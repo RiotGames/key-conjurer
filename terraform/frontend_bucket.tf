@@ -1,7 +1,7 @@
 resource "aws_s3_bucket" "keyconjurer_frontend" {
-  bucket = "keyconjurer-frontend-${terraform.workspace}"
-  acl    = "private"
-  policy = <<POLICY
+    bucket = "keyconjurer-frontend-${terraform.workspace}"
+    acl    = "private"
+    policy = <<POLICY
 {
     "Version": "2012-10-17",
     "Id": "KeyConjurerAccess",
@@ -26,12 +26,8 @@ resource "aws_s3_bucket" "keyconjurer_frontend" {
 }
 POLICY
 
-  website {
-    index_document = "index.html"
-  }
-  tags = {
-    Owner = "${var.settings["owner"]}"
-    Accounting = "${var.settings["accounting"]}"
-    Name = "KeyConjurer Frontend"
-  }
+    website {
+	index_document = "index.html"
+    }
+    tags = "${var.tags}"
 }

@@ -1,51 +1,52 @@
 resource "aws_cloudfront_origin_access_identity" "keyconjurer_identity" {
-  comment = "Key Conjurer ${terraform.workspace} bucket access"
+    comment = "Key Conjurer ${terraform.workspace} bucket access"
 }
 
 resource "aws_cloudfront_distribution" "keyconjurer_distribution" {
-  enabled = true
-  default_root_object = "index.html"
-  // US, Canada, Europe only
-  price_class = "PriceClass_100"
-  aliases = "${var.frontend_domains["${terraform.workspace}"]}"
+    enabled = true
+    default_root_object = "index.html"
+    // US, Canada, Europe only
+    price_class = "PriceClass_100"
+    aliases = "${var.frontend_domains["${terraform.workspace}"]}"
 
-  origin {
-    domain_name = "${aws_s3_bucket.keyconjurer_frontend.bucket_regional_domain_name}"
-    origin_id = "keyconjurer-origin"
+    origin {
+	domain_name = "${aws_s3_bucket.keyconjurer_frontend.bucket_regional_domain_name}"
+	origin_id = "keyconjurer-origin"
 
-    s3_origin_config {
-      origin_access_identity = "${aws_cloudfront_origin_access_identity.keyconjurer_identity.cloudfront_access_identity_path}"
+	s3_origin_config {
+	    origin_access_identity = "${aws_cloudfront_origin_access_identity.keyconjurer_identity.cloudfront_access_identity_path}"
+	}
     }
-  }
 
-  default_cache_behavior {
-    allowed_methods = ["GET", "HEAD"]
-    cached_methods = ["GET", "HEAD"]
-    default_ttl = 300 // 5 minutes
-    max_ttl = 300 // 5 minutes
-    target_origin_id = "keyconjurer-origin"
-    viewer_protocol_policy = "redirect-to-https"
+    default_cache_behavior {
+	allowed_methods = ["GET", "HEAD"]
+	cached_methods = ["GET", "HEAD"]
+	default_ttl = 300 // 5 minutes
+	max_ttl = 300 // 5 minutes
+	target_origin_id = "keyconjurer-origin"
+	viewer_protocol_policy = "redirect-to-https"
 
-    forwarded_values {
-      query_string = false
+	forwarded_values {
+	    query_string = false
 
-      cookies {
-	forward = "none"
-      }
+	    cookies {
+		forward = "none"
+	    }
+	}
     }
-  }
 
-  restrictions {
-    geo_restriction {
-      restriction_type = "none"
+    restrictions {
+	geo_restriction {
+	    restriction_type = "none"
+	}
     }
-  }
 
-  viewer_certificate {
-    acm_certificate_arn = "${var.frontend_certs["${terraform.workspace}"]}"
-    ssl_support_method = "sni-only"
-  }
+    viewer_certificate {
+	acm_certificate_arn = "${var.frontend_certs["${terraform.workspace}"]}"
+	ssl_support_method = "sni-only"
+    }
 
-  web_acl_id = "${aws_waf_web_acl.keyconjurer_waf_acl.id}"
+    web_acl_id = "${aws_waf_web_acl.keyconjurer_waf_acl.id}"
+    tags = "${var.tags}"
 }
 
