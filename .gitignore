@@ -1,5 +1,10 @@
 # Manual additions
+dev.env
+dev.tfvars
+prod.env
+prod.tfvars
 frontend/src/consts.js
+frontend/build/*
 api/builds/*
 cli/builds/*
 
