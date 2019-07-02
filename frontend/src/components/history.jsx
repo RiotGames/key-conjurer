@@ -1,6 +1,6 @@
 import React, { Component } from 'react';
 import { Card, Image, Divider } from 'semantic-ui-react';
-import { keyConjurerDomain, binaryName } from './../consts.js';
+import { keyConjurerDomain, binaryName } from './../consts';
 
 import keyConjurerLogo from './../images/KeyConjurer.png';
 
