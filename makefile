@@ -22,7 +22,7 @@ terraform_apply:
 	&& tfswitch \
 	&& terraform init \
 	&& (terraform workspace select $(WSNAME) || terraform workspace new $(WSNAME)) \
-	&& terraform apply -var-file=../$(TF_VAR_FILE) --auto-approve
+	&& terraform apply -var-file=../$(TF_VAR_FILE) -auto-approve
 
 upload:
 	make api_upload \
