@@ -6,6 +6,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"keyconjurer-lambda/logger"
+
 	"github.com/stretchr/testify/assert"
 )
 
@@ -72,7 +74,7 @@ func Test_Duo_getSid(t *testing.T) {
 			expectedOutput: ExpectedOutput{sid: "foo", err: nil}}}
 
 	testDuo := &Duo{
-		logger:     NewLogger("", "", "testing", "keyconjurerTest", "test", SILENT),
+		logger:     logger.NewLogger("test", "testing", "keyconjurerTest", logger.SILENT),
 		httpClient: testClient}
 
 	for _, tt := range tests {
@@ -116,7 +118,7 @@ func Test_Duo_checkMfaStatus(t *testing.T) {
 			expectedOutput: ExpectedOutput{pushResponse: &duoPushResponse{Stat: "OK", Response: pushResponse{StatusCode: "allow", Parent: "https://parent.url.com/fake/path", Result: "SUCCESS", Cookie: "AUTH|fakeAuthCookiePart1|fakeAuthCookiePart2"}}, err: nil}}}
 
 	testDuo := &Duo{
-		logger:     NewLogger("", "", "testing", "keyconjurerTest", "test", SILENT),
+		logger:     logger.NewLogger("test", "testing", "keyconjurerTest", logger.SILENT),
 		httpClient: testClient}
 
 	for _, tt := range tests {

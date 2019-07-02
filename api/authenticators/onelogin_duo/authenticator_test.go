@@ -10,8 +10,8 @@ import (
 
 func TestAuthenticatorOneLoginDuo(t *testing.T) {
 	var auth authenticators.Authenticator
-	auth = OneLoginAuthenticator{}
-	authv, ok := auth.(OneLoginAuthenticator)
+	auth = &OneLoginAuthenticator{}
+	authv, ok := auth.(*OneLoginAuthenticator)
 
 	t.Logf("%#v %#v\n", authv, ok)
 
