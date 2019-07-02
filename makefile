@@ -41,32 +41,32 @@ setup_buckets:
 	&& aws s3api put-bucket-tagging --bucket $(S3_TF_BUCKET_NAME) --tagging '$(S3BUCKETTAGS)'
 
 api_build:
-	cd api/deploy \
+	cd api \
 	&& $(MAKE) -f makefile build
 
 api_upload:
-	cd api/deploy \
+	cd api \
 	&& $(MAKE)  -f makefile zip \
 	&& $(MAKE) -f makefile upload
 
 frontend_build:
-	cd frontend/deploy \
+	cd frontend \
 	&& $(MAKE) -f makefile build
 
 frontend_upload:
-	cd frontend/deploy \
+	cd frontend \
 	&& $(MAKE) -f makefile upload
 
 frontend_file_reset:
-	cd frontend/deploy \
+	cd frontend \
 	&& $(MAKE) -f makefile reset_files
 
 cli_build:
-	cd cli/deploy \
+	cd cli \
 	&& $(MAKE)  -f makefile all
 
 cli_upload:
-	cd cli/deploy \
+	cd cli \
 	&& $(MAKE)  -f makefile upload
 
 reset_files: frontend_file_reset

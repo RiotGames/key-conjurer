@@ -27,17 +27,20 @@ deploy:
 	&& make upload
 
 build:
-	cd ../lambdas/get_user_data && \
-	GOOS=linux go build -ldflags $(ldflags) -o ../../builds/$(WSNAME)/get_user_data;
-	cd ../lambdas/get_aws_creds && \
-	GOOS=linux go build -ldflags $(ldflags) -o ../../builds/$(WSNAME)/get_aws_creds;
+	cd ./lambdas/get_user_data && \
+	GOOS=linux go build -ldflags $(ldflags) -o ./builds/$(WSNAME)/get_user_data;
+	cd ./lambdas/get_aws_creds && \
+	GOOS=linux go build -ldflags $(ldflags) -o ./builds/$(WSNAME)/get_aws_creds;
 
 zip:
-	cd ../builds/$(WSNAME) && \
+	cd ./builds/$(WSNAME) && \
 	zip get_user_data.zip get_user_data \
 	&& zip get_aws_creds.zip get_aws_creds
 
 upload:
-	mkdir -p ../builds/$(WSNAME) \
-	&& cd ../builds/$(WSNAME) \
+	mkdir -p ./builds/$(WSNAME) \
+	&& cd ./builds/$(WSNAME) \
 	&& aws s3 cp . s3://$(S3_TF_BUCKET_NAME)/$(WSNAME) --exclude "*" --include "*.zip" --recursive
+
+test:
+	go test -v ./...
