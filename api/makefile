@@ -28,9 +28,9 @@ deploy:
 
 build:
 	cd ./lambdas/get_user_data && \
-	GOOS=linux go build -ldflags $(ldflags) -o ./builds/$(WSNAME)/get_user_data;
+	GOOS=linux go build -ldflags $(ldflags) -o ../builds/$(WSNAME)/get_user_data;
 	cd ./lambdas/get_aws_creds && \
-	GOOS=linux go build -ldflags $(ldflags) -o ./builds/$(WSNAME)/get_aws_creds;
+	GOOS=linux go build -ldflags $(ldflags) -o ../builds/$(WSNAME)/get_aws_creds;
 
 zip:
 	cd ./builds/$(WSNAME) && \
