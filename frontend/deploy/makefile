@@ -49,6 +49,6 @@ version:
 
 reset_version:
 	cd ../ \
-	&& echo "export const version = 'DEV';" > ./src/version.js
+	&& echo "export const version = '';" > ./src/version.js
 
 reset_files: reset_version reset_consts_file

@@ -1,7 +1,7 @@
 resource "aws_iam_role" "keyconjurer-lambda" {
-  name = "keyconjurer-lambda-${terraform.workspace}"
-  description = "Used by keyconjurer-lambda-${terraform.workspace} to allow lambda execution in a VPC"
-  assume_role_policy = <<POLICY
+    name = "keyconjurer-lambda-${terraform.workspace}"
+    description = "Used by keyconjurer-lambda-${terraform.workspace} to allow lambda execution in a VPC"
+    assume_role_policy = <<POLICY
 {
   "Version": "2012-10-17",
   "Statement": [
@@ -15,14 +15,14 @@ resource "aws_iam_role" "keyconjurer-lambda" {
   ]
 }
 POLICY
-  tags = "${var.tags}"
+    tags = "${var.tags}"
 }
 
 resource "aws_iam_role_policy" "keyconjurer-lamdba" {
-  name = "keyconjurer-lambda-policy-${terraform.workspace}"
-  role = "${aws_iam_role.keyconjurer-lambda.id}"
+    name = "keyconjurer-lambda-policy-${terraform.workspace}"
+    role = "${aws_iam_role.keyconjurer-lambda.id}"
 
-  policy = <<POLICY
+    policy = <<POLICY
 {
   "Version": "2012-10-17",
   "Statement": [
@@ -41,11 +41,11 @@ POLICY
 }
 
 resource "aws_iam_role_policy_attachment" "keyconjurer-lambda-basic-execution" {
-  role = "${aws_iam_role.keyconjurer-lambda.name}"
-  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+    role = "${aws_iam_role.keyconjurer-lambda.name}"
+    policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
 }
 
 resource "aws_iam_role_policy_attachment" "keyconjurer-lambda-vpc-access-execution" {
-  role = "${aws_iam_role.keyconjurer-lambda.name}"
-  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
+    role = "${aws_iam_role.keyconjurer-lambda.name}"
+    policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
 }
