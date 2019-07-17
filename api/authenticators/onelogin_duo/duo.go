@@ -10,12 +10,12 @@ import (
 	"regexp"
 	"strings"
 
-	log "keyconjurer-lambda/logger"
+	"github.com/sirupsen/logrus"
 )
 
 // Duo scripts the Duo Web API interaction
 type Duo struct {
-	logger     *log.Logger
+	logger     *logrus.Entry
 	httpClient *http.Client
 }
 
@@ -40,7 +40,7 @@ type duoPushResponse struct {
 }
 
 // NewDuo returns a new Duo client that uses the provided logger
-func NewDuo(logger *log.Logger) *Duo {
+func NewDuo(logger *logrus.Entry) *Duo {
 	return &Duo{
 		logger:     logger,
 		httpClient: http.DefaultClient}

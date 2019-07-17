@@ -6,12 +6,12 @@ import (
 	"strings"
 
 	"keyconjurer-lambda/authenticators"
-	log "keyconjurer-lambda/logger"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/kms"
 	"github.com/aws/aws-sdk-go/service/sts"
+	"github.com/sirupsen/logrus"
 )
 
 // AWSClient provides an interface into the required
@@ -20,12 +20,12 @@ type AWSClient struct {
 	kmsClient *kms.KMS
 	stsClient *sts.STS
 	kmsKeyID  string
-	logger    *log.Logger
+	logger    *logrus.Entry
 }
 
 // NewAWSClient creates a new AWS Client in the region provided
 //  and will use the provided logger for logging
-func NewAWSClient(awsRegion string, logger *log.Logger) *AWSClient {
+func NewAWSClient(awsRegion string, logger *logrus.Entry) *AWSClient {
 	config := session.New(&aws.Config{
 		Region: aws.String(awsRegion)})
 

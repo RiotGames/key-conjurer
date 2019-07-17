@@ -9,27 +9,20 @@ import (
 )
 
 func TestAuthenticatorOneLoginDuo(t *testing.T) {
+	// These are structured this way to ensure that the implemented interfaces
+	//  are properly met
 	var auth authenticators.Authenticator
 	auth = &OneLoginAuthenticator{}
-	authv, ok := auth.(*OneLoginAuthenticator)
-
-	t.Logf("%#v %#v\n", authv, ok)
-
+	_, ok := auth.(*OneLoginAuthenticator)
 	assert.EqualValues(t, true, ok, "one login authenticator should comply")
 
 	var account authenticators.Account
 	account = OneLoginApp{}
-	accountv, ok := account.(OneLoginApp)
-
-	t.Logf("%#v %#v\n", accountv, ok)
-
-	assert.EqualValues(t, true, ok, "one login app should comply")
+	_, ok2 := account.(OneLoginApp)
+	assert.EqualValues(t, true, ok2, "one login app should comply")
 
 	var mfa authenticators.MFA
-	mfa = DuoMFA{}
-	mfav, ok := mfa.(DuoMFA)
-
-	t.Logf("%#v %#v\n", mfav, ok)
-
-	assert.EqualValues(t, true, ok, "one login authenticator should comply")
+	mfa = &DuoMFA{}
+	_, ok3 := mfa.(*DuoMFA)
+	assert.EqualValues(t, true, ok3, "one login authenticator should comply")
 }

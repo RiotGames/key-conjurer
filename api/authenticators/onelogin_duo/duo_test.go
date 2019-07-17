@@ -8,6 +8,7 @@ import (
 
 	"keyconjurer-lambda/logger"
 
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -74,7 +75,7 @@ func Test_Duo_getSid(t *testing.T) {
 			expectedOutput: ExpectedOutput{sid: "foo", err: nil}}}
 
 	testDuo := &Duo{
-		logger:     logger.NewLogger("test", "testing", "keyconjurerTest", logger.SILENT),
+		logger:     logger.NewLogger("keyConjurerTests", "duoTests", logrus.PanicLevel),
 		httpClient: testClient}
 
 	for _, tt := range tests {
@@ -90,7 +91,6 @@ func Test_Duo_getSid(t *testing.T) {
 func Test_Duo_checkMfaStatus(t *testing.T) {
 	type ExpectedOutput struct {
 		pushResponse *duoPushResponse
-		httpResponse string
 		err          error
 	}
 	assert := assert.New(t)
@@ -118,7 +118,7 @@ func Test_Duo_checkMfaStatus(t *testing.T) {
 			expectedOutput: ExpectedOutput{pushResponse: &duoPushResponse{Stat: "OK", Response: pushResponse{StatusCode: "allow", Parent: "https://parent.url.com/fake/path", Result: "SUCCESS", Cookie: "AUTH|fakeAuthCookiePart1|fakeAuthCookiePart2"}}, err: nil}}}
 
 	testDuo := &Duo{
-		logger:     logger.NewLogger("test", "testing", "keyconjurerTest", logger.SILENT),
+		logger:     logger.NewLogger("keyConjurerTests", "duoTests", logrus.PanicLevel),
 		httpClient: testClient}
 
 	for _, tt := range tests {
