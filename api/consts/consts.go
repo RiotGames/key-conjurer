@@ -6,4 +6,4 @@ var AuthenticatorSelect string = "onelogin"
 
 var MFASelect string = "duo"
 
-var LoggerEndpoint string = ""
+var LogstashEndpoint string = ""

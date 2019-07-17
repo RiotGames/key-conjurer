@@ -1,6 +1,7 @@
 package logger
 
 import (
+	"keyconjurer-lambda/consts"
 	"os"
 
 	"github.com/sirupsen/logrus"
@@ -14,8 +15,11 @@ func NewLogger(client, clientVersion string, level logrus.Level) *logrus.Entry {
 		ReportCaller: true,
 		Level:        level,
 		ExitFunc:     os.Exit}
-	// This creates a log entry that enables us to pass around logrus.Entry type
-	//  to customize the outputted fields
+
+	if consts.LogstashEndpoint != "" {
+		logger.Hooks.Add(NewLogStashHook())
+	}
+
 	return logger.WithFields(logrus.Fields{
 		"client":        client,
 		"clientVersion": clientVersion})

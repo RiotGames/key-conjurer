@@ -10,8 +10,8 @@ ifndef MFA
 $(error MFA is not set)
 endif
 
-ifndef LOGGER_ENDPOINT
-$(error LOGGER_ENDPOINT is not set)
+ifndef LOGSTASH_ENDPOINT
+$(error LOGSTASH_ENDPOINT is not set)
 endif
 
 ifndef S3_TF_BUCKET_NAME
@@ -19,7 +19,7 @@ $(error S3_TF_BUCKET_NAME is not set)
 endif
 
 version = $(shell git rev-parse --short HEAD)
-ldflags = "-X keyconjurer-lambda/consts.Version=$(version) -X keyconjurer-lambda/consts.AuthenticatorSelect=$(AUTHENTICATOR) -X keyconjurer-lambda/consts.MFASelect=$(MFA) -X keyconjurer-lambda/consts.LoggerEndpoint=$(LOGGER_ENDPOINT)"
+ldflags = "-X keyconjurer-lambda/consts.Version=$(version) -X keyconjurer-lambda/consts.AuthenticatorSelect=$(AUTHENTICATOR) -X keyconjurer-lambda/consts.MFASelect=$(MFA) -X keyconjurer-lambda/consts.LogstashEndpoint=$(LOGSTASH_ENDPOINT)"
 
 deploy:
 	make build \
