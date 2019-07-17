@@ -14,7 +14,7 @@ func newAuthenticator(logger *logrus.Entry) authenticators.Authenticator {
 
 	switch consts.AuthenticatorSelect {
 	case "onelogin":
-		logger.Info("KeyConjurer", "authenticator", "using onelogin authenticator")
+		logger.Info("using onelogin authenticator")
 		authenticator = oneloginduo.New(logger)
 	default:
 		panic(errors.New("No Authenticator Selected"))
@@ -22,7 +22,7 @@ func newAuthenticator(logger *logrus.Entry) authenticators.Authenticator {
 
 	switch consts.MFASelect {
 	case "duo":
-		logger.Info("KeyConjurer", "authenticator", "using duo mfa")
+		logger.Info("using duo mfa")
 		duo := oneloginduo.NewDuoMFA(logger)
 		authenticator.SetMFA(duo)
 	default:

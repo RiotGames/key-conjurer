@@ -2,7 +2,6 @@ package oneloginduo
 
 import (
 	"context"
-	"fmt"
 	"strings"
 
 	"github.com/rnikoopour/onelogin"
@@ -45,7 +44,7 @@ func NewOneLogin(settings *Settings, logger *logrus.Entry) *OneLogin {
 func (o *OneLogin) AuthenticateUser(username, password string) (*onelogin.AuthenticatedUser, error) {
 	user, err := o.SamlClient.Oauth.Authenticate(context.Background(), username, password)
 	if err != nil {
-		o.logger.Error("OneLogin", fmt.Sprintf("Unable to authenticate %v", username), err.Error())
+		o.logger.Error("unable to authenticate ", username, " reason: ", err.Error())
 		return nil, err
 	}
 	return user, nil
@@ -55,7 +54,7 @@ func (o *OneLogin) AuthenticateUser(username, password string) (*onelogin.Authen
 func (o *OneLogin) GetUserApps(user *onelogin.AuthenticatedUser) ([]OneLoginApp, error) {
 	oneloginApps, err := o.ReadUserClient.User.GetApps(context.Background(), user.ID)
 	if err != nil {
-		o.logger.Error("OneLogin", "Unable to get user apps", err.Error())
+		o.logger.Error("unable to get user apps reason: ", err.Error())
 		return nil, err
 	}
 
@@ -73,7 +72,7 @@ func (o *OneLogin) GetUserApps(user *onelogin.AuthenticatedUser) ([]OneLoginApp,
 func (o *OneLogin) GetStateToken(username, password, appID string) (*onelogin.MFAResponse, error) {
 	response, err := o.SamlClient.SAML.SamlAssertion(context.Background(), username, password, appID)
 	if err != nil {
-		o.logger.Error("OneLogin", "Unable to get state token", err.Error())
+		o.logger.Error("unable to get state token reason: ", err.Error())
 		return nil, err
 	}
 	return response, nil
@@ -83,11 +82,9 @@ func (o *OneLogin) GetStateToken(username, password, appID string) (*onelogin.MF
 func (o *OneLogin) GetSamlAssertion(mfaToken, stateToken, appID, deviceID string) (string, error) {
 	samlAssertion, err := o.SamlClient.SAML.VerifyFactor(context.Background(), mfaToken, stateToken, appID, deviceID)
 	if err != nil {
-		o.logger.Error("OneLogin", "Unable to get SAML assertion", err.Error())
+		o.logger.Error("unable to get saml assertion reason: ", err.Error())
 		return "", ErrorUnableToGetSamlAssertion
 	}
-
-	o.logger.Info("onelogin_duo", "saml assertion", samlAssertion)
 
 	return samlAssertion, nil
 }

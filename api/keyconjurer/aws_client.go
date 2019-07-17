@@ -58,7 +58,7 @@ func (a *AWSClient) Encrypt(data interface{}) (string, error) {
 	ciphertext, err := a.kmsClient.Encrypt(input)
 
 	if err != nil {
-		a.logger.Error("AWSClient", "Encrypt", "Failed to encrypt", err.Error())
+		a.logger.Error("failed to encrypt reason: ", err.Error())
 		return "", err
 	}
 	return base64.StdEncoding.EncodeToString(ciphertext.CiphertextBlob), nil
@@ -69,7 +69,7 @@ func (a *AWSClient) Encrypt(data interface{}) (string, error) {
 func (a *AWSClient) Decrypt(ciphertext string, v interface{}) error {
 	blob, err := base64.StdEncoding.DecodeString(ciphertext)
 	if err != nil {
-		a.logger.Error("AWSClient", "Decrypt", "Unable to decode ciphertext", err.Error())
+		a.logger.Error("unable to decode ciphertext reason: ", err.Error())
 		return ErrorUnableToDecode
 	}
 	input := &kms.DecryptInput{
@@ -77,11 +77,11 @@ func (a *AWSClient) Decrypt(ciphertext string, v interface{}) error {
 
 	result, err := a.kmsClient.Decrypt(input)
 	if err != nil {
-		a.logger.Error("AWSClient", "Decrypt", "AWS CLIENT failed to decrypt", err.Error())
+		a.logger.Error("aws client failed to decrypt reason: ", err.Error())
 		return err
 	}
 	if err := json.Unmarshal(result.Plaintext, v); err != nil {
-		a.logger.Error("AWSClient", "Decrypt", "Unable to unmarshal", err.Error())
+		a.logger.Error("unable to unmarshal reason: ", err.Error())
 		return ErrorJsonUnmarshalError
 	}
 	return nil
@@ -91,13 +91,13 @@ func (a *AWSClient) Decrypt(ciphertext string, v interface{}) error {
 //  that will be assuming the role
 func (a *AWSClient) SelectRoleFromSaml(samleResponse authenticators.SamlResponse) (string, string, error) {
 	if samleResponse == nil {
-		a.logger.Error("AWSClient", "Select SAML", "SAML Assertion is nil pointer")
+		a.logger.Error("saml assertion is nil pointer")
 		return "", "", ErrorUnableToGetSamlAssertion
 	}
 
 	roleInfo := strings.Split(samleResponse.GetSamlResponse().GetAttribute("https://aws.amazon.com/SAML/Attributes/Role"), ",")
 	if len(roleInfo) != 2 {
-		a.logger.Error("AWSClient", "Select SAML", "SAML assertion has too many roles")
+		a.logger.Error("saml assertion has too many roles")
 		return "", "", ErrorSamlAssertionHasTooManyRoles
 	}
 	roleArn := roleInfo[0]
@@ -118,7 +118,7 @@ func (a *AWSClient) AssumeRole(roleArn, principalArn string, samlResponse authen
 		SAMLAssertion:   &samlString}
 	resp, err := a.stsClient.AssumeRoleWithSAML(input)
 	if err != nil {
-		a.logger.Error("AWSClient", "Assume Role", "Unable to assume role")
+		a.logger.Error("unable to assume role")
 		return nil, err
 	}
 	return resp.Credentials, nil

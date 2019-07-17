@@ -42,7 +42,7 @@ func NewDuoMFA(logger *logrus.Entry) *DuoMFA {
 }
 
 func (d *DuoMFA) Do(args ...string) (string, error) {
-	d.logger.Info("KeyConjurer", "authenticator", "DuoMFA", "creating new duo MFA")
+	d.logger.Debug("prepping push")
 	duo := NewDuo(d.logger)
 
 	if len(args) < 4 {
@@ -54,7 +54,7 @@ func (d *DuoMFA) Do(args ...string) (string, error) {
 	callbackUrl := args[2]
 	apiHost := args[3]
 
-	d.logger.Info("KeyConjurer", "authenticator", "DuoMFA", "sending duo push")
+	d.logger.Info("sending duo push")
 	return duo.SendPush(txSig, stateToken, callbackUrl, apiHost)
 }
 
@@ -80,7 +80,7 @@ func New(logger *logrus.Entry) authenticators.Authenticator {
 
 	blob, err := base64.StdEncoding.DecodeString(encryptedSettings)
 	if err != nil {
-		logger.Error("KeyConjurer", "AWSClient", "Unable to decode ciphertext", err.Error())
+		logger.Error("unable to decode ciphertext. reason: ", err.Error())
 		// should handle the
 		panic(err)
 	}
@@ -91,12 +91,12 @@ func New(logger *logrus.Entry) authenticators.Authenticator {
 
 	result, err := kmsSession.Decrypt(input)
 	if err != nil {
-		logger.Error("KeyConjurer", "AWSClient", "authenticator Failed to decrypt", err.Error())
+		logger.Error("authenticator failed to decrypt reason: ", err.Error())
 		panic(err)
 	}
 
 	if err := json.Unmarshal(result.Plaintext, settings); err != nil {
-		logger.Error("KeyConjurer", "AWSClient", "Unable to unmarshal", err.Error())
+		logger.Error("unable to unmarshal reason: ", err.Error())
 		panic(err)
 	}
 
@@ -114,13 +114,13 @@ func (ola *OneLoginAuthenticator) Authenticate(username string, password string)
 
 	authenticatedUser, err := oneLoginClient.AuthenticateUser(username, password)
 	if err != nil {
-		ola.logger.Error("KeyConjurer", "onelogin", "Failed to authenticate user", err.Error())
+		ola.logger.Error("failed to authenticate user reason: ", err.Error())
 		return nil, err
 	}
 
 	allUserApps, err := oneLoginClient.GetUserApps(authenticatedUser)
 	if err != nil {
-		ola.logger.Error("KeyConjurer", "onelogin", "Unable to get user apps", err.Error())
+		ola.logger.Error("unable to get user apps reason: ", err.Error())
 		return nil, err
 	}
 
@@ -137,7 +137,7 @@ func (ola *OneLoginAuthenticator) Authorize(username string, password string, ap
 
 	stateTokenResponse, err := oneLoginClient.GetStateToken(username, password, appID)
 	if err != nil {
-		ola.logger.Error("KeyConjurer", "Authorize", "Unable to get state token", err.Error())
+		ola.logger.Error("unable to get state token reason: ", err.Error())
 		return nil, err
 	}
 
@@ -152,13 +152,13 @@ func (ola *OneLoginAuthenticator) Authorize(username string, password string, ap
 	appSignature := signatures[1]
 
 	if ola.MFA == nil {
-		ola.logger.Error("KeyConjurer", "Authorize", "mfa is nil")
+		ola.logger.Error("mfa is nil")
 	}
 
-	ola.logger.Info("KeyConjurer", "Authorize", "Sending mfa push")
+	ola.logger.Info("sending mfa push")
 	mfaCookie, err := ola.MFA.Do(txSignature, stateTokenResponse.StateToken, stateTokenResponse.CallbackUrl, device.ApiHostName)
 	if err != nil {
-		ola.logger.Error("KeyConjurer", "Authorize", "Unable to get mfaCookie", err.Error())
+		ola.logger.Error("unable to get mfacookie reason: ", err.Error())
 		return nil, err
 	}
 
@@ -166,13 +166,13 @@ func (ola *OneLoginAuthenticator) Authorize(username string, password string, ap
 	ola.logger.Info("KeyConjurer", "Authorize", "Getting SAML assertion")
 	samlString, err := oneLoginClient.GetSamlAssertion(mfaToken, stateTokenResponse.StateToken, appID, fmt.Sprint(device.Id))
 	if err != nil {
-		ola.logger.Error("KeyConjurer", "Authorize", "Unable to get SAML Assertion")
+		ola.logger.Error("unable to get saml assertion")
 		return nil, err
 	}
 
 	response, err := saml.ParseEncodedResponse(samlString)
 	if err != nil {
-		ola.logger.Error("KeyConjurer", "Authorize", "Unable to parse SAML Assertion into SAML Response")
+		ola.logger.Error("unable to parse saml assertion into saml response")
 		return nil, err
 	}
 	return OneLoginSaml{

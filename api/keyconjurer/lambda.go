@@ -1,7 +1,6 @@
 package keyconjurer
 
 import (
-	"fmt"
 	log "keyconjurer-lambda/logger"
 	"time"
 
@@ -63,7 +62,7 @@ func GetUserDataEventHandler(event GetUserDataEvent) (*Response, error) {
 		userData.SetCreds("")
 	}
 
-	logger.Info("Successfully retrieved user data")
+	logger.Info("successfully retrieved user data")
 	return CreateResponseSuccess(userData), nil
 }
 
@@ -97,7 +96,7 @@ func GetAWSCredsEventHandler(event GetAWSCredsEvent) (*Response, error) {
 	user := NewUser(event.Username, event.Password)
 	if event.Username == "encrypted" {
 		if err := client.AWSClient.Decrypt(event.Password, user); err != nil {
-			client.Logger.Info("Creds decryption failure", err.Error())
+			client.Logger.Info("creds decryption failure reason: ", err.Error())
 			return CreateResponseError("Invalid username or password"), nil
 		}
 	}
@@ -109,10 +108,10 @@ func GetAWSCredsEventHandler(event GetAWSCredsEvent) (*Response, error) {
 	credentials, err := client.GetAwsCreds(user, event.AppID, event.TimeoutInHours)
 	if err != nil {
 		client.Logger.Info("Key failure", err.Error())
-		return CreateResponseError("Unable to get aws credentials"), nil
+		return CreateResponseError("unable to get aws credentials"), nil
 	}
 
-	client.Logger.Info(fmt.Sprintf("AccessKeyId: %v", *credentials.AccessKeyId), "Key Success")
+	client.Logger.Info("key success AccessKeyId: ", *credentials.AccessKeyId)
 
 	stsToken := STSTokenResponse{
 		AccessKeyID:     credentials.AccessKeyId,
