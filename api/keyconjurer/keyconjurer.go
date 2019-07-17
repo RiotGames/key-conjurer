@@ -4,20 +4,19 @@ import (
 	"keyconjurer-lambda/authenticators"
 	"os"
 
-	log "keyconjurer-lambda/logger"
-
 	"github.com/aws/aws-sdk-go/service/sts"
+	"github.com/sirupsen/logrus"
 )
 
 // KeyConjurer is used to generate temporary AWS credentials
 type KeyConjurer struct {
 	AWSClient     *AWSClient
 	Authenticator authenticators.Authenticator
-	Logger        *log.Logger
+	Logger        *logrus.Entry
 }
 
 // New creates an KeyConjurer service
-func NewKeyConjurer(client, clientVersion string, auth authenticators.Authenticator, logger *log.Logger) *KeyConjurer {
+func NewKeyConjurer(client, clientVersion string, auth authenticators.Authenticator, logger *logrus.Entry) *KeyConjurer {
 	awsRegion := os.Getenv("AWSRegion")
 	awsClient := NewAWSClient(awsRegion, logger)
 	settings := NewSettings(awsClient, awsRegion)
@@ -35,7 +34,7 @@ func NewKeyConjurer(client, clientVersion string, auth authenticators.Authentica
 func (a *KeyConjurer) GetUserData(user *User) (*UserData, error) {
 	authAccounts, err := a.Authenticator.Authenticate(user.Username, user.Password)
 	if err != nil {
-		a.Logger.Error("KeyConjurer", "GetUserData", "Error authenticating", err.Error())
+		a.Logger.Error("error authenticating reason: ", err.Error())
 		return nil, err
 	}
 
@@ -53,20 +52,20 @@ func (a *KeyConjurer) GetUserData(user *User) (*UserData, error) {
 func (a *KeyConjurer) GetAwsCreds(user *User, appID string, keyTimeoutInHours int) (*sts.Credentials, error) {
 	samlAssertion, err := a.Authenticator.Authorize(user.Username, user.Password, appID)
 	if err != nil {
-		a.Logger.Error("KeyConjurer", "GetAWSCreds", "Unable to parse SAML assertion", err.Error())
+		a.Logger.Error("unable to parse saml assertion reason: ", err.Error())
 		return nil, err
 	}
 
 	roleArn, principalArn, err := a.AWSClient.SelectRoleFromSaml(samlAssertion)
 	if err != nil {
-		a.Logger.Error("KeyConjurer", "Unable to select role from SAML", err.Error())
+		a.Logger.Error("unable to select role from saml reason: ", err.Error())
 		return nil, err
 	}
 
 	a.Logger.Info("KeyConjurer", "Assuming role")
 	credentials, err := a.AWSClient.AssumeRole(roleArn, principalArn, samlAssertion, keyTimeoutInHours)
 	if err != nil {
-		a.Logger.Error("KeyConjurer", "GetAWSCreds", "Unable to assume role", err.Error())
+		a.Logger.Error("unable to assume role reason: ", err.Error())
 		return nil, err
 	}
 	return credentials, nil

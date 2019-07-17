@@ -1,9 +1,10 @@
 package keyconjurer
 
 import (
-	"fmt"
 	log "keyconjurer-lambda/logger"
 	"time"
+
+	"github.com/sirupsen/logrus"
 )
 
 ///////////////////////////////////////////////////////////
@@ -25,9 +26,8 @@ type GetUserDataEvent struct {
 // GetUserData authenticates the user against OneLogin and retrieves a list of
 //  AWS application the user has available
 func GetUserDataEventHandler(event GetUserDataEvent) (*Response, error) {
-	auth := newAuthenticator()
-
-	logger := log.NewLogger("KeyConjurer-Lambda", event.Client, event.ClientVersion, log.DEBUG)
+	logger := log.NewLogger(event.Client, event.ClientVersion, logrus.DebugLevel)
+	auth := newAuthenticator(logger)
 
 	// make new keyconjurer instance
 	client := NewKeyConjurer(event.Client, event.ClientVersion, auth, logger)
@@ -40,8 +40,9 @@ func GetUserDataEventHandler(event GetUserDataEvent) (*Response, error) {
 		}
 	}
 
-	// create new logger
-	client.Logger.SetUsername(user.Username)
+	// Set the username field permanently for future logs
+	client.Logger = client.Logger.WithFields(logrus.Fields{
+		"username": user.Username})
 
 	// authenticate user and get UserData
 	userData, err := client.GetUserData(user)
@@ -61,7 +62,7 @@ func GetUserDataEventHandler(event GetUserDataEvent) (*Response, error) {
 		userData.SetCreds("")
 	}
 
-	client.Logger.Info("Successfully retrieved user data")
+	logger.Info("successfully retrieved user data")
 	return CreateResponseSuccess(userData), nil
 }
 
@@ -86,9 +87,8 @@ type GetAWSCredsEvent struct {
 //  the user, validates the MFA response with OneLogin, then generates STS credentials
 //  for the user
 func GetAWSCredsEventHandler(event GetAWSCredsEvent) (*Response, error) {
-	auth := newAuthenticator()
-
-	logger := log.NewLogger("KeyConjurer-Lambda", event.Client, event.ClientVersion, log.DEBUG)
+	logger := log.NewLogger(event.Client, event.ClientVersion, logrus.DebugLevel)
+	auth := newAuthenticator(logger)
 
 	// make new keyconjurer instance
 	client := NewKeyConjurer(event.Client, event.ClientVersion, auth, logger)
@@ -96,19 +96,22 @@ func GetAWSCredsEventHandler(event GetAWSCredsEvent) (*Response, error) {
 	user := NewUser(event.Username, event.Password)
 	if event.Username == "encrypted" {
 		if err := client.AWSClient.Decrypt(event.Password, user); err != nil {
-			client.Logger.Info("Creds decryption failure", err.Error())
+			client.Logger.Info("creds decryption failure reason: ", err.Error())
 			return CreateResponseError("Invalid username or password"), nil
 		}
 	}
-	client.Logger.SetUsername(user.Username)
+
+	// Set the username field permanently for future logs
+	client.Logger = client.Logger.WithFields(logrus.Fields{
+		"username": user.Username})
 
 	credentials, err := client.GetAwsCreds(user, event.AppID, event.TimeoutInHours)
 	if err != nil {
 		client.Logger.Info("Key failure", err.Error())
-		return CreateResponseError("Unable to get aws credentials"), nil
+		return CreateResponseError("unable to get aws credentials"), nil
 	}
 
-	client.Logger.Info(fmt.Sprintf("AccessKeyId: %v", *credentials.AccessKeyId), "Key Success")
+	client.Logger.Info("key success AccessKeyId: ", *credentials.AccessKeyId)
 
 	stsToken := STSTokenResponse{
 		AccessKeyID:     credentials.AccessKeyId,

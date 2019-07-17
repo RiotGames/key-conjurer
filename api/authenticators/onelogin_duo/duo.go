@@ -10,12 +10,12 @@ import (
 	"regexp"
 	"strings"
 
-	log "keyconjurer-lambda/logger"
+	"github.com/sirupsen/logrus"
 )
 
 // Duo scripts the Duo Web API interaction
 type Duo struct {
-	logger     *log.Logger
+	logger     *logrus.Entry
 	httpClient *http.Client
 }
 
@@ -40,7 +40,7 @@ type duoPushResponse struct {
 }
 
 // NewDuo returns a new Duo client that uses the provided logger
-func NewDuo(logger *log.Logger) *Duo {
+func NewDuo(logger *logrus.Entry) *Duo {
 	return &Duo{
 		logger:     logger,
 		httpClient: http.DefaultClient}
@@ -79,14 +79,14 @@ func (d *Duo) getSid(txSignature, stateToken, callbackURL, apiHostName string) (
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 	resp, err := d.httpClient.Do(req)
 	if err != nil {
-		d.logger.Error("Duo", "Unable to communicate with Duo", err.Error())
+		d.logger.Error("unable to communicate with duo reaason: ", err.Error())
 		return "", ErrorDuoCommunication
 	}
 
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		d.logger.Error("Duo", "Unable to parse response body", err.Error())
+		d.logger.Error("unable to parse response body reason: ", err.Error())
 		return "", ErrorHttpBodyError
 	}
 
@@ -94,7 +94,7 @@ func (d *Duo) getSid(txSignature, stateToken, callbackURL, apiHostName string) (
 	//  regex will match
 	data := regexp.MustCompile("<input.*name=['\"]?sid['\"]?.*?value=['\"]?(.*?)['\"]?>").FindSubmatch(body)
 	if len(data) != 2 {
-		d.logger.Error("Duo", "Unable to find sid")
+		d.logger.Error("unable to find sid")
 		return "", ErrorCannotFindSid
 	}
 	sid := html.UnescapeString(string(data[1]))
@@ -115,7 +115,7 @@ func (d *Duo) prepareForPush(sid, txSignature, callbackURL, apiHostName string) 
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 	resp, err := d.httpClient.Do(req)
 	if err != nil {
-		d.logger.Error("Duo", "Unable to communicate with Duo", err.Error())
+		d.logger.Error("unable to communicate with duo reason: ", err.Error())
 		return ErrorDuoCommunication
 	}
 	defer resp.Body.Close()
@@ -135,26 +135,30 @@ func (d *Duo) sendMfaPush(sid, txSignature, callbackURL, apiHostName string) (st
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 	resp, err := d.httpClient.Do(req)
 	if err != nil {
-		d.logger.Error("Duo", "Unable to communicate with Duo", err.Error())
+		d.logger.Error("unable to communicate with duo reason: ", err.Error())
 		return "", ErrorDuoCommunication
 	}
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		d.logger.Error("Duo", "Unable to parse response body", err.Error())
+		d.logger.Error("unable to parse response body reason: ", err.Error())
 		return "", ErrorHttpBodyError
 	}
 	duoPromptResponse := &duoPromptResponse{}
 	if err := json.Unmarshal(body, duoPromptResponse); err != nil {
-		d.logger.Error("Duo", "Unable to unmarshal", err.Error())
+		d.logger.Error("unable to unmarshal reason: ", err.Error())
 		return "", ErrorJsonUnmarshalError
 	}
 	// Checking MFA status does not block on the first attempt
 	//  to check the status after pushing.  The response just says
 	//  that a push was sent.
 	mfaResponse, err := d.checkMfaStatus(sid, duoPromptResponse.Response.TxID, apiHostName)
+	if err != nil {
+		d.logger.Error("error pushing duo request reason: ", err.Error())
+		return "", ErrorDuoPushError
+	}
 	if strings.ToLower(mfaResponse.Response.StatusCode) != "pushed" {
-		d.logger.Error("Duo", "Error pushing duo request")
+		d.logger.Error("error mfa status code not 'pushed' value=", mfaResponse.Response.StatusCode)
 		return "", ErrorDuoPushError
 	}
 	return duoPromptResponse.Response.TxID, nil
@@ -168,19 +172,19 @@ func (d *Duo) checkMfaStatus(sid, txid, apiHostName string) (*duoPushResponse, e
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 	resp, err := d.httpClient.Do(req)
 	if err != nil {
-		d.logger.Error("Duo", "Unable to communicate with Duo", err.Error())
+		d.logger.Error("unable to communicate with duo reason: ", err.Error())
 		return nil, ErrorDuoCommunication
 	}
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		d.logger.Error("Duo", "Unable to parse response body", err.Error())
+		d.logger.Error("unable to parse response body reason: ", err.Error())
 		return nil, ErrorHttpBodyError
 	}
 
 	pushResponse := &duoPushResponse{}
 	if err := json.Unmarshal(body, pushResponse); err != nil {
-		d.logger.Error("Duo", "Unable to unmarshal", err.Error())
+		d.logger.Error("unable to unmarshal reason: ", err.Error())
 		return nil, ErrorJsonUnmarshalError
 	}
 
@@ -194,14 +198,18 @@ func (d *Duo) checkMfaStatus(sid, txid, apiHostName string) (*duoPushResponse, e
 		req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 		resp, err := d.httpClient.Do(req)
 		if err != nil {
-			d.logger.Error("Duo", "Unable to communicate with Duo", err.Error())
+			d.logger.Error("unable to communicate with duo reason: ", err.Error())
 			return nil, ErrorDuoCommunication
 		}
 		defer resp.Body.Close()
 		body, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			d.logger.Error("unable to read body reason: ", err.Error())
+			return nil, ErrorHttpBodyError
+		}
 		pushResponse = &duoPushResponse{}
 		if err := json.Unmarshal(body, pushResponse); err != nil {
-			d.logger.Error("Duo", "Unable to unmarshal", err.Error())
+			d.logger.Error("unable to unmarshal reason: ", err.Error())
 			return nil, ErrorJsonUnmarshalError
 		}
 	}

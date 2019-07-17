@@ -9,19 +9,19 @@ import (
 	"encoding/json"
 
 	"keyconjurer-lambda/authenticators"
-	"keyconjurer-lambda/consts"
-	log "keyconjurer-lambda/logger"
 
 	saml "github.com/RobotsAndPencils/go-saml"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/kms"
 	"github.com/rnikoopour/onelogin"
+	"github.com/sirupsen/logrus"
 )
 
 type OneLoginSaml struct {
 	b64String    string
 	samlResponse *saml.Response
+	logger       *logrus.Entry
 }
 
 func (s OneLoginSaml) GetBase64String() string {
@@ -32,14 +32,18 @@ func (s OneLoginSaml) GetSamlResponse() *saml.Response {
 	return s.samlResponse
 }
 
-type DuoMFA struct{}
+type DuoMFA struct {
+	logger *logrus.Entry
+}
 
-func (d DuoMFA) Do(args ...string) (string, error) {
-	logger := log.NewLogger("KeyConjurer", "DuoMFA",
-		fmt.Sprintf("%s-%s", consts.Version, "duo"), log.DEBUG)
+func NewDuoMFA(logger *logrus.Entry) *DuoMFA {
+	return &DuoMFA{
+		logger: logger}
+}
 
-	logger.Info("KeyConjurer", "authenticator", "DuoMFA", "creating new duo MFA")
-	duo := NewDuo(logger)
+func (d *DuoMFA) Do(args ...string) (string, error) {
+	d.logger.Debug("prepping push")
+	duo := NewDuo(d.logger)
 
 	if len(args) < 4 {
 		return "", ErrorDuoArgsError
@@ -50,19 +54,17 @@ func (d DuoMFA) Do(args ...string) (string, error) {
 	callbackUrl := args[2]
 	apiHost := args[3]
 
-	logger.Info("KeyConjurer", "authenticator", "DuoMFA", "sending duo push")
+	d.logger.Info("sending duo push")
 	return duo.SendPush(txSig, stateToken, callbackUrl, apiHost)
 }
 
 type OneLoginAuthenticator struct {
 	Settings *Settings
 	MFA      authenticators.MFA
+	logger   *logrus.Entry
 }
 
-func New() authenticators.Authenticator {
-	logger := log.NewLogger("KeyConjurer", "authenticator",
-		fmt.Sprintf("%s-%s", consts.Version, "onelogin"), log.DEBUG)
-
+func New(logger *logrus.Entry) authenticators.Authenticator {
 	awsRegion := os.Getenv("AWSRegion")
 	settings := &Settings{AwsRegion: awsRegion}
 
@@ -78,7 +80,7 @@ func New() authenticators.Authenticator {
 
 	blob, err := base64.StdEncoding.DecodeString(encryptedSettings)
 	if err != nil {
-		logger.Error("KeyConjurer", "AWSClient", "Unable to decode ciphertext", err.Error())
+		logger.Error("unable to decode ciphertext. reason: ", err.Error())
 		// should handle the
 		panic(err)
 	}
@@ -89,19 +91,18 @@ func New() authenticators.Authenticator {
 
 	result, err := kmsSession.Decrypt(input)
 	if err != nil {
-		logger.Error("KeyConjurer", "AWSClient", "authenticator Failed to decrypt", err.Error())
+		logger.Error("authenticator failed to decrypt reason: ", err.Error())
 		panic(err)
 	}
 
 	if err := json.Unmarshal(result.Plaintext, settings); err != nil {
-		logger.Error("KeyConjurer", "AWSClient", "Unable to unmarshal", err.Error())
+		logger.Error("unable to unmarshal reason: ", err.Error())
 		panic(err)
 	}
 
-	//onelogin := NewOneLogin(settings, logger)
-	//duo := NewDuo(logger)
-
-	return &OneLoginAuthenticator{Settings: settings}
+	return &OneLoginAuthenticator{
+		Settings: settings,
+		logger:   logger}
 }
 
 func (ola *OneLoginAuthenticator) SetMFA(mfa authenticators.MFA) {
@@ -109,20 +110,17 @@ func (ola *OneLoginAuthenticator) SetMFA(mfa authenticators.MFA) {
 }
 
 func (ola *OneLoginAuthenticator) Authenticate(username string, password string) ([]authenticators.Account, error) {
-	logger := log.NewLogger("KeyConjurer", "authenticator",
-		fmt.Sprintf("%s-%s", consts.Version, "onelongin"), log.DEBUG)
-
-	oneLoginClient := NewOneLogin(ola.Settings, logger)
+	oneLoginClient := NewOneLogin(ola.Settings, ola.logger)
 
 	authenticatedUser, err := oneLoginClient.AuthenticateUser(username, password)
 	if err != nil {
-		logger.Error("KeyConjurer", "onelogin", "Failed to authenticate user", err.Error())
+		ola.logger.Error("failed to authenticate user reason: ", err.Error())
 		return nil, err
 	}
 
 	allUserApps, err := oneLoginClient.GetUserApps(authenticatedUser)
 	if err != nil {
-		logger.Error("KeyConjurer", "onelogin", "Unable to get user apps", err.Error())
+		ola.logger.Error("unable to get user apps reason: ", err.Error())
 		return nil, err
 	}
 
@@ -135,14 +133,11 @@ func (ola *OneLoginAuthenticator) Authenticate(username string, password string)
 }
 
 func (ola *OneLoginAuthenticator) Authorize(username string, password string, appID string) (authenticators.SamlResponse, error) {
-	logger := log.NewLogger("KeyConjurer", "authenticator",
-		fmt.Sprintf("%s-%s", consts.Version, "onelogin"), log.DEBUG)
-
-	oneLoginClient := NewOneLogin(ola.Settings, logger)
+	oneLoginClient := NewOneLogin(ola.Settings, ola.logger)
 
 	stateTokenResponse, err := oneLoginClient.GetStateToken(username, password, appID)
 	if err != nil {
-		logger.Error("KeyConjurer", "Authorize", "Unable to get state token", err.Error())
+		ola.logger.Error("unable to get state token reason: ", err.Error())
 		return nil, err
 	}
 
@@ -157,28 +152,31 @@ func (ola *OneLoginAuthenticator) Authorize(username string, password string, ap
 	appSignature := signatures[1]
 
 	if ola.MFA == nil {
-		logger.Error("KeyConjurer", "Authorize", "mfa is nil")
+		ola.logger.Error("mfa is nil")
 	}
 
-	logger.Info("KeyConjurer", "Authorize", "Sending mfa push")
+	ola.logger.Info("sending mfa push")
 	mfaCookie, err := ola.MFA.Do(txSignature, stateTokenResponse.StateToken, stateTokenResponse.CallbackUrl, device.ApiHostName)
 	if err != nil {
-		logger.Error("KeyConjurer", "Authorize", "Unable to get mfaCookie", err.Error())
+		ola.logger.Error("unable to get mfacookie reason: ", err.Error())
 		return nil, err
 	}
 
 	mfaToken := fmt.Sprintf("%v:%v", mfaCookie, appSignature)
-	logger.Info("KeyConjurer", "Authorize", "Getting SAML assertion")
+	ola.logger.Info("KeyConjurer", "Authorize", "Getting SAML assertion")
 	samlString, err := oneLoginClient.GetSamlAssertion(mfaToken, stateTokenResponse.StateToken, appID, fmt.Sprint(device.Id))
 	if err != nil {
-		logger.Error("KeyConjurer", "Authorize", "Unable to get SAML Assertion")
+		ola.logger.Error("unable to get saml assertion")
 		return nil, err
 	}
 
 	response, err := saml.ParseEncodedResponse(samlString)
 	if err != nil {
-		logger.Error("KeyConjurer", "Authorize", "Unable to parse SAML Assertion into SAML Response")
+		ola.logger.Error("unable to parse saml assertion into saml response")
 		return nil, err
 	}
-	return OneLoginSaml{b64String: samlString, samlResponse: response}, nil
+	return OneLoginSaml{
+		b64String:    samlString,
+		samlResponse: response,
+		logger:       ola.logger}, nil
 }

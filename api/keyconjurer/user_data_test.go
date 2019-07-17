@@ -62,8 +62,6 @@ func TestUserDataMarshal(t *testing.T) {
 	jsonUserData, err := json.Marshal(&userData)
 	assert.Equal(t, nil, err, "should be able to marshal userdata")
 
-	t.Log(string(jsonUserData))
-
 	userDataUnmarshalled := UserData{}
 	err = json.Unmarshal(jsonUserData, &userDataUnmarshalled)
 	assert.Equal(t, nil, err, "should be able to remarshal userdata")
