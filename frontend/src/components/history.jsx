@@ -36,7 +36,7 @@ class History extends Component {
                   <br />
                   <a href={`${keyConjurerDomain}/${binaryName}-linux`} download={`${binaryName}`}>{`${binaryName}`}-linux</a>
                   <br />
-                  <a href={`${keyConjurerDomain}/${binaryName}.exe`} download={`${binaryName}`}>{`${binaryName}`}-windows</a>
+                  <a href={`${keyConjurerDomain}/${binaryName}-windows.exe`} download={`${binaryName}.exe`}>{`${binaryName}`}-windows</a>
 		</Card.Content>
               </Card.Content>
 	    </Card>

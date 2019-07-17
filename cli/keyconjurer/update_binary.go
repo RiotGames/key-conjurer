@@ -13,7 +13,7 @@ func getBinaryName() string {
 	case "linux":
 		return "keyconjurer-linux"
 	case "windows":
-		return "keyconjurer.exe"
+		return "keyconjurer-windows.exe"
 	default:
 		return "keyconjurer-darwin"
 	}
