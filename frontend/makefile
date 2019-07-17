@@ -42,7 +42,7 @@ create_consts_file:
 	&& echo "export const client = 'webUI';" >> ./src/consts.js
 
 version:
-	echo "export const version = '$$(git rev-parse --short HEAD)';"  > ./src/version.js
+	echo "export const version = '$$(git rev-parse --short HEAD)-$(WSNAME)';"  > ./src/version.js
 
 reset_version:
 	echo "export const version = '';" > ./src/version.js

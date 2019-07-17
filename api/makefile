@@ -19,7 +19,7 @@ $(error S3_TF_BUCKET_NAME is not set)
 endif
 
 version = $(shell git rev-parse --short HEAD)
-ldflags = "-X keyconjurer-lambda/consts.Version=$(version) -X keyconjurer-lambda/consts.AuthenticatorSelect=$(AUTHENTICATOR) -X keyconjurer-lambda/consts.MFASelect=$(MFA) -X keyconjurer-lambda/consts.LogstashEndpoint=$(LOGSTASH_ENDPOINT)"
+ldflags = "-X keyconjurer-lambda/consts.Version=$(version)-${WSNAME} -X keyconjurer-lambda/consts.AuthenticatorSelect=$(AUTHENTICATOR) -X keyconjurer-lambda/consts.MFASelect=$(MFA) -X keyconjurer-lambda/consts.LogstashEndpoint=$(LOGSTASH_ENDPOINT)"
 
 deploy:
 	make build \
