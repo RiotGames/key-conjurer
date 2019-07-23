@@ -11,11 +11,11 @@ import (
 func getBinaryName() string {
 	switch runtime.GOOS {
 	case "linux":
-		return "keyconjurer-linux"
+		return LinuxBinaryName
 	case "windows":
-		return "keyconjurer-windows.exe"
+		return WindowsBinaryName
 	default:
-		return "keyconjurer-darwin"
+		return DarwinBinaryName
 	}
 }
 
