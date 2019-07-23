@@ -44,14 +44,14 @@ func windowsDownload(keyConjurerRcPath string) {
 	if err != nil {
 		log.Fatalf("Unable to create download script. Reason: %v", err)
 	}
+	command := fmt.Sprintf("timeout 3 && bitsadmin /transfer keyconjurerdownload /priority foreground /download %s/%s %s && del %s && exit", keyconjurer.DownloadURL, keyconjurer.WindowsBinaryName, keyConjurerRcPath, tmpFile.Name())
+	fileData := []byte(command)
 
-	text := []byte(fmt.Sprintf("timeout 3 && bitsadmin /transfer keyconjurerdownload /priority foreground /download %s/keyconjurer.exe %v && del %v && exit", keyconjurer.DownloadURL, keyConjurerRcPath, tmpFile.Name()))
-
-	if _, err = tmpFile.Write(text); err != nil {
-		log.Fatal("Failed to write to temporary file", err)
+	if _, err = tmpFile.Write(fileData); err != nil {
+		log.Fatal("Failed to write to temporary file", err.Error())
 	}
 	if err := tmpFile.Close(); err != nil {
-		log.Fatal(err)
+		log.Fatal(err.Error())
 	}
 	cmd := exec.Command("cmd", "/C", "start", tmpFile.Name())
 	cmd.Start()

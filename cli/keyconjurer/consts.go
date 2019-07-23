@@ -17,3 +17,8 @@ const DefaultTimeRemaining uint = 60
 var DevAPI string
 var ProdAPI string
 var DownloadURL string
+
+// CLI binary names
+const LinuxBinaryName string = "keyconjurer-linux"
+const WindowsBinaryName string = "keyconjurer-windows.exe"
+const DarwinBinaryName string = "keyconjurer-darwin"
