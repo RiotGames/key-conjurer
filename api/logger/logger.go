@@ -4,6 +4,7 @@ import (
 	"keyconjurer-lambda/consts"
 	"os"
 
+	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 )
 
@@ -22,5 +23,6 @@ func NewLogger(client, clientVersion string, level logrus.Level) *logrus.Entry {
 
 	return logger.WithFields(logrus.Fields{
 		"client":        client,
-		"clientVersion": clientVersion})
+		"clientVersion": clientVersion,
+		"uuid":          uuid.New().String()})
 }
