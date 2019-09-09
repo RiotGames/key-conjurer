@@ -1,8 +1,9 @@
-package keyconjurer
+package awsclient
 
 import (
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"strings"
 
 	"keyconjurer-lambda/authenticators"
@@ -26,8 +27,8 @@ type AWSClient struct {
 // NewAWSClient creates a new AWS Client in the region provided
 //  and will use the provided logger for logging
 func NewAWSClient(awsRegion string, logger *logrus.Entry) *AWSClient {
-	config := session.New(&aws.Config{
-		Region: aws.String(awsRegion)})
+	config := session.Must(session.NewSession(&aws.Config{
+		Region: aws.String(awsRegion)}))
 
 	awsClient := &AWSClient{
 		kmsClient: kms.New(config),
@@ -49,7 +50,7 @@ func (a *AWSClient) Encrypt(data interface{}) (string, error) {
 	plaintext, err := json.Marshal(data)
 	if err != nil {
 		a.logger.Error("AWSClient", "Encrypt", "Failed to marshal data", err.Error())
-		return "", ErrorJsonMarshalError
+		return "", errors.New("Unable to marshal json")
 	}
 
 	input := &kms.EncryptInput{
@@ -70,7 +71,7 @@ func (a *AWSClient) Decrypt(ciphertext string, v interface{}) error {
 	blob, err := base64.StdEncoding.DecodeString(ciphertext)
 	if err != nil {
 		a.logger.Error("unable to decode ciphertext reason: ", err.Error())
-		return ErrorUnableToDecode
+		return errors.New("Unable to base64 decode string")
 	}
 	input := &kms.DecryptInput{
 		CiphertextBlob: blob}
@@ -82,7 +83,7 @@ func (a *AWSClient) Decrypt(ciphertext string, v interface{}) error {
 	}
 	if err := json.Unmarshal(result.Plaintext, v); err != nil {
 		a.logger.Error("unable to unmarshal reason: ", err.Error())
-		return ErrorJsonUnmarshalError
+		return errors.New("Unable to unmarshal json")
 	}
 	return nil
 }
@@ -92,13 +93,13 @@ func (a *AWSClient) Decrypt(ciphertext string, v interface{}) error {
 func (a *AWSClient) SelectRoleFromSaml(samleResponse authenticators.SamlResponse) (string, string, error) {
 	if samleResponse == nil {
 		a.logger.Error("saml assertion is nil pointer")
-		return "", "", ErrorUnableToGetSamlAssertion
+		return "", "", errors.New("Unable to get SAML assertion")
 	}
 
 	roleInfo := strings.Split(samleResponse.GetSamlResponse().GetAttribute("https://aws.amazon.com/SAML/Attributes/Role"), ",")
 	if len(roleInfo) != 2 {
 		a.logger.Error("saml assertion has too many roles")
-		return "", "", ErrorSamlAssertionHasTooManyRoles
+		return "", "", errors.New("SAML assertion has too many roles")
 	}
 	roleArn := roleInfo[0]
 	principalArn := roleInfo[1]

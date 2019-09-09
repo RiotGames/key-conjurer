@@ -1,8 +1,10 @@
 package keyconjurer
 
 import (
-	log "keyconjurer-lambda/logger"
 	"time"
+
+	"keyconjurer-lambda/keyconjurer/settings"
+	log "keyconjurer-lambda/logger"
 
 	"github.com/sirupsen/logrus"
 )
@@ -27,10 +29,12 @@ type GetUserDataEvent struct {
 //  AWS application the user has available
 func GetUserDataEventHandler(event GetUserDataEvent) (*Response, error) {
 	logger := log.NewLogger(event.Client, event.ClientVersion, logrus.DebugLevel)
-	auth := newAuthenticator(logger)
+	keyConjurerSettings := settings.NewSettings(logger)
+
+	auth := newAuthenticator(logger, keyConjurerSettings)
 
 	// make new keyconjurer instance
-	client := NewKeyConjurer(event.Client, event.ClientVersion, auth, logger)
+	client := NewKeyConjurer(event.Client, event.ClientVersion, auth, logger, keyConjurerSettings)
 
 	// get username:password and decrypt if necessary
 	user := NewUser(event.Username, event.Password)
@@ -88,10 +92,12 @@ type GetAWSCredsEvent struct {
 //  for the user
 func GetAWSCredsEventHandler(event GetAWSCredsEvent) (*Response, error) {
 	logger := log.NewLogger(event.Client, event.ClientVersion, logrus.DebugLevel)
-	auth := newAuthenticator(logger)
+	keyConjurerSettings := settings.NewSettings(logger)
+
+	auth := newAuthenticator(logger, keyConjurerSettings)
 
 	// make new keyconjurer instance
-	client := NewKeyConjurer(event.Client, event.ClientVersion, auth, logger)
+	client := NewKeyConjurer(event.Client, event.ClientVersion, auth, logger, keyConjurerSettings)
 
 	user := NewUser(event.Username, event.Password)
 	if event.Username == "encrypted" {

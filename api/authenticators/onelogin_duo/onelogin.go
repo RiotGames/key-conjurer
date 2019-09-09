@@ -4,6 +4,8 @@ import (
 	"context"
 	"strings"
 
+	"keyconjurer-lambda/keyconjurer/settings"
+
 	"github.com/rnikoopour/onelogin"
 	"github.com/sirupsen/logrus"
 )
@@ -29,7 +31,7 @@ func (app OneLoginApp) Name() string {
 
 // NewOneLogin creates a new onelogin client using the providing settings
 //  and logs with provided logger
-func NewOneLogin(settings *Settings, logger *logrus.Entry) *OneLogin {
+func NewOneLogin(settings *settings.Settings, logger *logrus.Entry) *OneLogin {
 	var readUserClient = onelogin.New(settings.OneLoginReadUserID, settings.OneLoginReadUserSecret,
 		settings.OneLoginShard, settings.OneLoginSubdomain)
 	var samlClient = onelogin.New(settings.OneLoginSamlID, settings.OneLoginSamlSecret,

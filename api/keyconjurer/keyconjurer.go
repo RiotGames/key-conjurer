@@ -1,8 +1,11 @@
 package keyconjurer
 
 import (
-	"keyconjurer-lambda/authenticators"
 	"os"
+
+	"keyconjurer-lambda/authenticators"
+	"keyconjurer-lambda/keyconjurer/awsclient"
+	"keyconjurer-lambda/keyconjurer/settings"
 
 	"github.com/aws/aws-sdk-go/service/sts"
 	"github.com/sirupsen/logrus"
@@ -10,17 +13,16 @@ import (
 
 // KeyConjurer is used to generate temporary AWS credentials
 type KeyConjurer struct {
-	AWSClient     *AWSClient
+	AWSClient     *awsclient.AWSClient
 	Authenticator authenticators.Authenticator
 	Logger        *logrus.Entry
 }
 
 // New creates an KeyConjurer service
-func NewKeyConjurer(client, clientVersion string, auth authenticators.Authenticator, logger *logrus.Entry) *KeyConjurer {
+func NewKeyConjurer(client, clientVersion string, auth authenticators.Authenticator, logger *logrus.Entry, keyConjurerSettings *settings.Settings) *KeyConjurer {
 	awsRegion := os.Getenv("AWSRegion")
-	awsClient := NewAWSClient(awsRegion, logger)
-	settings := NewSettings(awsClient, awsRegion)
-	awsClient.SetKMSKeyID(settings.AwsKMSKeyID)
+	awsClient := awsclient.NewAWSClient(awsRegion, logger)
+	awsClient.SetKMSKeyID(keyConjurerSettings.AwsKMSKeyID)
 
 	return &KeyConjurer{
 		AWSClient:     awsClient,

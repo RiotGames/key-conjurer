@@ -2,18 +2,12 @@ package oneloginduo
 
 import (
 	"fmt"
-	"os"
 	"strings"
 
-	"encoding/base64"
-	"encoding/json"
-
 	"keyconjurer-lambda/authenticators"
+	"keyconjurer-lambda/keyconjurer/settings"
 
 	saml "github.com/RobotsAndPencils/go-saml"
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/kms"
 	"github.com/rnikoopour/onelogin"
 	"github.com/sirupsen/logrus"
 )
@@ -59,47 +53,12 @@ func (d *DuoMFA) Do(args ...string) (string, error) {
 }
 
 type OneLoginAuthenticator struct {
-	Settings *Settings
+	Settings *settings.Settings
 	MFA      authenticators.MFA
 	logger   *logrus.Entry
 }
 
-func New(logger *logrus.Entry) authenticators.Authenticator {
-	awsRegion := os.Getenv("AWSRegion")
-	settings := &Settings{AwsRegion: awsRegion}
-
-	awsConfig := &aws.Config{
-		Region: aws.String("us-west-2"),
-	}
-
-	awsSession := session.Must(session.NewSession(awsConfig))
-
-	kmsSession := kms.New(awsSession)
-
-	encryptedSettings := os.Getenv("EncryptedSettings")
-
-	blob, err := base64.StdEncoding.DecodeString(encryptedSettings)
-	if err != nil {
-		logger.Error("unable to decode ciphertext. reason: ", err.Error())
-		// should handle the
-		panic(err)
-	}
-
-	input := &kms.DecryptInput{
-		CiphertextBlob: blob,
-	}
-
-	result, err := kmsSession.Decrypt(input)
-	if err != nil {
-		logger.Error("authenticator failed to decrypt reason: ", err.Error())
-		panic(err)
-	}
-
-	if err := json.Unmarshal(result.Plaintext, settings); err != nil {
-		logger.Error("unable to unmarshal reason: ", err.Error())
-		panic(err)
-	}
-
+func New(logger *logrus.Entry, settings *settings.Settings) authenticators.Authenticator {
 	return &OneLoginAuthenticator{
 		Settings: settings,
 		logger:   logger}
