@@ -1,4 +1,5 @@
 # Manual additions
+*.auto.tfvars
 dev.env
 dev.tfvars
 prod.env
@@ -6,6 +7,8 @@ prod.tfvars
 frontend/src/consts.js
 frontend/build/**
 **/builds/**
+api/lambdas/get_aws_creds/get_aws_creds
+api/lambdas/get_user_data/get_user_data
 
 
 # Created by https://www.gitignore.io/api/go,vim,osx,node,emacs,windows,terraform

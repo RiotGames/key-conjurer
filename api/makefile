@@ -18,8 +18,12 @@ ifndef S3_TF_BUCKET_NAME
 $(error S3_TF_BUCKET_NAME is not set)
 endif
 
+ifndef SECRETS_RETRIEVER
+$(error SECRETS_RETRIEVER is not set)
+endif
+
 version = $(shell git rev-parse --short HEAD)
-ldflags = "-X keyconjurer-lambda/consts.Version=$(version)-${WSNAME} -X keyconjurer-lambda/consts.AuthenticatorSelect=$(AUTHENTICATOR) -X keyconjurer-lambda/consts.MFASelect=$(MFA) -X keyconjurer-lambda/consts.LogstashEndpoint=$(LOGSTASH_ENDPOINT)"
+ldflags = "-X keyconjurer-lambda/consts.Version=$(version)-${WSNAME} -X keyconjurer-lambda/consts.AuthenticatorSelect=$(AUTHENTICATOR) -X keyconjurer-lambda/consts.MFASelect=$(MFA) -X keyconjurer-lambda/consts.LogstashEndpoint=$(LOGSTASH_ENDPOINT) -X keyconjurer-lambda/consts.SettingsRetrieverSelect=$(SECRETS_RETRIEVER)"
 
 deploy:
 	make build \
