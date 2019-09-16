@@ -26,8 +26,5 @@ resource "aws_s3_bucket" "keyconjurer_frontend" {
 }
 POLICY
 
-    website {
-	index_document = "index.html"
-    }
     tags = "${var.tags}"
 }
