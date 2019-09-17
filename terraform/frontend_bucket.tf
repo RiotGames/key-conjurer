@@ -21,18 +21,6 @@ resource "aws_s3_bucket" "keyconjurer_frontend" {
             "Principal": { "AWS": "arn:aws:iam::${var.settings["account_number"]}:role/infosec_ci" },
             "Action": "s3:PutObject",
             "Resource": "arn:aws:s3:::keyconjurer-frontend-${terraform.workspace}/*"
-        },
-        {
-            "Sid": "Enforce SSL",
-            "Effect": "Deny",
-            "Principal": "*",
-            "Action": "*",
-            "Resource": "arn:aws:s3:::keyconjurer-frontend-${terraform.workspace}/*",
-            "Condition": {
-                "Bool": {
-                    "aws:SecureTransport": "false"
-                }
-            }
         }
     ]
 }
