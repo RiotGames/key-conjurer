@@ -26,10 +26,6 @@ resource "aws_s3_bucket" "keyconjurer_frontend" {
 }
 POLICY
 
-    website {
-	index_document = "index.html"
-    }
-
     server_side_encryption_configuration {
         rule {
             apply_server_side_encryption_by_default {
@@ -37,6 +33,6 @@ POLICY
             }
         }
     }
-  
+
     tags = "${var.tags}"
 }
