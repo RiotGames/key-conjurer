@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"keyconjurer-lambda/consts"
 	"net"
+	"time"
 
 	"github.com/sirupsen/logrus"
 )
@@ -14,12 +15,17 @@ type LogStashHook struct {
 }
 
 func NewLogStashHook() *LogStashHook {
-	conn, err := net.Dial("tcp", consts.LogstashEndpoint)
+	timeoutDialer := &net.Dialer{
+		Timeout: time.Second * 30,
+	}
+
+	conn, err := timeoutDialer.Dial("tcp", consts.LogstashEndpoint)
 	if err != nil {
 		fmt.Println("Unable to connect to endpoint. Only logging to Stdout")
 		fmt.Println(err.Error())
 		conn = nil
 	}
+
 	return &LogStashHook{
 		socket:    conn,
 		formatter: &KeyConjurerFormatter{}}

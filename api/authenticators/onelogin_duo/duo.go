@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/sirupsen/logrus"
 )
@@ -41,9 +42,12 @@ type duoPushResponse struct {
 
 // NewDuo returns a new Duo client that uses the provided logger
 func NewDuo(logger *logrus.Entry) *Duo {
+	duoHTTPClient := &http.Client{
+		Timeout: time.Second * 30,
+	}
 	return &Duo{
 		logger:     logger,
-		httpClient: http.DefaultClient}
+		httpClient: duoHTTPClient}
 }
 
 // SendPush emulates the workflow of the Duo WebAPI and sends the
