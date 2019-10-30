@@ -9,27 +9,28 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strings"
+	"time"
 
 	rootcerts "github.com/hashicorp/go-rootcerts"
 )
 
-var httpClient *http.Client
-
 // Creates a httpclient singleton that loads the user's system's CA. Note that
 //  this singleton is probably not multi-thread safe.
 func getHTTPClientSingleton() (*http.Client, error) {
-	if httpClient == nil {
-		certs, err := rootcerts.LoadSystemCAs()
-		if err != nil {
-			Logger.Errorf("Could not load System root CA files. Reason: %v", err)
-			return nil, fmt.Errorf("Could not load System root CA files. Reason: %v", err)
-		}
+	certs, err := rootcerts.LoadSystemCAs()
+	if err != nil {
+		Logger.Errorf("Could not load System root CA files. Reason: %v", err)
+		return nil, fmt.Errorf("Could not load System root CA files. Reason: %v", err)
+	}
 
-		config := &tls.Config{
-			RootCAs: certs,
-		}
-		tr := &http.Transport{TLSClientConfig: config}
-		httpClient = &http.Client{Transport: tr}
+	config := &tls.Config{
+		RootCAs: certs,
+	}
+
+	tr := &http.Transport{TLSClientConfig: config}
+	httpClient := &http.Client{
+		Transport: tr,
+		Timeout:   time.Second * ClientHttpTimeoutInSeconds,
 	}
 
 	return httpClient, nil
