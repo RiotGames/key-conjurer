@@ -1,5 +1,9 @@
 package keyconjurer
 
+import (
+	"time"
+)
+
 // Vars for build time
 var Version string = "go run"
 var Client string = "go runtime"
@@ -22,3 +26,6 @@ var DownloadURL string
 const LinuxBinaryName string = "keyconjurer-linux"
 const WindowsBinaryName string = "keyconjurer-windows.exe"
 const DarwinBinaryName string = "keyconjurer-darwin"
+
+// CLI HTTP Timeouts
+var ClientHttpTimeoutInSeconds time.Duration = 30

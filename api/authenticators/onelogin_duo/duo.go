@@ -11,6 +11,8 @@ import (
 	"strings"
 	"time"
 
+	"keyconjurer-lambda/consts"
+
 	"github.com/sirupsen/logrus"
 )
 
@@ -43,7 +45,7 @@ type duoPushResponse struct {
 // NewDuo returns a new Duo client that uses the provided logger
 func NewDuo(logger *logrus.Entry) *Duo {
 	duoHTTPClient := &http.Client{
-		Timeout: time.Second * 30,
+		Timeout: time.Second * consts.HttpTimeoutInSeconds,
 	}
 	return &Duo{
 		logger:     logger,

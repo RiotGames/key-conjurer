@@ -30,7 +30,7 @@ func getHTTPClientSingleton() (*http.Client, error) {
 	tr := &http.Transport{TLSClientConfig: config}
 	httpClient := &http.Client{
 		Transport: tr,
-		Timeout:   time.Second * 30,
+		Timeout:   time.Second * ClientHttpTimeoutInSeconds,
 	}
 
 	return httpClient, nil
