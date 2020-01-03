@@ -78,6 +78,9 @@ func (u *UserData) UnmarshalJSON(data []byte) error {
 
 	var creds string
 	err = json.Unmarshal(*objmap["creds"], &creds)
+	if err != nil {
+		return nil
+	}
 
 	authAccounts := make([]authenticators.Account, len(apps))
 	for index, app := range apps {
