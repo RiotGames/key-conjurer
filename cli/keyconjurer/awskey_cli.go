@@ -93,7 +93,7 @@ func getShellType() string {
 	parentProc, _ := ps.FindProcess(pid)
 	normalizedName := strings.ToLower(parentProc.Executable())
 
-	if strings.Contains(normalizedName, "powershell") {
+	if (strings.Contains(normalizedName, "powershell") || strings.Contains(normalizedName, "pwsh")) {
 		return "powershell"
 	}
 	if runtime.GOOS == "windows" {
