@@ -1,8 +1,8 @@
 prod_build = ./build/index.html
 prod_input = ./src/App.js ./src/actions.js ./src/index.js ./src/stores.js ./src/components/*.jsx ./src/version.js
 
-ifndef WSNAME
-$(error WSNAME is not set)
+ifndef TF_WORKSPACE
+$(error TF_WORKSPACE is not set)
 endif
 
 ifndef FRONTEND_URL
@@ -23,7 +23,7 @@ dev: reset_version
 
 upload:
 	cd build \
-	&& aws s3 cp . s3://keyconjurer-frontend-$(WSNAME) --include "*" --recursive
+	&& aws s3 cp . s3://keyconjurer-frontend-$(TF_WORKSPACE) --include "*" --recursive
 
 build: create_consts_file version $(prod_input)
 	npm install \
@@ -42,7 +42,7 @@ create_consts_file:
 	&& echo "export const client = 'webUI';" >> ./src/consts.js
 
 version:
-	echo "export const version = '$$(git rev-parse --short HEAD)-$(WSNAME)';"  > ./src/version.js
+	echo "export const version = '$$(git rev-parse --short HEAD)-$(TF_WORKSPACE)';"  > ./src/version.js
 
 reset_version:
 	echo "export const version = '';" > ./src/version.js
