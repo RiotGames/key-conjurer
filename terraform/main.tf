@@ -1,16 +1,12 @@
-// SETTINGS
 provider "aws" {
-  region = var.region
-}
-
-locals {
-  bucket = var.s3_tf_bucket
   region = var.region
 }
 
 terraform {
   backend "s3" {
-    bucket  = "keyconjurer-tf"
+    // The bucket needs to be the same as S3_TF_BUCKET_NAME in the .env file
+    //  This cannot be set by a variable
+    bucket  = "<S3_TF_BUCKET_NAME>"
     key     = "state.tfstate"
     region  = "us-west-2"
     encrypt = "true"
