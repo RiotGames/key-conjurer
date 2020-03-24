@@ -1,13 +1,13 @@
 output "workspace" {
-    value = "${terraform.workspace}"
+  value = "${terraform.workspace}"
 }
 
 output "rest_api_endpoint" {
-    value = "${aws_api_gateway_rest_api.keyconjurer.id}.execute-api.${var.settings["region"]}.amazonaws.com"
+  value = "${aws_api_gateway_rest_api.keyconjurer.id}.execute-api.${var.region}.amazonaws.com"
 }
 
 output "deployment_id" {
-    value = "${aws_api_gateway_deployment.live.id}"
+  value = "${aws_api_gateway_deployment.live.id}"
 }
 
 
