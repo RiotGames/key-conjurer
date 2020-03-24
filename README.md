@@ -36,16 +36,16 @@ aws s3api create-bucket --bucket <terraform state bucket> --region us-west-2 --c
   - tfswitch
 
 ## Setting Up Your Variable Files
-Fill in `prod.tfvars` based on `example.tfvars` and create `prod.env` based on `example.env`
+Create `prod.env` based on `example.env`.
 
-### .tfvars Lambda Env Settings
+### Lambda Env Settings
 #### Environment Variables
 | Variable          | Purpose                                                           |
 |-------------------|-------------------------------------------------------------------|
 | EncryptedSettings | A KMS encrypted json blob with settings (See below for more info) |
 | AWSRegion         | Used for KMS Region. Typically the same region KeyConjuer is in   |
 
-#### Encrypted Settings
+##### Encrypted Settings
 The encrypted settings are a JSON blob with the following keys.
 ```
 {
@@ -71,6 +71,7 @@ The encrypted settings are a JSON blob with the following keys.
 They are encrypted so users with access to the lambdas cannot see the secrets
 
 # Deploying
+These steps assume you created `prod.env` as instructed above.
 ## First Deploy
 ```
 source prod.env
@@ -83,10 +84,9 @@ Ensure the IAM role provisioned by `terraform` has access to use the `KMS` key c
 ## Future Deploys
 ```
 source prod.env
-make build upload terraform_apply
+make deploy
 ```
 
-
-## Noteworth Info
+## Noteworthy Info
 `frontend` serves the CLI tool. This means the binaries created in `cli`
 need to be uploaded to the same bucket that's used to serve the frontend.
