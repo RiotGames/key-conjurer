@@ -3,6 +3,8 @@ provider "aws" {
 }
 
 terraform {
+  required_version = ">= 0.12.20"
+
   backend "s3" {
     // The bucket needs to be the same as S3_TF_BUCKET_NAME in the .env file
     //  This cannot be set by a variable
