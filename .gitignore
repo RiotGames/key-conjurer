@@ -9,7 +9,7 @@ frontend/build/**
 **/builds/**
 api/lambdas/get_aws_creds/get_aws_creds
 api/lambdas/get_user_data/get_user_data
-
+*.bak
 
 # Created by https://www.gitignore.io/api/go,vim,osx,node,emacs,windows,terraform
 # Edit at https://www.gitignore.io/?templates=go,vim,osx,node,emacs,windows,terraform

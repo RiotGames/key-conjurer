@@ -1,4 +1,4 @@
-S3BUCKETTAGS ?= "TagSet=[{Key=Name,Value=KeyConjurerS3Bucket}]"
+S3_TF_BUCKET_TAGS ?= "TagSet=[{Key=Name,Value=KeyConjurerS3Bucket}]"
 
 ifndef TF_WORKSPACE
 $(error TF_WORKSPACE is not set)
@@ -36,9 +36,9 @@ deploy:
 
 setup_buckets:
 	aws s3api create-bucket --bucket $(S3_TF_BUCKET_NAME) --region us-west-2 --create-bucket-configuration LocationConstraint=us-west-2 \
-	&& aws s3api put-bucket-tagging --bucket $(S3_TF_BUCKET_NAME) --tagging '$(S3BUCKETTAGS)' \
+	&& aws s3api put-bucket-tagging --bucket $(S3_TF_BUCKET_NAME) --tagging '$(S3_TF_BUCKET_TAGS)' \
 	&& aws s3api create-bucket --bucket $(S3_TF_BUCKET_NAME) --region us-west-2 --create-bucket-configuration LocationConstraint=us-west-2 \
-	&& aws s3api put-bucket-tagging --bucket $(S3_TF_BUCKET_NAME) --tagging '$(S3BUCKETTAGS)'
+	&& aws s3api put-bucket-tagging --bucket $(S3_TF_BUCKET_NAME) --tagging '$(S3_TF_BUCKET_TAGS)'
 
 api_build:
 	cd api \
