@@ -1,7 +1,7 @@
 S3BUCKETTAGS ?= "TagSet=[{Key=Name,Value=KeyConjurerS3Bucket}]"
 
-ifndef WSNAME
-$(error WSNAME is not set)
+ifndef TF_WORKSPACE
+$(error TF_WORKSPACE is not set)
 endif
 
 ifndef S3_TF_BUCKET_NAME
@@ -21,7 +21,7 @@ terraform_apply:
 	cd terraform \
 	&& tfswitch \
 	&& terraform init \
-	&& (terraform workspace select $(WSNAME) || terraform workspace new $(WSNAME)) \
+	&& (terraform workspace select $(TF_WORKSPACE) || terraform workspace new $(TF_WORKSPACE)) \
 	&& terraform apply -var-file=../$(TF_VAR_FILE) -auto-approve
 
 upload:

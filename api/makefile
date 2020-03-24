@@ -1,5 +1,5 @@
-ifndef WSNAME
-$(error WSNAME is not set)
+ifndef TF_WORKSPACE
+$(error TF_WORKSPACE is not set)
 endif
 
 ifndef AUTHENTICATOR
@@ -23,7 +23,7 @@ $(error SECRETS_RETRIEVER is not set)
 endif
 
 version = $(shell git rev-parse --short HEAD)
-ldflags = "-X keyconjurer-lambda/consts.Version=$(version)-${WSNAME} -X keyconjurer-lambda/consts.AuthenticatorSelect=$(AUTHENTICATOR) -X keyconjurer-lambda/consts.MFASelect=$(MFA) -X keyconjurer-lambda/consts.LogstashEndpoint=$(LOGSTASH_ENDPOINT) -X keyconjurer-lambda/consts.SettingsRetrieverSelect=$(SECRETS_RETRIEVER)"
+ldflags = "-X keyconjurer-lambda/consts.Version=$(version)-${TF_WORKSPACE} -X keyconjurer-lambda/consts.AuthenticatorSelect=$(AUTHENTICATOR) -X keyconjurer-lambda/consts.MFASelect=$(MFA) -X keyconjurer-lambda/consts.LogstashEndpoint=$(LOGSTASH_ENDPOINT) -X keyconjurer-lambda/consts.SettingsRetrieverSelect=$(SECRETS_RETRIEVER)"
 
 deploy:
 	make build \
@@ -32,19 +32,19 @@ deploy:
 
 build:
 	cd ./lambdas/get_user_data && \
-	GOOS=linux go build -ldflags $(ldflags) -o ../../builds/$(WSNAME)/get_user_data;
+	GOOS=linux go build -ldflags $(ldflags) -o ../../builds/$(TF_WORKSPACE)/get_user_data;
 	cd ./lambdas/get_aws_creds && \
-	GOOS=linux go build -ldflags $(ldflags) -o ../../builds/$(WSNAME)/get_aws_creds;
+	GOOS=linux go build -ldflags $(ldflags) -o ../../builds/$(TF_WORKSPACE)/get_aws_creds;
 
 zip:
-	cd ./builds/$(WSNAME) && \
+	cd ./builds/$(TF_WORKSPACE) && \
 	zip get_user_data.zip get_user_data \
 	&& zip get_aws_creds.zip get_aws_creds
 
 upload:
-	mkdir -p ./builds/$(WSNAME) \
-	&& cd ./builds/$(WSNAME) \
-	&& aws s3 cp . s3://$(S3_TF_BUCKET_NAME)/$(WSNAME) --exclude "*" --include "*.zip" --recursive
+	mkdir -p ./builds/$(TF_WORKSPACE) \
+	&& cd ./builds/$(TF_WORKSPACE) \
+	&& aws s3 cp . s3://$(S3_TF_BUCKET_NAME)/$(TF_WORKSPACE) --exclude "*" --include "*.zip" --recursive
 
 test:
 	go test -v ./...
