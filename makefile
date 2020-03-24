@@ -8,10 +8,6 @@ ifndef S3_TF_BUCKET_NAME
 $(error S3_TF_BUCKET_NAME is not set)
 endif
 
-ifndef TF_VAR_FILE
-$(error TF_VAR_FILE is not set)
-endif
-
 build:
 	make cli_build \
 	&& make api_build \
@@ -19,10 +15,8 @@ build:
 
 terraform_apply:
 	cd terraform \
-	&& tfswitch \
 	&& terraform init \
-	&& (terraform workspace select $(TF_WORKSPACE) || terraform workspace new $(TF_WORKSPACE)) \
-	&& terraform apply -var-file=../$(TF_VAR_FILE) -auto-approve
+	&& terraform apply -auto-approve
 
 upload:
 	make api_upload \
@@ -46,7 +40,7 @@ api_build:
 
 api_upload:
 	cd api \
-	&& $(MAKE)  -f makefile zip \
+	&& $(MAKE) -f makefile zip \
 	&& $(MAKE) -f makefile upload
 
 frontend_build:
@@ -63,10 +57,10 @@ frontend_file_reset:
 
 cli_build:
 	cd cli \
-	&& $(MAKE)  -f makefile all
+	&& $(MAKE) -f makefile all
 
 cli_upload:
 	cd cli \
-	&& $(MAKE)  -f makefile upload
+	&& $(MAKE) -f makefile upload
 
 reset_files: frontend_file_reset
