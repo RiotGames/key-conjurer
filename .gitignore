@@ -1,9 +1,8 @@
 # Manual additions
 *.auto.tfvars
 dev.env
-dev.tfvars
 prod.env
-prod.tfvars
+shared.env
 frontend/src/consts.js
 frontend/build/**
 **/builds/**
