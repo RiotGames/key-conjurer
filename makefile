@@ -15,8 +15,15 @@ build:
 
 terraform_apply:
 	cd terraform \
+	&& sed -i'.bak' -e "s/<S3_TF_BUCKET_NAME>/${S3_TF_BUCKET_NAME}/" main.tf \
 	&& terraform init \
-	&& terraform apply -auto-approve
+	&& terraform apply ${TERRAFORM_FLAGS}
+
+terraform_plan:
+	cd terraform \
+	&& sed -i'.bak' -e "s/<S3_TF_BUCKET_NAME>/${S3_TF_BUCKET_NAME}/" main.tf \
+	&& terraform init \
+	&& terraform plan ${TERRAFORM_FLAGS}
 
 upload:
 	make api_upload \
@@ -29,10 +36,10 @@ deploy:
 	&& make terraform_apply
 
 setup_buckets:
-	aws s3api create-bucket --bucket $(S3_TF_BUCKET_NAME) --region us-west-2 --create-bucket-configuration LocationConstraint=us-west-2 \
-	&& aws s3api put-bucket-tagging --bucket $(S3_TF_BUCKET_NAME) --tagging '$(S3_TF_BUCKET_TAGS)' \
-	&& aws s3api create-bucket --bucket $(S3_TF_BUCKET_NAME) --region us-west-2 --create-bucket-configuration LocationConstraint=us-west-2 \
-	&& aws s3api put-bucket-tagging --bucket $(S3_TF_BUCKET_NAME) --tagging '$(S3_TF_BUCKET_TAGS)'
+	aws s3api create-bucket --bucket ${S3_TF_BUCKET_NAME} --region us-west-2 --create-bucket-configuration LocationConstraint=us-west-2 \
+	&& aws s3api put-bucket-tagging --bucket ${S3_TF_BUCKET_NAME} --tagging '${S3_TF_BUCKET_TAGS}' \
+	&& aws s3api create-bucket --bucket ${S3_TF_BUCKET_NAME} --region us-west-2 --create-bucket-configuration LocationConstraint=us-west-2 \
+	&& aws s3api put-bucket-tagging --bucket ${S3_TF_BUCKET_NAME} --tagging '${S3_TF_BUCKET_TAGS}'
 
 api_build:
 	cd api \
