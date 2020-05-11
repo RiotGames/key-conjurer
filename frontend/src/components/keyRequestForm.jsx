@@ -120,7 +120,7 @@ class KeyRequestForm extends Component {
                         <Form.Dropdown
                           fluid
                           selection
-                          label='TTL (h)'
+                          label='TTL (hours)'
                           onChange={this.handleChange('timeout')}
                           width={2}
                           defaultValue={timeout}
