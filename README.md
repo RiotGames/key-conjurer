@@ -15,8 +15,18 @@ Key Conjurer currently supports the following identity providers and mfa service
   - MFA:
     - duo
 
+Key Conjurer now supports the ability to provide temporary crendentials different cloud providers as well as being deployed on different platforms. 
+
+Currently supported credential providers are:
+  - AWS STS
+
+Current platforms supported for deployment are:
+  - AWS
+
 # Pre-Deployment Steps
-## Generate/Initialize AWS Resources
+
+## Platform Pre-Deployment Resources
+### Generate/Initialize AWS Resources
 1. Certificates - Make sure a certificate in ACM is requested with the desired hostname (the arn will be needed later)
 ```
 aws acm request-certificate --domain-name <api domain> --validation-method EMAIL --region us-east-1
@@ -38,6 +48,7 @@ aws s3api create-bucket --bucket <terraform state bucket> --region us-west-2 --c
 ## Setting Up Your Variable Files
 Create `prod.env` based on `example.env`.
 
+## Serverless Settings
 ### Lambda Env Settings
 #### Environment Variables
 | Variable          | Purpose                                                           |
@@ -75,11 +86,9 @@ These steps assume you created `prod.env` as instructed above.
 ## First Deploy
 ```
 source prod.env
-make api_build api_upload
-make terraform_apply
-make build upload
+make build deploy
 ```
-Ensure the IAM role provisioned by `terraform` has access to use the `KMS` key created above
+*When Deploying to AWS* Ensure the IAM role provisioned by `terraform` has access to use the `KMS` key created above
 
 ## Future Deploys
 ```
