@@ -14,7 +14,6 @@ require (
 	github.com/rnikoopour/onelogin v1.0.1
 	github.com/sirupsen/logrus v1.4.2
 	github.com/stretchr/testify v1.5.1
-	go.riotgames.com/OpSec/rVault v0.0.0-20200421220554-187316ff942d
 	golang.org/x/net v0.0.0-20200301022130-244492dfa37a // indirect
 	golang.org/x/sys v0.0.0-20200317113312-5766fd39f98d // indirect
 	gopkg.in/check.v1 v1.0.0-20200227125254-8fa46927fb4f // indirect
