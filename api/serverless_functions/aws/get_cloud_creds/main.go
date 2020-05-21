@@ -12,5 +12,5 @@ func main() {
 	fmt.Printf(`Starting GetAWSCreds Lambda
 	Version: %v
 	`, consts.Version)
-	lambda.Start(keyconjurer.GetSTSEventHandler)
+	lambda.Start(keyconjurer.GetTemporaryCredentialEventHandler)
 }

@@ -76,7 +76,7 @@ func GetUserDataEventHandler(event GetUserDataEvent) (*Response, error) {
 
 // Event holds incoming data from the user
 //  AppID is the OneLogin AppID
-type GetSTSEvent struct {
+type GetTemporaryCredentialEvent struct {
 	Username       string `json:"username"`
 	Password       string `json:"password"`
 	AppID          string `json:"appId"`
@@ -85,7 +85,7 @@ type GetSTSEvent struct {
 	TimeoutInHours int    `json:"timeoutInHours"`
 }
 
-func GetSTSEventHandler(event GetSTSEvent) (*Response, error) {
+func GetTemporaryCredentialEventHandler(event GetTemporaryCredentialEvent) (*Response, error) {
 	logger := log.NewLogger(event.Client, event.ClientVersion, logrus.DebugLevel)
 	keyConjurerSettings := settings.NewSettings(logger)
 
