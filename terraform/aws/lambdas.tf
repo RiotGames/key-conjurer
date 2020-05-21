@@ -10,10 +10,10 @@ resource "aws_lambda_function" "keyconjurer-get_aws_creds" {
   function_name    = "keyconjurer-${terraform.workspace}-get_aws_creds"
   description      = "[${terraform.workspace}] Retrieves STS tokens from AWS after validating the user via OneLogin and MFA"
   s3_bucket        = var.s3_tf_bucket
-  s3_key           = "${terraform.workspace}/get_aws_creds.zip"
+  s3_key           = "${terraform.workspace}/get_cloud_creds.zip"
   source_code_hash = "true"
   role             = aws_iam_role.keyconjurer-lambda.arn
-  handler          = "get_aws_creds"
+  handler          = "get_cloud_creds"
   runtime          = "go1.x"
   timeout          = 300
 

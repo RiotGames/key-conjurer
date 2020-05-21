@@ -1,3 +1,12 @@
+.PHONY: build
+SERVERLESS_BUILDS = $(shell ls -d serverless_functions/**/*)
+
+ifndef SERVERLESS_BUILDS
+$(error SERVERLESS_BUILDS not set)
+else
+$(info ${SERVERLESS_BUILDS} will be built)
+endif
+
 ifndef TF_WORKSPACE
 $(error TF_WORKSPACE is not set)
 endif
@@ -30,21 +39,17 @@ deploy:
 	&& make zip \
 	&& make upload
 
-build:
-	cd ./lambdas/get_user_data && \
-	GOOS=linux go build -ldflags $(ldflags) -o ../../builds/$(TF_WORKSPACE)/get_user_data;
-	cd ./lambdas/get_aws_creds && \
-	GOOS=linux go build -ldflags $(ldflags) -o ../../builds/$(TF_WORKSPACE)/get_aws_creds;
+clean:
+	rm -rf ../builds
 
-zip:
-	cd ./builds/$(TF_WORKSPACE) && \
-	zip get_user_data.zip get_user_data \
-	&& zip get_aws_creds.zip get_aws_creds
+build: $(SERVERLESS_BUILDS)
 
-upload:
-	mkdir -p ./builds/$(TF_WORKSPACE) \
-	&& cd ./builds/$(TF_WORKSPACE) \
-	&& aws s3 cp . s3://$(S3_TF_BUCKET_NAME)/$(TF_WORKSPACE) --exclude "*" --include "*.zip" --recursive
+$(SERVERLESS_BUILDS): build_dir
+	$(info building ${@})
+	GOOS=linux go build -ldflags $(ldflags) -o ../builds/$(TF_WORKSPACE)/$(subst serverless_functions/,,$@) $@/*.go;
+
+build_dir:
+	mkdir -p builds
 
 test:
-	go test -v ./...
+	go test ./...

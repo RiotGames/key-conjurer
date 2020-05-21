@@ -14,24 +14,20 @@ endif
 
 all: linux darwin windows
 
-upload:
-	cd ./builds/$(TF_WORKSPACE) \
-	&& aws s3 cp . s3://keyconjurer-frontend-$(TF_WORKSPACE) --exclude "*" --include "keyconjurer*" --recursive
-
 linux: dir
 	export os=linux \
-	&& GOOS=linux go build -ldflags "-X keyconjurer-cli/keyconjurer.Version=$(version)-$(TF_WORKSPACE) -X keyconjurer-cli/keyconjurer.Client=keyconjurer-linux -X keyconjurer-cli/keyconjurer.ProdAPI=$(API_URL) -X keyconjurer-cli/keyconjurer.DevAPI=$(API_URL) -X keyconjurer-cli/keyconjurer.DownloadURL=$(FRONTEND_URL)" -o ./builds/$(TF_WORKSPACE)/keyconjurer-linux
+	&& GOOS=linux go build -ldflags "-X keyconjurer-cli/keyconjurer.Version=$(version)-$(TF_WORKSPACE) -X keyconjurer-cli/keyconjurer.Client=keyconjurer-linux -X keyconjurer-cli/keyconjurer.ProdAPI=$(API_URL) -X keyconjurer-cli/keyconjurer.DevAPI=$(API_URL) -X keyconjurer-cli/keyconjurer.DownloadURL=$(FRONTEND_URL)" -o ../builds/$(TF_WORKSPACE)/cli/keyconjurer-linux
 
 darwin:
 	export os=darwin \
-	&& GOOS=darwin go build -ldflags "-X keyconjurer-cli/keyconjurer.Version=$(version)-$(TF_WORKSPACE) -X keyconjurer-cli/keyconjurer.Client=keyconjurer-darwin -X keyconjurer-cli/keyconjurer.ProdAPI=$(API_URL) -X keyconjurer-cli/keyconjurer.DevAPI=$(API_URL) -X keyconjurer-cli/keyconjurer.DownloadURL=$(FRONTEND_URL)" -o ./builds/$(TF_WORKSPACE)/keyconjurer-darwin
+	&& GOOS=darwin go build -ldflags "-X keyconjurer-cli/keyconjurer.Version=$(version)-$(TF_WORKSPACE) -X keyconjurer-cli/keyconjurer.Client=keyconjurer-darwin -X keyconjurer-cli/keyconjurer.ProdAPI=$(API_URL) -X keyconjurer-cli/keyconjurer.DevAPI=$(API_URL) -X keyconjurer-cli/keyconjurer.DownloadURL=$(FRONTEND_URL)" -o ../builds/$(TF_WORKSPACE)/cli/keyconjurer-darwin
 
 windows:
 	export os=windows \
-	&& GOOS=windows go build -ldflags "-X keyconjurer-cli/keyconjurer.Version=$(version)-$(TF_WORKSPACE) -X keyconjurer-cli/keyconjurer.Client=keyconjurer-windows -X keyconjurer-cli/keyconjurer.ProdAPI=$(API_URL) -X keyconjurer-cli/keyconjurer.DevAPI=$(API_URL) -X keyconjurer-cli/keyconjurer.DownloadURL=$(FRONTEND_URL)" -o ./builds/$(TF_WORKSPACE)/keyconjurer-windows.exe
+	&& GOOS=windows go build -ldflags "-X keyconjurer-cli/keyconjurer.Version=$(version)-$(TF_WORKSPACE) -X keyconjurer-cli/keyconjurer.Client=keyconjurer-windows -X keyconjurer-cli/keyconjurer.ProdAPI=$(API_URL) -X keyconjurer-cli/keyconjurer.DevAPI=$(API_URL) -X keyconjurer-cli/keyconjurer.DownloadURL=$(FRONTEND_URL)" -o ../builds/$(TF_WORKSPACE)/cli/keyconjurer-windows.exe
 
 dir:
-	mkdir -p ./builds
+	mkdir -p ../builds/$(TF_WORKSPACE)/cli
 
 test: dir 
 	mkdir -p ~/.aws \

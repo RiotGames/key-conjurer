@@ -6,7 +6,7 @@ import (
 	"keyconjurer-lambda/authenticators"
 	oneloginduo "keyconjurer-lambda/authenticators/onelogin_duo"
 	"keyconjurer-lambda/consts"
-	"keyconjurer-lambda/keyconjurer/settings"
+	"keyconjurer-lambda/settings"
 
 	"github.com/sirupsen/logrus"
 )
