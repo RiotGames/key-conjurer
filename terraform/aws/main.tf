@@ -8,7 +8,7 @@ terraform {
   backend "s3" {
     // The bucket needs to be the same as S3_TF_BUCKET_NAME in the .env file
     //  This cannot be set by a variable
-    bucket  = "keyconjurer-tf"
+    bucket  = "<S3_TF_BUCKET_NAME>"
     key     = "state.tfstate"
     region  = "us-west-2"
     encrypt = "true"
