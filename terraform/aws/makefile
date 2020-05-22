@@ -32,15 +32,15 @@ endif
 
 upload: api_upload cli_upload frontend_upload
 
-cli_upload: setup_buckets
+cli_upload: 
 	cd ../../builds/$(TF_WORKSPACE)/cli \
 	&& aws s3 cp . s3://$(S3_FRONTEND_BUCKET_NAME)-$(TF_WORKSPACE) --exclude "*" --include "keyconjurer*" --recursive
 
-frontend_upload: setup_buckets
+frontend_upload: 
 	cd ../../builds/$(TF_WORKSPACE)/frontend \
 	&& aws s3 cp . s3://$(S3_FRONTEND_BUCKET_NAME)-$(TF_WORKSPACE) --include "*" --recursive
 
-api_upload: api_zip setup_buckets
+api_upload: api_zip 
 	cd ../../builds/$(TF_WORKSPACE)/aws \
 	&& aws s3 cp . s3://$(S3_TF_BUCKET_NAME)/$(TF_WORKSPACE) --exclude "*" --include "*.zip" --recursive
 
