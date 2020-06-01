@@ -99,3 +99,40 @@ make deploy
 ## Noteworthy Info
 `frontend` serves the CLI tool. This means the binaries created in `cli`
 need to be uploaded to the same bucket that's used to serve the frontend.
+
+# Development
+
+All pieces of Key Conjurer have been made extensible where possible and use configuration values to select the right plugin.
+
+Adding any new supported authenticator, MFA provider, or cloud provider should be as easy as developing a struct that implemented the given interfaces and ensureing that the interface constructer understands how to initializer and return the new struct.
+
+This section aims to provide details on non-obvious decisions that may impact how one develops and deploys their own plugin.
+
+## Adding A Cloud Provider
+
+Currently, Key Conjurer only has code written to support AWS but could provide support to any other cloud provider as long as it aligns with the following given interface (api/cloud-providers/provider.go):
+
+```go
+type Provider interface {
+	GetUserCredentials(username, password string) (*User, error)
+	DecryptUserInforamtion(ciphertext string, user interface{}) error
+	EncryptUserInformation(data interface{}) (string, error)
+	GetTemporaryCredentialsForUser(samlAssertion authenticators.SamlResponse, ttlInHours int) (interface{}, error)
+}
+```
+
+The constructor for this iteraface is currently:
+
+```go
+func NewProvider(settings *settings.Settings, logger *logrus.Entry) (Provider, error) {
+	if settings.AwsRegion != "" && settings.AwsKMSKeyID != "" {
+		return NewAWSProvider(settings, logger)
+	}
+
+	return nil, errors.New("no matching credentials safe for settings")
+}
+```
+
+Due to this snippet, there is a default order to provisioning of cloud providers assuming all configuration items are listed. This order is:
+
+  1. AWS
