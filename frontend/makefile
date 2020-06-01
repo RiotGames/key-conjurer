@@ -21,13 +21,10 @@ endif
 dev: reset_version
 	BROWSER=none HOST=localhost npm start
 
-upload:
-	cd build \
-	&& aws s3 cp . s3://keyconjurer-frontend-$(TF_WORKSPACE) --include "*" --recursive
-
 build: create_consts_file version $(prod_input)
 	npm install \
-	&& npm run-script build
+	&& npm run-script build \
+	&& cp -R build ../builds/$(TF_WORKSPACE)/frontend
 
 reset_consts_file:
 	echo "export const keyConjurerDomain = '';" > ./src/consts.js \

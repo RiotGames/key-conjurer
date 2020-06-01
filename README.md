@@ -15,8 +15,18 @@ Key Conjurer currently supports the following identity providers and mfa service
   - MFA:
     - duo
 
+Key Conjurer now supports the ability to provide temporary crendentials different cloud providers as well as being deployed on different platforms. 
+
+Currently supported credential providers are:
+  - AWS STS
+
+Current platforms supported for deployment are:
+  - AWS
+
 # Pre-Deployment Steps
-## Generate/Initialize AWS Resources
+
+## Platform Pre-Deployment Resources
+### Generate/Initialize AWS Resources
 1. Certificates - Make sure a certificate in ACM is requested with the desired hostname (the arn will be needed later)
 ```
 aws acm request-certificate --domain-name <api domain> --validation-method EMAIL --region us-east-1
@@ -38,6 +48,7 @@ aws s3api create-bucket --bucket <terraform state bucket> --region us-west-2 --c
 ## Setting Up Your Variable Files
 Create `prod.env` based on `example.env`.
 
+## Serverless Settings
 ### Lambda Env Settings
 #### Environment Variables
 | Variable          | Purpose                                                           |
@@ -75,11 +86,9 @@ These steps assume you created `prod.env` as instructed above.
 ## First Deploy
 ```
 source prod.env
-make api_build api_upload
-make terraform_apply
-make build upload
+make build deploy
 ```
-Ensure the IAM role provisioned by `terraform` has access to use the `KMS` key created above
+*When Deploying to AWS* Ensure the IAM role provisioned by `terraform` has access to use the `KMS` key created above
 
 ## Future Deploys
 ```
@@ -90,3 +99,40 @@ make deploy
 ## Noteworthy Info
 `frontend` serves the CLI tool. This means the binaries created in `cli`
 need to be uploaded to the same bucket that's used to serve the frontend.
+
+# Development
+
+All pieces of Key Conjurer have been made extensible where possible and use configuration values to select the right plugin.
+
+Adding any new supported authenticator, MFA provider, or cloud provider should be as easy as developing a struct that implemented the given interfaces and ensureing that the interface constructer understands how to initializer and return the new struct.
+
+This section aims to provide details on non-obvious decisions that may impact how one develops and deploys their own plugin.
+
+## Adding A Cloud Provider
+
+Currently, Key Conjurer only has code written to support AWS but could provide support to any other cloud provider as long as it aligns with the following given interface (api/cloud-providers/provider.go):
+
+```go
+type Provider interface {
+	GetUserCredentials(username, password string) (*User, error)
+	DecryptUserInforamtion(ciphertext string, user interface{}) error
+	EncryptUserInformation(data interface{}) (string, error)
+	GetTemporaryCredentialsForUser(samlAssertion authenticators.SamlResponse, ttlInHours int) (interface{}, error)
+}
+```
+
+The constructor for this iteraface is currently:
+
+```go
+func NewProvider(settings *settings.Settings, logger *logrus.Entry) (Provider, error) {
+	if settings.AwsRegion != "" && settings.AwsKMSKeyID != "" {
+		return NewAWSProvider(settings, logger)
+	}
+
+	return nil, errors.New("no matching credentials safe for settings")
+}
+```
+
+Due to this snippet, there is a default order to provisioning of cloud providers assuming all configuration items are listed. This order is:
+
+  1. AWS

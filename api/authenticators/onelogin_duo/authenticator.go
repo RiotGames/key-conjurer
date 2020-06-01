@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	"keyconjurer-lambda/authenticators"
-	"keyconjurer-lambda/keyconjurer/settings"
+	"keyconjurer-lambda/settings"
 
 	saml "github.com/RobotsAndPencils/go-saml"
 	"github.com/rnikoopour/onelogin"
