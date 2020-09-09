@@ -24,6 +24,7 @@ type SettingsRetrieverFunc = func(logger *logrus.Entry) *Settings
 var SettingsRetrievers = map[string]SettingsRetrieverFunc{}
 
 func NewSettings(logger *logrus.Entry) *Settings {
+	logger.Infof("Settings Retriever in Use: %s", consts.SettingsRetrieverSelect)
 	return SettingsRetrievers[consts.SettingsRetrieverSelect](logger)
 }
 
