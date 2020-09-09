@@ -10,7 +10,7 @@ build:
 	make cli_build \
 	&& make api_build \
 	&& make frontend_build
-	
+
 api_build:
 	mkdir -p builds/$(TF_WORKSPACE)/$(CLOUD_PROVIDER)
 	cd api \

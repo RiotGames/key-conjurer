@@ -18,13 +18,13 @@ $(error BINARY_NAME is not set)
 endif
 
 
-dev: reset_version
+dev: reset_version version
 	BROWSER=none HOST=localhost npm start
 
 build: create_consts_file version $(prod_input)
 	npm install \
 	&& npm run-script build \
-	&& cp -R build ../builds/$(TF_WORKSPACE)/frontend
+	&& cp -R build/* ../builds/$(TF_WORKSPACE)/frontend
 
 reset_consts_file:
 	echo "export const keyConjurerDomain = '';" > ./src/consts.js \
