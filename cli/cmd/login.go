@@ -1,8 +1,9 @@
 package cmd
 
 import (
-	"keyconjurer-cli/keyconjurer"
 	"log"
+
+	"github.com/riotgames/key-conjurer/cli/keyconjurer"
 
 	"github.com/spf13/cobra"
 )

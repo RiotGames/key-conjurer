@@ -1,7 +1,7 @@
 package main
 
 import (
-	"keyconjurer-cli/cmd"
+	"github.com/riotgames/key-conjurer/cli/cmd"
 )
 
 func main() {

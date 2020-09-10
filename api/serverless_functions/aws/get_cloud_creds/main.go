@@ -2,8 +2,9 @@ package main
 
 import (
 	"fmt"
-	"keyconjurer-lambda/consts"
-	"keyconjurer-lambda/keyconjurer"
+
+	"github.com/riotgames/key-conjurer/api/consts"
+	"github.com/riotgames/key-conjurer/api/keyconjurer"
 
 	"github.com/aws/aws-lambda-go/lambda"
 )

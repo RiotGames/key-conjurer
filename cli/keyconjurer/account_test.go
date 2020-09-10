@@ -1,10 +1,9 @@
 package keyconjurer
 
 import (
-	"testing"
-
 	"log"
 	"os"
+	"testing"
 
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"

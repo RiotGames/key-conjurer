@@ -2,7 +2,6 @@ package keyconjurer
 
 import (
 	"fmt"
-
 	"strings"
 
 	"github.com/go-ini/ini"

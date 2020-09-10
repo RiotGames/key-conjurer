@@ -2,7 +2,8 @@ package keyconjurer
 
 import (
 	"encoding/json"
-	"keyconjurer-lambda/authenticators"
+
+	"github.com/riotgames/key-conjurer/api/authenticators"
 )
 
 // UserData holds a users devices, apps, and encrypted creds

@@ -1,4 +1,4 @@
-module keyconjurer-cli
+module github.com/riotgames/key-conjurer/cli
 
 require (
 	github.com/go-ini/ini v1.61.0

@@ -1,8 +1,9 @@
 package logger
 
 import (
-	"keyconjurer-lambda/consts"
 	"os"
+
+	"github.com/riotgames/key-conjurer/api/consts"
 
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"

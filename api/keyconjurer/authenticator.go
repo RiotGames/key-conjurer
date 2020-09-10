@@ -3,10 +3,10 @@ package keyconjurer
 import (
 	"errors"
 
-	"keyconjurer-lambda/authenticators"
-	oneloginduo "keyconjurer-lambda/authenticators/onelogin_duo"
-	"keyconjurer-lambda/consts"
-	"keyconjurer-lambda/settings"
+	"github.com/riotgames/key-conjurer/api/authenticators"
+	oneloginduo "github.com/riotgames/key-conjurer/api/authenticators/onelogin_duo"
+	"github.com/riotgames/key-conjurer/api/consts"
+	"github.com/riotgames/key-conjurer/api/settings"
 
 	"github.com/sirupsen/logrus"
 )

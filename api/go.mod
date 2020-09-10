@@ -1,4 +1,4 @@
-module keyconjurer-lambda
+module github.com/riotgames/key-conjurer/api
 
 require (
 	github.com/RobotsAndPencils/go-saml v0.0.0-20170520135329-fb13cb52a46b
@@ -12,12 +12,10 @@ require (
 	github.com/riotgames/vault-go-client v0.0.3
 	github.com/rnikoopour/onelogin v1.0.1
 	github.com/sirupsen/logrus v1.6.0
-	github.com/stretchr/objx v0.1.1 // indirect
 	github.com/stretchr/testify v1.6.1
 	golang.org/x/net v0.0.0-20200904194848-62affa334b73 // indirect
 	golang.org/x/sys v0.0.0-20200909081042-eff7692f9009 // indirect
 	gopkg.in/check.v1 v1.0.0-20200227125254-8fa46927fb4f // indirect
-	gopkg.in/yaml.v2 v2.2.8 // indirect
 )
 
 go 1.13

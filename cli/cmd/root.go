@@ -3,10 +3,9 @@ package cmd
 import (
 	"fmt"
 	"log"
-
-	"keyconjurer-cli/keyconjurer"
-
 	"os"
+
+	"github.com/riotgames/key-conjurer/cli/keyconjurer"
 
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"

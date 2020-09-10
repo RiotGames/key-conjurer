@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	"keyconjurer-lambda/authenticators"
-	"keyconjurer-lambda/settings"
+	"github.com/riotgames/key-conjurer/api/authenticators"
+	"github.com/riotgames/key-conjurer/api/settings"
 
 	saml "github.com/RobotsAndPencils/go-saml"
 	"github.com/rnikoopour/onelogin"

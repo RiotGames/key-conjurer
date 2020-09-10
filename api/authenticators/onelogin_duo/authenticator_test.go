@@ -3,7 +3,7 @@ package oneloginduo
 import (
 	"testing"
 
-	"keyconjurer-lambda/authenticators"
+	"github.com/riotgames/key-conjurer/api/authenticators"
 
 	"github.com/stretchr/testify/assert"
 )

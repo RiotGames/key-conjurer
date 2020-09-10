@@ -3,8 +3,8 @@ package keyconjurer
 import (
 	"errors"
 
-	log "keyconjurer-lambda/logger"
-	"keyconjurer-lambda/settings"
+	log "github.com/riotgames/key-conjurer/api/logger"
+	"github.com/riotgames/key-conjurer/api/settings"
 
 	"github.com/sirupsen/logrus"
 )

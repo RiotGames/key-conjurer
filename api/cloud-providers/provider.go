@@ -2,8 +2,9 @@ package cloudprovider
 
 import (
 	"errors"
-	"keyconjurer-lambda/authenticators"
-	"keyconjurer-lambda/settings"
+
+	"github.com/riotgames/key-conjurer/api/authenticators"
+	"github.com/riotgames/key-conjurer/api/settings"
 
 	"github.com/sirupsen/logrus"
 )
