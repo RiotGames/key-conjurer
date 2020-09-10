@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"keyconjurer-lambda/consts"
+	"github.com/riotgames/key-conjurer/api/consts"
 
 	"github.com/sirupsen/logrus"
 )

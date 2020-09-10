@@ -2,9 +2,10 @@ package logger
 
 import (
 	"fmt"
-	"keyconjurer-lambda/consts"
 	"net"
 	"time"
+
+	"github.com/riotgames/key-conjurer/api/consts"
 
 	"github.com/sirupsen/logrus"
 )

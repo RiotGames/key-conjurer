@@ -2,8 +2,9 @@ package keyconjurer
 
 import (
 	"encoding/json"
-	"keyconjurer-lambda/authenticators"
 	"testing"
+
+	"github.com/riotgames/key-conjurer/api/authenticators"
 
 	"github.com/stretchr/testify/assert"
 )

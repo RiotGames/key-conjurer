@@ -4,16 +4,16 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
-	"keyconjurer-lambda/authenticators"
-	"keyconjurer-lambda/settings"
 	"strings"
 	"time"
+
+	"github.com/riotgames/key-conjurer/api/authenticators"
+	"github.com/riotgames/key-conjurer/api/settings"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/kms"
 	"github.com/aws/aws-sdk-go/service/sts"
-
 	"github.com/sirupsen/logrus"
 )
 

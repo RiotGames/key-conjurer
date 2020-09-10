@@ -6,7 +6,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"keyconjurer-lambda/logger"
+	"github.com/riotgames/key-conjurer/api/logger"
 
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"

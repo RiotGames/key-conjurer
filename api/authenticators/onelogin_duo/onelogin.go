@@ -4,7 +4,7 @@ import (
 	"context"
 	"strings"
 
-	"keyconjurer-lambda/settings"
+	"github.com/riotgames/key-conjurer/api/settings"
 
 	"github.com/rnikoopour/onelogin"
 	"github.com/sirupsen/logrus"

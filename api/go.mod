@@ -1,4 +1,4 @@
-module keyconjurer-lambda
+module github.com/riotgames/key-conjurer/api
 
 require (
 	github.com/RobotsAndPencils/go-saml v0.0.0-20170520135329-fb13cb52a46b
