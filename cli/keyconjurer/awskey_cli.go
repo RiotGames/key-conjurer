@@ -59,8 +59,8 @@ func Login(keyConjurerRcPath string, prompt bool) *UserData {
 			Logger.Error("error saving user data")
 			Logger.Fatal(err)
 		}
+		fmt.Println("Successfully logged in")
 	}
-
 	return userData
 
 }
