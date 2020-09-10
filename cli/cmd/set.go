@@ -5,7 +5,7 @@ import (
 	"os"
 	"strconv"
 
-	"keyconjurer-cli/keyconjurer"
+	"github.com/riotgames/key-conjurer/cli/keyconjurer"
 
 	"github.com/spf13/cobra"
 )
