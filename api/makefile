@@ -32,7 +32,7 @@ $(error SECRETS_RETRIEVER is not set)
 endif
 
 version = $(shell git rev-parse --short HEAD)
-ldflags = "-X keyconjurer-lambda/consts.Version=$(version)-${TF_WORKSPACE} -X keyconjurer-lambda/consts.AuthenticatorSelect=$(AUTHENTICATOR) -X keyconjurer-lambda/consts.MFASelect=$(MFA) -X keyconjurer-lambda/consts.LogstashEndpoint=$(LOGSTASH_ENDPOINT) -X keyconjurer-lambda/consts.SettingsRetrieverSelect=$(SECRETS_RETRIEVER)"
+ldflags = "-X github.com/riotgames/key-conjurer/api/consts.Version=$(version)-${TF_WORKSPACE} -X github.com/riotgames/key-conjurer/api/consts.AuthenticatorSelect=$(AUTHENTICATOR) -X github.com/riotgames/key-conjurer/api/consts.MFASelect=$(MFA) -X github.com/riotgames/key-conjurer/api/consts.LogstashEndpoint=$(LOGSTASH_ENDPOINT) -X github.com/riotgames/key-conjurer/api/consts.SettingsRetrieverSelect=$(SECRETS_RETRIEVER)"
 
 deploy:
 	make build \
