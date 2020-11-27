@@ -16,20 +16,20 @@ all: linux darwin windows
 
 linux: dir
 	export os=linux \
-	&& GOOS=linux go build -ldflags "-X github.com/riotgames/key-conjurer/cli/keyconjurer.Version=$(version)-$(TF_WORKSPACE) -X github.com/riotgames/key-conjurer/cli/keyconjurer.Client=keyconjurer-linux -X github.com/riotgames/key-conjurer/cli/keyconjurer.ProdAPI=$(API_URL) -X github.com/riotgames/key-conjurer/cli/keyconjurer.DevAPI=$(API_URL) -X github.com/riotgames/key-conjurer/cli/keyconjurer.DownloadURL=$(FRONTEND_URL)" -o ../builds/$(TF_WORKSPACE)/cli/keyconjurer-linux
+	&& GOOS=linux go build -ldflags "-X github.com/riotgames/key-conjurer/cli/keyconjurer.Version=$(version)-$(TF_WORKSPACE) -X github.com/riotgames/key-conjurer/cli/keyconjurer.ClientName=keyconjurer-linux -X github.com/riotgames/key-conjurer/cli/cmd.defaultHostname=$(API_URL) -X github.com/riotgames/key-conjurer/cli/keyconjurer.DownloadURL=$(FRONTEND_URL)" -o ../builds/$(TF_WORKSPACE)/cli/keyconjurer-linux
 
 darwin:
 	export os=darwin \
-	&& GOOS=darwin go build -ldflags "-X github.com/riotgames/key-conjurer/cli/keyconjurer.Version=$(version)-$(TF_WORKSPACE) -X github.com/riotgames/key-conjurer/cli/keyconjurer.Client=keyconjurer-darwin -X github.com/riotgames/key-conjurer/cli/keyconjurer.ProdAPI=$(API_URL) -X github.com/riotgames/key-conjurer/cli/keyconjurer.DevAPI=$(API_URL) -X github.com/riotgames/key-conjurer/cli/keyconjurer.DownloadURL=$(FRONTEND_URL)" -o ../builds/$(TF_WORKSPACE)/cli/keyconjurer-darwin
+	&& GOOS=darwin go build -ldflags "-X github.com/riotgames/key-conjurer/cli/keyconjurer.Version=$(version)-$(TF_WORKSPACE) -X github.com/riotgames/key-conjurer/cli/keyconjurer.ClientName=keyconjurer-darwin -X github.com/riotgames/key-conjurer/cli/cmd.defaultHostname=$(API_URL) -X github.com/riotgames/key-conjurer/cli/keyconjurer.DownloadURL=$(FRONTEND_URL)" -o ../builds/$(TF_WORKSPACE)/cli/keyconjurer-darwin
 
 windows:
 	export os=windows \
-	&& GOOS=windows go build -ldflags "-X github.com/riotgames/key-conjurer/cli/keyconjurer.Version=$(version)-$(TF_WORKSPACE) -X github.com/riotgames/key-conjurer/cli/keyconjurer.Client=keyconjurer-windows -X github.com/riotgames/key-conjurer/cli/keyconjurer.ProdAPI=$(API_URL) -X github.com/riotgames/key-conjurer/cli/keyconjurer.DevAPI=$(API_URL) -X github.com/riotgames/key-conjurer/cli/keyconjurer.DownloadURL=$(FRONTEND_URL)" -o ../builds/$(TF_WORKSPACE)/cli/keyconjurer-windows.exe
+	&& GOOS=windows go build -ldflags "-X github.com/riotgames/key-conjurer/cli/keyconjurer.Version=$(version)-$(TF_WORKSPACE) -X github.com/riotgames/key-conjurer/cli/keyconjurer.ClientName=keyconjurer-windows -X github.com/riotgames/key-conjurer/cli/cmd.defaultHostname=$(API_URL) -X github.com/riotgames/key-conjurer/cli/keyconjurer.DownloadURL=$(FRONTEND_URL)" -o ../builds/$(TF_WORKSPACE)/cli/keyconjurer-windows.exe
 
 dir:
 	mkdir -p ../builds/$(TF_WORKSPACE)/cli
 
-test: dir 
+test: dir
 	mkdir -p ~/.aws \
 	&& touch ~/.aws/config \
 	&& touch ~/.aws/credentials \

@@ -31,7 +31,7 @@ type AWSCliEntry struct {
 	output      string
 }
 
-func NewAWSCliEntry(c *Credentials, a *Account) *AWSCliEntry {
+func NewAWSCliEntry(c *AWSCredentials, a *Account) *AWSCliEntry {
 	a.defaultAlias()
 
 	return &AWSCliEntry{

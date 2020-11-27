@@ -11,20 +11,8 @@ ifndef TF_WORKSPACE
 $(error TF_WORKSPACE is not set)
 endif
 
-ifndef AUTHENTICATOR
-$(error AUTHENTICATOR is not set)
-endif
-
-ifndef MFA
-$(error MFA is not set)
-endif
-
 ifndef LOGSTASH_ENDPOINT
 $(error LOGSTASH_ENDPOINT is not set)
-endif
-
-ifndef S3_TF_BUCKET_NAME
-$(error S3_TF_BUCKET_NAME is not set)
 endif
 
 ifndef SECRETS_RETRIEVER
@@ -32,7 +20,7 @@ $(error SECRETS_RETRIEVER is not set)
 endif
 
 version = $(shell git rev-parse --short HEAD)
-ldflags = "-X github.com/riotgames/key-conjurer/api/consts.Version=$(version)-${TF_WORKSPACE} -X github.com/riotgames/key-conjurer/api/consts.AuthenticatorSelect=$(AUTHENTICATOR) -X github.com/riotgames/key-conjurer/api/consts.MFASelect=$(MFA) -X github.com/riotgames/key-conjurer/api/consts.LogstashEndpoint=$(LOGSTASH_ENDPOINT) -X github.com/riotgames/key-conjurer/api/consts.SettingsRetrieverSelect=$(SECRETS_RETRIEVER)"
+ldflags = "-X github.com/riotgames/key-conjurer/api/consts.Version=$(version)-${TF_WORKSPACE} -X github.com/riotgames/key-conjurer/api/consts.LogstashEndpoint=$(LOGSTASH_ENDPOINT) -X github.com/riotgames/key-conjurer/api/consts.SettingsRetrieverSelect=$(SECRETS_RETRIEVER)"
 
 deploy:
 	make build \

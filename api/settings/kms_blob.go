@@ -9,7 +9,6 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/kms"
-	"github.com/sirupsen/logrus"
 )
 
 func init() {
@@ -18,7 +17,7 @@ func init() {
 
 // NewSettingsFromKMSBlob decrypts the encrypted settings in environment
 //  variable EncryptedSettings then returns a new Settings struct.
-func NewSettingsFromKMSBlob(logger *logrus.Entry) (*Settings, error) {
+func NewSettingsFromKMSBlob() (*Settings, error) {
 	awsRegion := os.Getenv("AWSRegion")
 	encryptedSettings := os.Getenv("EncryptedSettings")
 

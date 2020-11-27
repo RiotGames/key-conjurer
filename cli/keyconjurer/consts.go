@@ -6,7 +6,7 @@ import (
 
 // Vars for build time
 var Version string = "go run"
-var Client string = "go runtime"
+var ClientName string = "go runtime"
 
 // Var for switching APIs
 var Dev bool = false
@@ -18,8 +18,6 @@ const DefaultTTL uint = 1
 const DefaultTimeRemaining uint = 60
 
 // available API  endpoints
-var DevAPI string
-var ProdAPI string
 var DownloadURL string
 
 // CLI binary names

@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -28,7 +29,7 @@ var upgradeCmd = &cobra.Command{
 		case "windows":
 			return windowsDownload(keyConjurerRcPath)
 		default:
-			return defaultDownload(keyConjurerRcPath)
+			return defaultDownload(context.Background(), keyConjurerRcPath)
 		}
 	}}
 
@@ -59,9 +60,13 @@ func windowsDownload(keyConjurerRcPath string) error {
 }
 
 // defaultDownload replaces the currently executing binary by writing over it directly.
-//  Gotta love how easy this is in Linux and OSX <3
-func defaultDownload(keyConjurerRcPath string) error {
-	binary, err := keyconjurer.GetLatestBinary()
+func defaultDownload(ctx context.Context, keyConjurerRcPath string) error {
+	client, err := newClient()
+	if err != nil {
+		return err
+	}
+
+	binary, err := client.GetLatestBinary(ctx)
 	if err != nil {
 		return fmt.Errorf("unable to download the latest binary: %w", err)
 	}

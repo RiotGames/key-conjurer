@@ -8,7 +8,7 @@ import (
 
 func TestAccountFuncs(t *testing.T) {
 	test := &Account{
-		ID:    uint(12345),
+		ID:    "12345",
 		Name:  "AWS - Test Account",
 		Alias: "",
 	}

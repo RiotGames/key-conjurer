@@ -1,7 +1,8 @@
-package oneloginduo
+package duo
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"html"
 	"io/ioutil"
@@ -12,13 +13,21 @@ import (
 	"time"
 
 	"github.com/riotgames/key-conjurer/api/consts"
+)
 
-	"github.com/sirupsen/logrus"
+var (
+	ErrorDuoCommunication   = errors.New("unable to communicate with Duo")
+	ErrorDuoMfaNotAllow     = errors.New("MFA was not allowed")
+	ErrorDuoArgsError       = errors.New("there was an error parsing arguments for Duo push request")
+	ErrorDuoPushError       = errors.New("there was an error sending a Duo push request")
+	ErrorCannotFindSid      = errors.New("Cannot find sid")
+	ErrorHTTPBodyError      = errors.New("Unable to read http response body")
+	ErrorJSONMarshalError   = errors.New("Unable to marshal json")
+	ErrorJSONUnmarshalError = errors.New("Unable to unmarshal json")
 )
 
 // Duo scripts the Duo Web API interaction
 type Duo struct {
-	logger     *logrus.Entry
 	httpClient *http.Client
 }
 
@@ -42,14 +51,12 @@ type duoPushResponse struct {
 	Response pushResponse `json:"response"`
 }
 
-// NewDuo returns a new Duo client that uses the provided logger
-func NewDuo(logger *logrus.Entry) *Duo {
+// New returns a new Duo client that uses the provided logger
+func New() Duo {
 	duoHTTPClient := &http.Client{
 		Timeout: time.Second * consts.HttpTimeoutInSeconds,
 	}
-	return &Duo{
-		logger:     logger,
-		httpClient: duoHTTPClient}
+	return Duo{httpClient: duoHTTPClient}
 }
 
 // SendPush emulates the workflow of the Duo WebAPI and sends the
@@ -85,24 +92,22 @@ func (d *Duo) getSid(txSignature, stateToken, callbackURL, apiHostName string) (
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 	resp, err := d.httpClient.Do(req)
 	if err != nil {
-		d.logger.Error("unable to communicate with duo reaason: ", err.Error())
 		return "", ErrorDuoCommunication
 	}
 
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		d.logger.Error("unable to parse response body reason: ", err.Error())
-		return "", ErrorHttpBodyError
+		return "", ErrorHTTPBodyError
 	}
 
 	// View duo_test.go "Test_Duo_getSid" to see the expected cases that this
 	//  regex will match
 	data := regexp.MustCompile("<input.*name=['\"]?sid['\"]?.*?value=['\"]?(.*?)['\"]?>").FindSubmatch(body)
 	if len(data) != 2 {
-		d.logger.Error("unable to find sid")
 		return "", ErrorCannotFindSid
 	}
+
 	sid := html.UnescapeString(string(data[1]))
 	return sid, nil
 }
@@ -121,9 +126,9 @@ func (d *Duo) prepareForPush(sid, txSignature, callbackURL, apiHostName string) 
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 	resp, err := d.httpClient.Do(req)
 	if err != nil {
-		d.logger.Error("unable to communicate with duo reason: ", err.Error())
 		return ErrorDuoCommunication
 	}
+
 	defer resp.Body.Close()
 	return nil
 }
@@ -141,32 +146,32 @@ func (d *Duo) sendMfaPush(sid, txSignature, callbackURL, apiHostName string) (st
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 	resp, err := d.httpClient.Do(req)
 	if err != nil {
-		d.logger.Error("unable to communicate with duo reason: ", err.Error())
 		return "", ErrorDuoCommunication
 	}
+
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		d.logger.Error("unable to parse response body reason: ", err.Error())
-		return "", ErrorHttpBodyError
+		return "", ErrorHTTPBodyError
 	}
+
 	duoPromptResponse := &duoPromptResponse{}
 	if err := json.Unmarshal(body, duoPromptResponse); err != nil {
-		d.logger.Error("unable to unmarshal reason: ", err.Error())
-		return "", ErrorJsonUnmarshalError
+		return "", ErrorJSONMarshalError
 	}
+
 	// Checking MFA status does not block on the first attempt
 	//  to check the status after pushing.  The response just says
 	//  that a push was sent.
 	mfaResponse, err := d.checkMfaStatus(sid, duoPromptResponse.Response.TxID, apiHostName)
 	if err != nil {
-		d.logger.Error("error pushing duo request reason: ", err.Error())
 		return "", ErrorDuoPushError
 	}
+
 	if strings.ToLower(mfaResponse.Response.StatusCode) != "pushed" {
-		d.logger.Error("error mfa status code not 'pushed' value=", mfaResponse.Response.StatusCode)
 		return "", ErrorDuoPushError
 	}
+
 	return duoPromptResponse.Response.TxID, nil
 }
 
@@ -178,20 +183,17 @@ func (d *Duo) checkMfaStatus(sid, txid, apiHostName string) (*duoPushResponse, e
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 	resp, err := d.httpClient.Do(req)
 	if err != nil {
-		d.logger.Error("unable to communicate with duo reason: ", err.Error())
 		return nil, ErrorDuoCommunication
 	}
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		d.logger.Error("unable to parse response body reason: ", err.Error())
-		return nil, ErrorHttpBodyError
+		return nil, ErrorHTTPBodyError
 	}
 
 	pushResponse := &duoPushResponse{}
 	if err := json.Unmarshal(body, pushResponse); err != nil {
-		d.logger.Error("unable to unmarshal reason: ", err.Error())
-		return nil, ErrorJsonUnmarshalError
+		return nil, ErrorJSONUnmarshalError
 	}
 
 	// Duo changed their workflow so actual needed response is one more
@@ -204,19 +206,16 @@ func (d *Duo) checkMfaStatus(sid, txid, apiHostName string) (*duoPushResponse, e
 		req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 		resp, err := d.httpClient.Do(req)
 		if err != nil {
-			d.logger.Error("unable to communicate with duo reason: ", err.Error())
 			return nil, ErrorDuoCommunication
 		}
 		defer resp.Body.Close()
 		body, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
-			d.logger.Error("unable to read body reason: ", err.Error())
-			return nil, ErrorHttpBodyError
+			return nil, ErrorHTTPBodyError
 		}
 		pushResponse = &duoPushResponse{}
 		if err := json.Unmarshal(body, pushResponse); err != nil {
-			d.logger.Error("unable to unmarshal reason: ", err.Error())
-			return nil, ErrorJsonUnmarshalError
+			return nil, ErrorJSONUnmarshalError
 		}
 	}
 

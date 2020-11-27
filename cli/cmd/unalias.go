@@ -13,14 +13,16 @@ var unaliasCmd = &cobra.Command{
 	Args:    cobra.ExactArgs(1),
 	Example: "keyconjurer alias FooAccount Bar",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		userData, err := keyconjurer.Login(keyConjurerRcPath, false)
-		if err != nil {
+		var ud keyconjurer.UserData
+		if err := ud.LoadFromFile(keyConjurerRcPath); err != nil {
 			return err
 		}
 
-		if err := userData.RemoveAlias(args[0]); err != nil {
-			return err
+		if !ud.RemoveAlias(args[0]) {
+			// No need to save if no alias was removed
+			return nil
 		}
 
-		return userData.Save()
-	}}
+		return ud.Save()
+	},
+}

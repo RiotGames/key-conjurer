@@ -7,20 +7,27 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
-	"strconv"
+	"path/filepath"
 
+	homedir "github.com/mitchellh/go-homedir"
 	"github.com/olekukonko/tablewriter"
+	"github.com/riotgames/key-conjurer/api/core"
+	api "github.com/riotgames/key-conjurer/api/keyconjurer"
 )
 
 // UserData stores all information related to the user
 type UserData struct {
 	filePath      string
-	Migrated      bool              `json:"migrated"`
-	Apps          []*App            `json:"apps"`
-	Accounts      map[uint]*Account `json:"accounts"`
-	Creds         string            `json:"creds"`
-	TTL           uint              `json:"ttl"`
-	TimeRemaining uint              `json:"time_remaining"`
+	Migrated      bool                `json:"migrated"`
+	Apps          []*App              `json:"apps"`
+	Accounts      map[string]*Account `json:"accounts"`
+	Creds         string              `json:"creds"`
+	TTL           uint                `json:"ttl"`
+	TimeRemaining uint                `json:"time_remaining"`
+}
+
+func (u *UserData) GetCredentials() core.Credentials {
+	return core.Credentials{Username: "encrypted", Password: u.Creds}
 }
 
 func (u *UserData) SetTTL(ttl uint) {
@@ -31,13 +38,14 @@ func (u *UserData) SetTimeRemaining(timeRemaining uint) {
 	u.TimeRemaining = timeRemaining
 }
 
-func (u *UserData) FindAccount(accountName string) (*Account, error) {
+func (u *UserData) FindAccount(name string) (*Account, bool) {
 	for _, account := range u.Accounts {
-		if account.isNameMatch(accountName) {
-			return account, nil
+		if account.isNameMatch(name) {
+			return account, true
 		}
 	}
-	return nil, fmt.Errorf("Unable to find account %v", accountName)
+
+	return nil, false
 }
 
 func (u *UserData) ListAccounts() error {
@@ -45,7 +53,7 @@ func (u *UserData) ListAccounts() error {
 	accountTable.SetHeader([]string{"ID", "Name", "Alias"})
 
 	for _, acc := range u.Accounts {
-		accountTable.Append([]string{strconv.FormatUint(uint64(acc.ID), 10), acc.Name, acc.Alias})
+		accountTable.Append([]string{acc.ID, acc.Name, acc.Alias})
 	}
 
 	accountTable.Render()
@@ -65,15 +73,15 @@ func (u *UserData) NewAlias(accountName string, alias string) error {
 }
 
 // RemoveAlias removes the alias associated with the current account
-func (u *UserData) RemoveAlias(accountName string) error {
-	account, err := u.FindAccount(accountName)
-	if err != nil {
-		return err
+func (u *UserData) RemoveAlias(accountName string) bool {
+	account, ok := u.FindAccount(accountName)
+	if !ok {
+		return false
 	}
 
 	account.Alias = ""
 	account.defaultAlias()
-	return nil
+	return true
 }
 
 // Save writes the userData to the file provided overwriting the file if it exists
@@ -94,8 +102,51 @@ func (u *UserData) Save() error {
 	return nil
 }
 
+// SaveToFile saves the UserData to the file system.
+func (u *UserData) SaveToFile(fp string) error {
+	expanded, err := homedir.Expand(fp)
+	if err == nil {
+		fp = expanded
+	}
+
+	dir := filepath.Dir(expanded)
+	if err := os.MkdirAll(dir, os.ModeDir|os.FileMode(0755)); err != nil {
+		return err
+	}
+
+	u.filePath = fp
+	return u.Save()
+}
+
+// LoadFromFile loads the UserData from a file.
+func (u *UserData) LoadFromFile(fp string) error {
+	expanded, err := homedir.Expand(fp)
+	if err == nil {
+		fp = expanded
+	}
+
+	dir := filepath.Dir(expanded)
+	if err := os.MkdirAll(dir, os.ModeDir|os.FileMode(0755)); err != nil {
+		return err
+	}
+
+	file, err := os.OpenFile(expanded, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+	if err != nil {
+		return err
+	}
+	u.filePath = fp
+
+	defer file.Close()
+
+	if err := u.Read(file); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // Load populates all member values of userData using default values where needed
-func (u *UserData) Load(reader io.Reader) error {
+func (u *UserData) Read(reader io.Reader) error {
 	body, err := ioutil.ReadAll(reader)
 	if err != nil {
 		return fmt.Errorf("unable to read %s: %w", u.filePath, err)
@@ -121,50 +172,19 @@ func (u *UserData) SetDefaults() {
 	u.TimeRemaining = DefaultTimeRemaining
 }
 
-// Prompts the user for the AD credentials and then passes back the list
-//  of AWS applications and encrypted creds via the inputed userData
-func (u *UserData) promptForADCreds() error {
-	username, password, err := getUsernameAndPassword()
-	if err != nil {
-		return errors.New("Unable to get username or password")
+func (u *UserData) UpdateFromServer(r api.GetUserDataPayload) {
+	// This is a bit of a bodge because the server does not actually return a UserData instance but an api.GetUserDataPayload instance.
+	// However, there are some shared properties.
+	var apps []*App
+	for _, app := range r.Apps {
+		apps = append(apps, &App{ID: app.AccountID, Name: app.AccountName})
 	}
 
-	if err := u.getUserData(username, password); err != nil {
-		return errors.New("Unable to login")
-	}
-
-	return nil
+	u.Merge(UserData{Apps: apps, Creds: r.EncryptedCredentials})
 }
 
-// GetUserData retrieves the list of AWS accounts the user has access too as well as the
-//  users encrypted credentials which is passed back via the inputed userData
-func (u *UserData) getUserData(username string, password string) error {
-	// client and version are build const(vars really)
-	request := UserRequest{
-		Client:             Client,
-		ClientVersion:      Version,
-		Username:           username,
-		Password:           password,
-		ShouldEncryptCreds: true,
-	}
-
-	data, err := json.Marshal(request)
-	if err != nil {
-		return err
-	}
-
-	responseUserData := &UserData{}
-	if err := doKeyConjurerAPICall("/get_user_data", data, responseUserData); err != nil {
-		return fmt.Errorf("error calling Key Conjurer /get_user_data api: %w", err)
-	}
-
-	u.mergeNewUserData(responseUserData)
-	return nil
-}
-
-// Merges Apps (from API) into Accounts since command
-// line uses 'accounts' and client code should be easy to understand
-func (u *UserData) mergeNewUserData(toCopy *UserData) {
+// Merge merges Apps (from API) into Accounts since command line uses 'accounts' and client code should be easy to understand
+func (u *UserData) Merge(toCopy UserData) {
 	u.Creds = toCopy.Creds
 
 	if toCopy.TTL != 0 {
@@ -182,7 +202,7 @@ func (u *UserData) mergeNewUserData(toCopy *UserData) {
 	}
 
 	if u.Accounts == nil {
-		u.Accounts = map[uint]*Account{}
+		u.Accounts = map[string]*Account{}
 	}
 
 	// since accounts/app are immutable
@@ -217,7 +237,7 @@ func (u *UserData) mergeNewUserData(toCopy *UserData) {
 
 func (u *UserData) moveAppToAccounts() {
 	if u.Accounts == nil {
-		u.Accounts = map[uint]*Account{}
+		u.Accounts = map[string]*Account{}
 	}
 
 	for _, app := range u.Apps {

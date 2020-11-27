@@ -1,88 +1,29 @@
 package keyconjurer
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
-	"strconv"
+	"runtime"
+	"strings"
 	"time"
+
+	ps "github.com/mitchellh/go-ps"
 )
 
 // Credentials are used to store and print out temporary AWS Credentials
 // Note: verified that onelogin uses int as ID (so no leading 0's)
 // ... but does mean we can have negative user ids
-type Credentials struct {
-	accountId       uint
+type AWSCredentials struct {
+	AccountID       string `json:"AccountId"`
 	AccessKeyID     string `json:"AccessKeyId"`
 	SecretAccessKey string `json:"SecretAccessKey"`
 	SessionToken    string `json:"SessionToken"`
 	Expiration      string `json:"Expiration"`
 }
 
-func GetCredentials(u *UserData, accountName string, ttl uint) (*Credentials, error) {
-	// check if account is an account currently assigned
-	accountFound, err := u.FindAccount(accountName)
-	if err != nil {
-		return nil, err
-	}
-
-	// check if account asked for is in ENV
-	// and still valid
-	//
-	// on false always build new Credential
-	var credentials *Credentials
-	switch envCredsValid(accountFound, u.TimeRemaining) {
-	case true:
-		// use current creds
-		credentials = getCredentialsFromENV()
-	case false:
-		// generate new creds
-		var credsTTL uint
-		if ttl == 0 {
-			credsTTL = u.TTL
-		} else {
-			credsTTL = ttl
-		}
-		fmt.Fprintln(os.Stderr, "Sending Duo Push")
-		credentials, err = getCredentialsFromKeyConjurer(u.Creds, accountFound, credsTTL)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	credentials.accountId = accountFound.ID
-
-	return credentials, nil
-}
-
-// requests a set of temporary credentials for the requested AWS account and returns
-//  them via the inputed credentials
-func getCredentialsFromKeyConjurer(encryptedAD string, account *Account, ttl uint) (*Credentials, error) {
-	request := CredsRequest{
-		Client:         Client,
-		ClientVersion:  Version,
-		Username:       "encrypted",
-		Password:       encryptedAD,
-		AppID:          strconv.FormatUint(uint64(account.ID), 10),
-		TimeoutInHours: ttl,
-	}
-
-	data, err := json.Marshal(request)
-	if err != nil {
-		return nil, err
-	}
-
-	responseCredData := Credentials{}
-	if err := doKeyConjurerAPICall("/get_aws_creds", data, &responseCredData); err != nil {
-		return nil, err
-	}
-
-	return &responseCredData, nil
-}
-
 // load current ENV credentials is available
-func getCredentialsFromENV() *Credentials {
-	return &Credentials{
+func getCredentialsFromENV() *AWSCredentials {
+	return &AWSCredentials{
 		AccessKeyID:     os.Getenv("AWS_ACCESS_KEY_ID"),
 		SecretAccessKey: os.Getenv("AWS_SECRET_ACCESS_KEY"),
 		SessionToken:    os.Getenv("AWS_SESSION_TOKEN"),
@@ -122,9 +63,23 @@ func envCredsValid(account *Account, minutesTimeWindow uint) bool {
 Help Funcs
 */
 
+func getShellType() string {
+	pid := os.Getppid()
+	parentProc, _ := ps.FindProcess(pid)
+	normalizedName := strings.ToLower(parentProc.Executable())
+
+	if strings.Contains(normalizedName, "powershell") || strings.Contains(normalizedName, "pwsh") {
+		return "powershell"
+	}
+	if runtime.GOOS == "windows" {
+		return "cmd"
+	}
+	return normalizedName
+}
+
 // PrintCredsForEnv detects the users shell and outputs the credentials for use
 //  as environment variables for said shell
-func (c Credentials) PrintCredsForEnv() {
+func (c AWSCredentials) PrintCredsForEnv() {
 	exportStatement := ""
 	switch getShellType() {
 	case "powershell":
@@ -163,6 +118,5 @@ export AWSKEY_EXPIRATION=%v
 export AWSKEY_ACCOUNT=%v
 `
 	}
-	fmt.Printf(exportStatement, c.AccessKeyID, c.SecretAccessKey, c.SessionToken,
-		c.SessionToken, c.Expiration, c.accountId)
+	fmt.Printf(exportStatement, c.AccessKeyID, c.SecretAccessKey, c.SessionToken, c.SessionToken, c.Expiration, c.AccountID)
 }

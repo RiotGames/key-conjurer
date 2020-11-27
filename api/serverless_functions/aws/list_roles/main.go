@@ -5,13 +5,12 @@ import (
 
 	"github.com/riotgames/key-conjurer/api/consts"
 	"github.com/riotgames/key-conjurer/api/keyconjurer"
-	"github.com/riotgames/key-conjurer/api/settings"
 
 	"github.com/aws/aws-lambda-go/lambda"
 )
 
 func main() {
-	fmt.Printf(`Starting GetUserData Lambda
+	fmt.Printf(`Starting ListRoles Lambda
 	Version: %v
 	`, consts.Version)
 	cfg, err := settings.NewSettings()
@@ -20,5 +19,5 @@ func main() {
 	}
 
 	h := keyconjurer.NewHandler(cfg)
-	lambda.Start(h.GetUserDataEventHandler)
+	lambda.Start(h.ListRolesHandler)
 }

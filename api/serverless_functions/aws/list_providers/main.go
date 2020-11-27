@@ -11,7 +11,7 @@ import (
 )
 
 func main() {
-	fmt.Printf(`Starting GetUserData Lambda
+	fmt.Printf(`Starting ListProviders Lambda
 	Version: %v
 	`, consts.Version)
 	cfg, err := settings.NewSettings()
@@ -20,5 +20,5 @@ func main() {
 	}
 
 	h := keyconjurer.NewHandler(cfg)
-	lambda.Start(h.GetUserDataEventHandler)
+	lambda.Start(h.ListProvidersHandler)
 }

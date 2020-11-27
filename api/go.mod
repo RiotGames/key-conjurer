@@ -9,11 +9,14 @@ require (
 	github.com/kr/text v0.2.0 // indirect
 	github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e // indirect
 	github.com/nu7hatch/gouuid v0.0.0-20131221200532-179d4d0c4d8d // indirect
+	github.com/okta/okta-sdk-golang v1.1.0
+	github.com/okta/okta-sdk-golang/v2 v2.2.1
 	github.com/riotgames/vault-go-client v0.0.3
 	github.com/rnikoopour/onelogin v1.0.1
 	github.com/sirupsen/logrus v1.6.0
 	github.com/stretchr/testify v1.6.1
-	golang.org/x/net v0.0.0-20200904194848-62affa334b73 // indirect
+	github.com/valyala/fastjson v1.6.3
+	golang.org/x/net v0.0.0-20200904194848-62affa334b73
 	golang.org/x/sys v0.0.0-20200909081042-eff7692f9009 // indirect
 	gopkg.in/check.v1 v1.0.0-20200227125254-8fa46927fb4f // indirect
 )

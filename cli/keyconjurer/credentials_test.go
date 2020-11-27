@@ -71,7 +71,7 @@ func setEnv(t *testing.T, valid bool) *Account {
 	}
 
 	return &Account{
-		ID:    1234,
+		ID:    "1234",
 		Name:  "account",
 		Alias: "account",
 	}
@@ -114,7 +114,7 @@ func TestGetInvalidEnvCreds(t *testing.T) {
 	assert.Equal(t, false, envCredsValid(account, 0), "credentials should be invalid due to timestamp")
 
 	account = setEnv(t, true)
-	account.ID = 0
+	account.ID = ""
 	assert.Equal(t, false, envCredsValid(account, 0), "credentials should be invalid due to non-matching id")
 
 	account = setEnv(t, true)

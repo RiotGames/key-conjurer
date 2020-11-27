@@ -1,4 +1,4 @@
-package oneloginduo
+package duo
 
 import (
 	"fmt"
@@ -6,9 +6,6 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/riotgames/key-conjurer/api/logger"
-
-	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -74,10 +71,7 @@ func Test_Duo_getSid(t *testing.T) {
 			httpResponse:   `<html><input name=sid value='foo'></html>`,
 			expectedOutput: ExpectedOutput{sid: "foo", err: nil}}}
 
-	testDuo := &Duo{
-		logger:     logger.NewLogger("keyConjurerTests", "duoTests", logrus.PanicLevel),
-		httpClient: testClient}
-
+	testDuo := Duo{httpClient: testClient}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			httpResponse = tt.httpResponse
@@ -103,11 +97,11 @@ func Test_Duo_checkMfaStatus(t *testing.T) {
 		{
 			name:           "non json response",
 			httpResponse:   "this is not json",
-			expectedOutput: ExpectedOutput{pushResponse: nil, err: ErrorJsonUnmarshalError}},
+			expectedOutput: ExpectedOutput{pushResponse: nil, err: ErrorJSONUnmarshalError}},
 		{
 			name:           "malformed json response",
 			httpResponse:   `{"this": "jsonIs", "malformed"}`,
-			expectedOutput: ExpectedOutput{pushResponse: nil, err: ErrorJsonUnmarshalError}},
+			expectedOutput: ExpectedOutput{pushResponse: nil, err: ErrorJSONUnmarshalError}},
 		{
 			name:           `happy path when checking user status after sending push`,
 			httpResponse:   `{ "response": { "status_code": "pushed", "status": "Pushed a login request to your device..." }, "stat": "OK" }`,
@@ -117,10 +111,7 @@ func Test_Duo_checkMfaStatus(t *testing.T) {
 			httpResponse:   `{ "response": { "reason": "User approved", "cookie": "AUTH|fakeAuthCookiePart1|fakeAuthCookiePart2", "result": "SUCCESS", "status": "Success. Logging you in...", "status_code": "allow", "parent": "https://parent.url.com/fake/path" }, "stat": "OK" }`,
 			expectedOutput: ExpectedOutput{pushResponse: &duoPushResponse{Stat: "OK", Response: pushResponse{StatusCode: "allow", Parent: "https://parent.url.com/fake/path", Result: "SUCCESS", Cookie: "AUTH|fakeAuthCookiePart1|fakeAuthCookiePart2"}}, err: nil}}}
 
-	testDuo := &Duo{
-		logger:     logger.NewLogger("keyConjurerTests", "duoTests", logrus.PanicLevel),
-		httpClient: testClient}
-
+	testDuo := Duo{httpClient: testClient}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			httpResponse = tt.httpResponse

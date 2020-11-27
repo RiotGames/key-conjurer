@@ -1,17 +1,17 @@
 package cmd
 
 import (
-	"github.com/riotgames/key-conjurer/cli/keyconjurer"
+	"context"
+	"os"
 
+	"github.com/olekukonko/tablewriter"
+	api "github.com/riotgames/key-conjurer/api/keyconjurer"
+	"github.com/riotgames/key-conjurer/cli/keyconjurer"
 	"github.com/spf13/cobra"
 )
 
-var (
-	updateAccounts bool
-)
-
 func init() {
-	accountsCmd.Flags().BoolVar(&updateAccounts, "update", false, "Used to update accounts")
+	accountsCmd.Flags().StringVar(&authProvider, "auth-provider", api.AuthenticationProviderOkta, "The authentication provider to use when interacting with the server.")
 }
 
 var accountsCmd = &cobra.Command{
@@ -20,11 +20,33 @@ var accountsCmd = &cobra.Command{
 	Long:    "Prints the list of accounts you have access to.",
 	Example: "keyconjurer accounts",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		userData, err := keyconjurer.Login(keyConjurerRcPath, false)
+		ctx := context.Background()
+		client, err := newClient()
 		if err != nil {
 			return err
 		}
 
-		//need update path
-		return userData.ListAccounts()
-	}}
+		creds, err := loadCredentialsFromFile()
+		if err != nil {
+			return err
+		}
+
+		accounts, err := client.ListAccounts(ctx, &keyconjurer.ListAccountsOptions{
+			Credentials:            creds,
+			AuthenticationProvider: authProvider,
+		})
+
+		if err != nil {
+			return err
+		}
+
+		tw := tablewriter.NewWriter(os.Stdout)
+		tw.SetHeader([]string{"Account ID", "Account Name"})
+		for _, account := range accounts {
+			tw.Append([]string{account.ID, account.Name})
+		}
+
+		tw.Render()
+		return nil
+	},
+}

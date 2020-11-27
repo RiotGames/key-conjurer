@@ -6,7 +6,7 @@ import (
 
 // Account is used to store information related to the AWS OneLogin App/AWS Account
 type Account struct {
-	ID    uint   `json:"id"`
+	ID    string `json:"id"`
 	Name  string `json:"name"`
 	Alias string `json:"alias"`
 }
@@ -52,7 +52,7 @@ func (a *Account) setAlias(alias string) {
 // App is being depricated in favor of Accounts
 //   to keep underlying data structure names the same as cli names
 type App struct {
-	ID    uint   `json:"id"`
+	ID    string `json:"id"`
 	Name  string `json:"name"`
 	Alias string `json:"alias"`
 }

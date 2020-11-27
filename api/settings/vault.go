@@ -5,8 +5,6 @@ import (
 	"os"
 
 	vault "github.com/riotgames/vault-go-client"
-
-	"github.com/sirupsen/logrus"
 )
 
 func init() {
@@ -31,7 +29,7 @@ func getVaultConfig() (map[string]string, error) {
 
 // NewSettingsFromVault pulls configuration from a Vault instance
 //  located at VAULT_ADDR
-func NewSettingsFromVault(logger *logrus.Entry) (*Settings, error) {
+func NewSettingsFromVault() (*Settings, error) {
 	awsRegion := os.Getenv("AWSRegion")
 	vaultConfig, err := getVaultConfig()
 	if err != nil {

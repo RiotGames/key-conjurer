@@ -4,8 +4,6 @@ import (
 	"log"
 
 	"github.com/riotgames/key-conjurer/api/consts"
-
-	"github.com/sirupsen/logrus"
 )
 
 // Settings is used to hold keyconjurer settings
@@ -18,15 +16,16 @@ type Settings struct {
 	OneLoginSamlSecret     string `json:"oneLoginSamlSecret"`
 	OneLoginShard          string `json:"oneLoginShard"`
 	OneLoginSubdomain      string `json:"oneLoginSubdomain"`
+	OktaHost               string `json:"oktaHost"`
+	OktaToken              string `json:"oktaToken"`
 }
 
-type SettingsRetrieverFunc = func(logger *logrus.Entry) (*Settings, error)
+type SettingsRetrieverFunc = func() (*Settings, error)
 
 var SettingsRetrievers = map[string]SettingsRetrieverFunc{}
 
-func NewSettings(logger *logrus.Entry) (*Settings, error) {
-	logger.Infof("Settings Retriever in Use: %s", consts.SettingsRetrieverSelect)
-	return SettingsRetrievers[consts.SettingsRetrieverSelect](logger)
+func NewSettings() (*Settings, error) {
+	return SettingsRetrievers[consts.SettingsRetrieverSelect]()
 }
 
 func registerRetriever(name string, retrieverFunc SettingsRetrieverFunc) {
