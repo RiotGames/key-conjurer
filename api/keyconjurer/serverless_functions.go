@@ -28,9 +28,15 @@ type GetUserDataEvent struct {
 // GetUserDataEventHandler authenticates the user against OneLogin and retrieves a list of AWS application the user has available
 func GetUserDataEventHandler(event GetUserDataEvent) (*Response, error) {
 	logger := log.NewLogger(event.Client, event.ClientVersion, logrus.DebugLevel)
-	keyConjurerSettings := settings.NewSettings(logger)
+	keyConjurerSettings, err := settings.NewSettings(logger)
+	if err != nil {
+		return CreateResponseError(err.Error()), err
+	}
 
-	auth := newAuthenticator(logger, keyConjurerSettings)
+	auth, err := newAuthenticator(logger, keyConjurerSettings)
+	if err != nil {
+		return CreateResponseError(err.Error()), err
+	}
 
 	// make new keyconjurer instance
 	client, err := NewKeyConjurer(auth, logger, keyConjurerSettings)
@@ -89,9 +95,15 @@ type GetTemporaryCredentialEvent struct {
 
 func GetTemporaryCredentialEventHandler(event GetTemporaryCredentialEvent) (*Response, error) {
 	logger := log.NewLogger(event.Client, event.ClientVersion, logrus.DebugLevel)
-	keyConjurerSettings := settings.NewSettings(logger)
+	keyConjurerSettings, err := settings.NewSettings(logger)
+	if err != nil {
+		return CreateResponseError(err.Error()), err
+	}
 
-	auth := newAuthenticator(logger, keyConjurerSettings)
+	auth, err := newAuthenticator(logger, keyConjurerSettings)
+	if err != nil {
+		return CreateResponseError(err.Error()), err
+	}
 
 	// make new keyconjurer instance
 	client, err := NewKeyConjurer(auth, logger, keyConjurerSettings)

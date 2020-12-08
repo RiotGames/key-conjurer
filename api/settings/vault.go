@@ -1,7 +1,7 @@
 package settings
 
 import (
-	"log"
+	"fmt"
 	"os"
 
 	vault "github.com/riotgames/vault-go-client"
@@ -13,7 +13,7 @@ func init() {
 	registerRetriever("vault", NewSettingsFromVault)
 }
 
-func getVaultConfig() map[string]string {
+func getVaultConfig() (map[string]string, error) {
 	vaultSettings := map[string]string{
 		"vaultRoleName":        os.Getenv("VAULT_ROLE_NAME"),
 		"vaultSecretMountPath": os.Getenv("VAULT_SECRET_MOUNT_PATH"),
@@ -22,35 +22,46 @@ func getVaultConfig() map[string]string {
 
 	for key, value := range vaultSettings {
 		if value == "" {
-			log.Fatalf("%s was not set", key)
+			return vaultSettings, fmt.Errorf("%s was not set", key)
 		}
 	}
-	return vaultSettings
+
+	return vaultSettings, nil
 }
 
 // NewSettingsFromVault pulls configuration from a Vault instance
 //  located at VAULT_ADDR
-func NewSettingsFromVault(logger *logrus.Entry) *Settings {
+func NewSettingsFromVault(logger *logrus.Entry) (*Settings, error) {
 	awsRegion := os.Getenv("AWSRegion")
-	vaultConfig := getVaultConfig()
+	vaultConfig, err := getVaultConfig()
+	if err != nil {
+		return nil, err
+	}
 
 	settings := &Settings{AwsRegion: awsRegion}
 	client, err := vault.NewClient(vault.DefaultConfig())
 	if err != nil {
-		log.Fatal("Unable to get Vault Client")
+		return nil, fmt.Errorf("unable to get Vault client")
 	}
 
-	if _, err := client.Auth.IAM.Login(vault.IAMLoginOptions{
+	opts := vault.IAMLoginOptions{
 		Role:      vaultConfig["vaultRoleName"],
-		MountPath: vaultConfig["vaultAWSAuthPath"]}); err != nil {
-		log.Fatal("Unable to login to Vault")
+		MountPath: vaultConfig["vaultAWSAuthPath"],
 	}
 
-	if _, err := client.KV2.Get(vault.KV2GetOptions{
+	if _, err := client.Auth.IAM.Login(opts); err != nil {
+		return nil, fmt.Errorf("unable to login to Vault")
+	}
+
+	kvOpts := vault.KV2GetOptions{
 		MountPath:     vaultConfig["vaultSecretMountPath"],
 		SecretPath:    vaultConfig["vaultSecretPath"],
-		UnmarshalInto: settings}); err != nil {
-		log.Fatal("Unable to get vault settings from ", vaultConfig["vaultSecretMounthPath"]+"/"+vaultConfig["vaultSecretPath"])
+		UnmarshalInto: settings,
 	}
-	return settings
+
+	if _, err := client.KV2.Get(kvOpts); err != nil {
+		return nil, fmt.Errorf("Unable to get vault settings from %s", vaultConfig["vaultSecretMounthPath"]+"/"+vaultConfig["vaultSecretPath"])
+	}
+
+	return settings, nil
 }
