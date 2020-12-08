@@ -1,8 +1,10 @@
 package keyconjurer
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
+	"strconv"
 	"time"
 )
 
@@ -56,7 +58,16 @@ func GetCredentials(u *UserData, accountName string, ttl uint) (*Credentials, er
 // requests a set of temporary credentials for the requested AWS account and returns
 //  them via the inputed credentials
 func getCredentialsFromKeyConjurer(encryptedAD string, account *Account, ttl uint) (*Credentials, error) {
-	data, err := newKeyConjurerCredRequestJSON(Client, Version, "encrypted", encryptedAD, account.ID, ttl)
+	request := CredsRequest{
+		Client:         Client,
+		ClientVersion:  Version,
+		Username:       "encrypted",
+		Password:       encryptedAD,
+		AppID:          strconv.FormatUint(uint64(account.ID), 10),
+		TimeoutInHours: ttl,
+	}
+
+	data, err := json.Marshal(request)
 	if err != nil {
 		return nil, err
 	}

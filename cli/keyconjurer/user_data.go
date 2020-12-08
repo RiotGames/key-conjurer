@@ -140,17 +140,25 @@ func (u *UserData) promptForADCreds() error {
 //  users encrypted credentials which is passed back via the inputed userData
 func (u *UserData) getUserData(username string, password string) error {
 	// client and version are build const(vars really)
-	data, err := newKeyConjurerUserRequestJSON(Client, Version, username, password)
+	request := UserRequest{
+		Client:             Client,
+		ClientVersion:      Version,
+		Username:           username,
+		Password:           password,
+		ShouldEncryptCreds: true,
+	}
+
+	data, err := json.Marshal(request)
 	if err != nil {
 		return err
 	}
 
-	responseUserData := UserData{}
-	if err := doKeyConjurerAPICall("/get_user_data", data, &responseUserData); err != nil {
+	responseUserData := &UserData{}
+	if err := doKeyConjurerAPICall("/get_user_data", data, responseUserData); err != nil {
 		return fmt.Errorf("error calling Key Conjurer /get_user_data api: %w", err)
 	}
 
-	u.mergeNewUserData(&responseUserData)
+	u.mergeNewUserData(responseUserData)
 	return nil
 }
 

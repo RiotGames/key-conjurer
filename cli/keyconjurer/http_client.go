@@ -92,7 +92,7 @@ func doKeyConjurerAPICall(url string, data []byte, responseStruct interface{}) e
 	return errors.New(errorMessage)
 }
 
-type KeyConjurerUserRequest struct {
+type UserRequest struct {
 	Client             string `json:"client"`
 	ClientVersion      string `json:"clientVersion"`
 	Username           string `json:"username"`
@@ -100,34 +100,13 @@ type KeyConjurerUserRequest struct {
 	ShouldEncryptCreds bool   `json:"shouldEncryptCreds"`
 }
 
-func newKeyConjurerUserRequestJSON(client, version, username, password string) ([]byte, error) {
-	return json.Marshal(KeyConjurerUserRequest{
-		Client:             client,
-		ClientVersion:      version,
-		Username:           username,
-		Password:           password,
-		ShouldEncryptCreds: true},
-	)
-}
-
-type KeyConjurerCredsRequest struct {
+type CredsRequest struct {
 	Client         string `json:"client"`
 	ClientVersion  string `json:"clientVersion"`
 	Username       string `json:"username"`
 	Password       string `json:"password"`
 	AppID          string `json:"appId"`
 	TimeoutInHours uint   `json:"timeoutInHours"`
-}
-
-func newKeyConjurerCredRequestJSON(client, version, username, password string, id, ttl uint) ([]byte, error) {
-	return json.Marshal(KeyConjurerCredsRequest{
-		Client:         client,
-		ClientVersion:  version,
-		Username:       username,
-		Password:       password,
-		AppID:          fmt.Sprint(id),
-		TimeoutInHours: ttl,
-	})
 }
 
 // ResponseData is the standard response structure from the Key Conjurer API
