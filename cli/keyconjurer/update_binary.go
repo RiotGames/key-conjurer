@@ -23,20 +23,18 @@ func getBinaryName() string {
 func GetLatestBinary() ([]byte, error) {
 	httpClient, err := getHTTPClientSingleton()
 	if err != nil {
-		Logger.Warnln("Error getting http client")
-		return nil, err
+		return nil, fmt.Errorf("could not get HTTP client: %w", err)
 	}
 
 	binaryURL := fmt.Sprintf("%s/%s", DownloadURL, getBinaryName())
 	req, _ := http.NewRequest(http.MethodGet, binaryURL, nil)
 	res, err := httpClient.Do(req)
 	if err != nil {
-		Logger.Errorf("Could not get binary upgrade. Reason: %v", err)
-		return nil, err
+		return nil, fmt.Errorf("could not get binary upgrade: %w", err)
 	}
+
 	body, err := ioutil.ReadAll(res.Body)
 	if err != nil {
-		Logger.Errorln(err)
 		return nil, errors.New("Unable to parse response")
 	}
 	return body, nil

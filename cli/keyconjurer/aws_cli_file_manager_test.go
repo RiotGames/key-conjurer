@@ -1,49 +1,27 @@
 package keyconjurer
 
 import (
-	"log"
-	"os"
 	"testing"
 
-	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 )
 
-func init() {
-	logger := logrus.New()
-	logger.SetOutput(os.Stderr)
-	level, err := logrus.ParseLevel("debug")
-	if err != nil {
-		log.Fatal(err)
-	}
-	logger.SetLevel(level)
-
-	Logger = logger
-}
-
 func TestAwsCliCredsFile(t *testing.T) {
-	credsPath := "~/.aws/credentials"
-	t.Log("reading in ", credsPath)
-	credsFile := getAwsCliCredentialsFile(credsPath)
+	credsFile, _ := getAwsCliCredentialsFile("~/.aws/credentials")
 	for _, section := range credsFile.Sections() {
 		t.Log(section.Name(), section.KeyStrings())
 	}
 }
 
 func TestAwsCliConfigFile(t *testing.T) {
-	configPath := "~/.aws/config"
-	t.Log("reading in ", configPath)
-	configFile := getAwsCliConfigFile(configPath)
+	configFile, _ := getAwsCliConfigFile("~/.aws/config")
 	for _, section := range configFile.Sections() {
 		t.Log(section.Name(), section.KeyStrings())
 	}
 }
 
 func TestAwsCliFileNoSlash(t *testing.T) {
-	path := "~/.aws"
-
-	awscli := getAwsCliByPath(path)
-
+	awscli, _ := getAwsCliByPath("~/.aws")
 	for _, section := range awscli.creds.Sections() {
 		t.Log(section.Name(), section.Keys())
 	}
@@ -54,10 +32,7 @@ func TestAwsCliFileNoSlash(t *testing.T) {
 }
 
 func TestAwsCliFileWithSlash(t *testing.T) {
-	path := "~/.aws/"
-
-	awscli := getAwsCliByPath(path)
-
+	awscli, _ := getAwsCliByPath("~/.aws/")
 	for _, section := range awscli.creds.Sections() {
 		t.Log(section.Name(), section.Keys())
 	}
@@ -68,10 +43,7 @@ func TestAwsCliFileWithSlash(t *testing.T) {
 }
 
 func TestAddAWSCliEntry(t *testing.T) {
-	path := "~/.aws/"
-
-	awscli := getAwsCliByPath(path)
-
+	awscli, _ := getAwsCliByPath("~/.aws/")
 	entry := &AWSCliEntry{
 		profileName: "test-profile",
 		keyId:       "notanid",
@@ -97,9 +69,7 @@ func TestAddAWSCliEntry(t *testing.T) {
 	awscli.creds.SaveTo(awscli.creds.Path)
 
 	// retest by reloading into file
-	awscli = &awsCli{}
-	awscli = getAwsCliByPath(path)
-
+	awscli, _ = getAwsCliByPath("~/.aws/")
 	assert.Equal(t, true, awscli.creds.Section("test-profile") != nil, "section should have been added above")
 
 	testSection = awscli.creds.Section("test-profile")

@@ -1,8 +1,6 @@
 package cmd
 
 import (
-	"log"
-
 	"github.com/riotgames/key-conjurer/cli/keyconjurer"
 
 	"github.com/spf13/cobra"
@@ -14,10 +12,12 @@ var loginCmd = &cobra.Command{
 	Long: `Login using your AD creds.  This stores encrypted credentials
 on the local system`,
 	Example: "keyconjurer login",
-	Run: func(cmd *cobra.Command, args []string) {
-		userData := keyconjurer.Login(keyConjurerRcPath, true)
-		if err := userData.Save(); err != nil {
-			log.Println(err)
+	RunE: func(cmd *cobra.Command, args []string) error {
+		userData, err := keyconjurer.Login(keyConjurerRcPath, false)
+		if err != nil {
+			return err
 		}
+
+		return userData.Save()
 	},
 }

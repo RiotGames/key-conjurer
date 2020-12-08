@@ -19,7 +19,6 @@ import (
 func getHTTPClientSingleton() (*http.Client, error) {
 	certs, err := rootcerts.LoadSystemCAs()
 	if err != nil {
-		Logger.Errorf("Could not load System root CA files. Reason: %v", err)
 		return nil, fmt.Errorf("Could not load System root CA files. Reason: %v", err)
 	}
 
@@ -51,7 +50,6 @@ func createAPIURL(path string) string {
 func doKeyConjurerAPICall(url string, data []byte, responseStruct interface{}) error {
 	httpClient, err := getHTTPClientSingleton()
 	if err != nil {
-		Logger.Warnln("Error getting http client")
 		return err
 	}
 
@@ -61,21 +59,18 @@ func doKeyConjurerAPICall(url string, data []byte, responseStruct interface{}) e
 	req.Header.Set("content-type", "application/json")
 	res, err := httpClient.Do(req)
 	if err != nil {
-		Logger.Warnln(err)
 		return errors.New("Error sending http request")
 	}
 
 	defer res.Body.Close()
 	body, err := ioutil.ReadAll(res.Body)
 	if err != nil {
-		Logger.Warnln(err)
 		return errors.New("Unable to parse response")
 	}
 
 	if res.StatusCode == 200 {
 		responseData := &ResponseData{Data: responseStruct}
 		if err := json.Unmarshal(body, responseData); err != nil {
-			Logger.Warnln(err)
 			return errors.New("Unable to read json response")
 		}
 
@@ -105,21 +100,14 @@ type KeyConjurerUserRequest struct {
 	ShouldEncryptCreds bool   `json:"shouldEncryptCreds"`
 }
 
-func newKeyConjurerUserRequestJSON(client, version, username, password string) []byte {
-	data, err := json.Marshal(KeyConjurerUserRequest{
+func newKeyConjurerUserRequestJSON(client, version, username, password string) ([]byte, error) {
+	return json.Marshal(KeyConjurerUserRequest{
 		Client:             client,
 		ClientVersion:      version,
 		Username:           username,
 		Password:           password,
 		ShouldEncryptCreds: true},
 	)
-
-	if err != nil {
-		Logger.Debugln("error marshalling JSON user request for Key Conjurer")
-		Logger.Errorln(err)
-	}
-
-	return data
 }
 
 type KeyConjurerCredsRequest struct {
@@ -131,8 +119,8 @@ type KeyConjurerCredsRequest struct {
 	TimeoutInHours uint   `json:"timeoutInHours"`
 }
 
-func newKeyConjurerCredRequestJSON(client, version, username, password string, id, ttl uint) []byte {
-	data, err := json.Marshal(KeyConjurerCredsRequest{
+func newKeyConjurerCredRequestJSON(client, version, username, password string, id, ttl uint) ([]byte, error) {
+	return json.Marshal(KeyConjurerCredsRequest{
 		Client:         client,
 		ClientVersion:  version,
 		Username:       username,
@@ -140,13 +128,6 @@ func newKeyConjurerCredRequestJSON(client, version, username, password string, i
 		AppID:          fmt.Sprint(id),
 		TimeoutInHours: ttl,
 	})
-
-	if err != nil {
-		Logger.Debugln("error marshalling JSON credential request for Key Conjurer")
-		Logger.Errorln(err)
-	}
-
-	return data
 }
 
 // ResponseData is the standard response structure from the Key Conjurer API

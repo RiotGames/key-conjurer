@@ -3,7 +3,6 @@ package cmd
 import (
 	"fmt"
 	"io/ioutil"
-	"log"
 	"os"
 	"os/exec"
 	"runtime"
@@ -19,18 +18,17 @@ var upgradeCmd = &cobra.Command{
 	Long:    "Downloads the latest version of keyconjurer.",
 	Args:    cobra.ExactArgs(0),
 	Example: "keyconjurer upgrade",
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		keyConjurerRcPath, err := os.Executable()
-
 		if err != nil {
-			log.Fatal(err)
+			return err
 		}
 
 		switch runtime.GOOS {
-		case ("windows"):
-			windowsDownload(keyConjurerRcPath)
+		case "windows":
+			return windowsDownload(keyConjurerRcPath)
 		default:
-			defaultDownload(keyConjurerRcPath)
+			return defaultDownload(keyConjurerRcPath)
 		}
 	}}
 
@@ -39,33 +37,38 @@ var upgradeCmd = &cobra.Command{
 //  waits 3 seconds for the current process to exit, then downloads the latest Windows binary and
 //  replaces the old one, finally it removes itself from the filesystem. The cmd prompt should
 //  appear on the users screen to give them feedback that the download process began an ended.
-func windowsDownload(keyConjurerRcPath string) {
-	tmpFile, err := ioutil.TempFile(os.TempDir(), "keyconjurer-downloader-*.cmd")
+func windowsDownload(keyConjurerRcPath string) error {
+	f, err := ioutil.TempFile(os.TempDir(), "keyconjurer-downloader-*.cmd")
 	if err != nil {
-		log.Fatalf("Unable to create download script. Reason: %v", err)
+		return fmt.Errorf("unable to create download script: %w", err)
 	}
-	command := fmt.Sprintf("timeout 3 && bitsadmin /transfer keyconjurerdownload /priority foreground /download %s/%s %s && del %s && exit", keyconjurer.DownloadURL, keyconjurer.WindowsBinaryName, keyConjurerRcPath, tmpFile.Name())
+
+	command := fmt.Sprintf("timeout 3 && bitsadmin /transfer keyconjurerdownload /priority foreground /download %s/%s %s && del %s && exit", keyconjurer.DownloadURL, keyconjurer.WindowsBinaryName, keyConjurerRcPath, f.Name())
 	fileData := []byte(command)
 
-	if _, err = tmpFile.Write(fileData); err != nil {
-		log.Fatal("Failed to write to temporary file", err.Error())
+	if _, err = f.Write(fileData); err != nil {
+		return fmt.Errorf("failed to write to temporary file: %w", err)
 	}
-	if err := tmpFile.Close(); err != nil {
-		log.Fatal(err.Error())
+
+	if err := f.Close(); err != nil {
+		return err
 	}
-	cmd := exec.Command("cmd", "/C", "start", tmpFile.Name())
-	cmd.Start()
+
+	cmd := exec.Command("cmd", "/C", "start", f.Name())
+	return cmd.Start()
 }
 
 // defaultDownload replaces the currently executing binary by writing over it directly.
 //  Gotta love how easy this is in Linux and OSX <3
-func defaultDownload(keyConjurerRcPath string) {
+func defaultDownload(keyConjurerRcPath string) error {
 	binary, err := keyconjurer.GetLatestBinary()
 	if err != nil {
-		log.Fatal("Unable to download the latest binary.")
+		return fmt.Errorf("unable to download the latest binary: %w", err)
 	}
 
 	if err := ioutil.WriteFile(keyConjurerRcPath, binary, 0744); err != nil {
-		log.Fatalf("Could Not Save Binary. Reason: %v", err)
+		return fmt.Errorf("could not save binary: %w", err)
 	}
+
+	return nil
 }
