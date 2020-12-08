@@ -25,8 +25,7 @@ type GetUserDataEvent struct {
 	ShouldEncryptCreds bool   `json:"shouldEncryptCreds"`
 }
 
-// GetUserData authenticates the user against OneLogin and retrieves a list of
-//  AWS application the user has available
+// GetUserDataEventHandler authenticates the user against OneLogin and retrieves a list of AWS application the user has available
 func GetUserDataEventHandler(event GetUserDataEvent) (*Response, error) {
 	logger := log.NewLogger(event.Client, event.ClientVersion, logrus.DebugLevel)
 	keyConjurerSettings := settings.NewSettings(logger)
@@ -34,7 +33,10 @@ func GetUserDataEventHandler(event GetUserDataEvent) (*Response, error) {
 	auth := newAuthenticator(logger, keyConjurerSettings)
 
 	// make new keyconjurer instance
-	client := NewKeyConjurer(event.Client, event.ClientVersion, auth, logger, keyConjurerSettings)
+	client, err := NewKeyConjurer(auth, logger, keyConjurerSettings)
+	if err != nil {
+		return CreateResponseError(err.Error()), err
+	}
 
 	// get username:password and decrypt if necessary
 
@@ -75,7 +77,7 @@ func GetUserDataEventHandler(event GetUserDataEvent) (*Response, error) {
 ///////////////////////////////////////////////////////////
 
 // Event holds incoming data from the user
-//  AppID is the OneLogin AppID
+// AppID is the OneLogin AppID
 type GetTemporaryCredentialEvent struct {
 	Username       string `json:"username"`
 	Password       string `json:"password"`
@@ -92,7 +94,10 @@ func GetTemporaryCredentialEventHandler(event GetTemporaryCredentialEvent) (*Res
 	auth := newAuthenticator(logger, keyConjurerSettings)
 
 	// make new keyconjurer instance
-	client := NewKeyConjurer(event.Client, event.ClientVersion, auth, logger, keyConjurerSettings)
+	client, err := NewKeyConjurer(auth, logger, keyConjurerSettings)
+	if err != nil {
+		return CreateResponseError(err.Error()), err
+	}
 
 	user, err := client.providerClient.GetUserCredentials(event.Username, event.Password)
 	if err != nil {
