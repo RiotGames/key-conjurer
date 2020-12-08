@@ -14,9 +14,8 @@ import (
 	rootcerts "github.com/hashicorp/go-rootcerts"
 )
 
-// Creates a httpclient singleton that loads the user's system's CA. Note that
-//  this singleton is probably not multi-thread safe.
-func getHTTPClientSingleton() (*http.Client, error) {
+// createHTTPClient creates a new HTTP client that loads the operating system's CAs.
+func createHTTPClient() (*http.Client, error) {
 	certs, err := rootcerts.LoadSystemCAs()
 	if err != nil {
 		return nil, fmt.Errorf("Could not load System root CA files. Reason: %v", err)
@@ -48,7 +47,7 @@ func createAPIURL(path string) string {
 }
 
 func doKeyConjurerAPICall(url string, data []byte, responseStruct interface{}) error {
-	httpClient, err := getHTTPClientSingleton()
+	httpClient, err := createHTTPClient()
 	if err != nil {
 		return err
 	}

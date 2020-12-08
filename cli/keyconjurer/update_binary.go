@@ -21,7 +21,7 @@ func getBinaryName() string {
 
 // GetLatestBinary downloads the latest keyconjurer binary from the web.
 func GetLatestBinary() ([]byte, error) {
-	httpClient, err := getHTTPClientSingleton()
+	httpClient, err := createHTTPClient()
 	if err != nil {
 		return nil, fmt.Errorf("could not get HTTP client: %w", err)
 	}
