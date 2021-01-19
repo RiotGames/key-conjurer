@@ -21,5 +21,5 @@ var versionCmd = &cobra.Command{
 	Long:    "Shows Key Conjurer version information.",
 	Example: "keyconjurer version",
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Printf(versionString, keyconjurer.Version, keyconjurer.ClientName, defaultHostname, keyconjurer.DownloadURL)
+		fmt.Printf(versionString, keyconjurer.Version, keyconjurer.ClientName, defaultHost, keyconjurer.DownloadURL)
 	}}

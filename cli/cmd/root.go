@@ -14,11 +14,11 @@ import (
 
 var (
 	keyConjurerRcPath string
-	// The hostname of the API server. Don't use this. You probably meant to use newClient() instead.
-	hostname string
+	// host of the API server. Don't use this. You probably meant to use newClient() instead.
+	host string
 	// This is set by the Makefile during build of the CLI. Don't use this.
-	defaultHostname string
-	authProvider    string
+	defaultHost  string
+	authProvider string
 )
 
 func init() {
@@ -35,13 +35,13 @@ func init() {
 	rootCmd.AddCommand(rolesCmd)
 	rootCmd.AddCommand(providersCmd)
 
-	rootCmd.PersistentFlags().StringVar(&hostname, "hostname", defaultHostname, "The hostname of the KeyConjurer API")
+	rootCmd.PersistentFlags().StringVar(&host, "host", defaultHost, "The host of the KeyConjurer API")
 }
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:     "keyconjurer",
-	Version: fmt.Sprintf(versionString, keyconjurer.Version, keyconjurer.ClientName, defaultHostname, keyconjurer.DownloadURL),
+	Version: fmt.Sprintf(versionString, keyconjurer.Version, keyconjurer.ClientName, defaultHost, keyconjurer.DownloadURL),
 	Short:   "Retrieve temporary AWS API credentials.",
 	Long: `Key Conjurer retrieves temporary credentials from the Key Conjurer API.
 
@@ -54,7 +54,7 @@ keyconjurer get <accountName>
 	SilenceErrors: true,
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		var err error
-		hostname, err = parseHostname(hostname)
+		host, err = parseHostname(host)
 		if err != nil {
 			return fmt.Errorf("invalid hostname: %w", err)
 		}
@@ -105,7 +105,7 @@ func parseHostname(hostname string) (string, error) {
 
 func newClient() (keyconjurer.Client, error) {
 	// hostname is guaranteed to be a valid URL thanks to our code in rootCmd.PersistentPreRunE
-	return keyconjurer.New(hostname)
+	return keyconjurer.New(host)
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
