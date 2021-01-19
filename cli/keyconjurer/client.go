@@ -131,7 +131,7 @@ func (c *Client) GetCredentials(ctx context.Context, opts *GetCredentialsOptions
 
 	var response api.GetTemporaryCredentialsPayload
 	if err := c.do(ctx, "POST", "/get_aws_creds", data, &response); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to generate temporary session token: %s", err.Error())
 	}
 
 	aws := AWSCredentials{

@@ -45,6 +45,10 @@ var getCmd = &cobra.Command{
 	Example: "keyconjurer get <accountName/alias>",
 	Args:    cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
+		if roleName == "" {
+			return ErrNoRoleProvided
+		}
+
 		ctx := context.Background()
 		client, err := newClient()
 		if err != nil {
