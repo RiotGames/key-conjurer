@@ -53,7 +53,6 @@ func getRole(roleName string, response *core.SAMLResponse) (string, string, erro
 		return "", "", errors.New("legacy client support is not implemented at this time")
 	}
 
-	println(roles[0])
 	var roleARN string
 	for _, arn := range roles[1:] {
 		idx := strings.Index(arn, "role/")
