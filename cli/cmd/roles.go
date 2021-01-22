@@ -3,7 +3,6 @@ package cmd
 import (
 	"context"
 	"os"
-	"strings"
 
 	"github.com/olekukonko/tablewriter"
 
@@ -22,7 +21,7 @@ var rolesCmd = &cobra.Command{
 	Long: `List roles in KeyConjurer for the given account.
 
 You must be logged in.`,
-	Example: "keyconjurer roles [account-name]",
+	Example: "keyconjurer roles",
 	Args:    cobra.MaximumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		ctx := context.Background()
@@ -36,18 +35,9 @@ You must be logged in.`,
 			return err
 		}
 
-		// TODO: Allow users to use either an account name or an account id
-		// ListRoles endpoint only supports an account ID, so we will need to retrieve account names beforehand
-		// We could cache them in userdata as is currently the case
-		var accountID string
-		if len(args) == 1 {
-			accountID = strings.TrimSpace(args[0])
-		}
-
 		roles, err := client.ListRoles(ctx, &keyconjurer.ListRolesOptions{
 			AuthenticationProvider: authProvider,
 			Credentials:            creds,
-			AccountID:              accountID,
 		})
 
 		if err != nil {

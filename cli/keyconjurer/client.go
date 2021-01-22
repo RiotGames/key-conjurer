@@ -213,7 +213,6 @@ type ListRolesOptions struct {
 func (c *Client) ListRoles(ctx context.Context, opts *ListRolesOptions) ([]core.Role, error) {
 	payload := api.ListRolesEvent{
 		Credentials: opts.Credentials,
-		AppID:       opts.AccountID,
 		Provider:    opts.AuthenticationProvider,
 	}
 

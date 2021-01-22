@@ -31,11 +31,9 @@ type Application struct {
 //
 // This stems from AWS terminology with their AssumeRolePolicy; it's possible this concept does not translate well with alternative cloud providers.
 type Role struct {
-	ID       string
-	RoleName string
-
+	ID          string
+	RoleName    string
 	AccountName string
-	AccountID   string
 }
 
 // An AuthenticationProvider is a component which will verify user credentials, list the applications a user is entitled to, the roles the user may assume within that application and generate SAML assertions for federation.
@@ -44,10 +42,10 @@ type AuthenticationProvider interface {
 	Authenticate(ctx context.Context, credentials Credentials) (User, error)
 	// ListApplications should list all the applications the given user is entitled to access.
 	ListApplications(ctx context.Context, user User) ([]Application, error)
-	// ListRoles should list all the roles the user may assume in a given application.
+	// ListRoles should list all the roles the user may assume.
 	//
 	// This is originally intended for use with Amazon AWS and references AssumeRolePolicy - it is possible that this pattern may not make sense with other authentication providers.
-	ListRoles(ctx context.Context, user User, appID string) ([]Role, error)
+	ListRoles(ctx context.Context, user User) ([]Role, error)
 	// GenerateSAMLAssertion should generate a SAML assertion that the user may exchange with the target application in order to gain access to it.
 	GenerateSAMLAssertion(ctx context.Context, credentials Credentials, appID string) (*SAMLResponse, error)
 }

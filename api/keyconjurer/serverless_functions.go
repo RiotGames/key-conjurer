@@ -205,7 +205,6 @@ func (h *Handler) GetTemporaryCredentialEventHandler(ctx context.Context, event 
 type ListRolesEvent struct {
 	core.Credentials
 	Provider AuthenticationProviderName
-	AppID    string
 }
 
 type ListRolesPayload struct {
@@ -231,7 +230,7 @@ func (h *Handler) ListRolesHandler(ctx context.Context, event ListRolesEvent) (R
 		return ErrorResponse(ErrCodeUnspecified, "authentication failed for an unspecified reason")
 	}
 
-	roles, err := prov.ListRoles(ctx, user, event.AppID)
+	roles, err := prov.ListRoles(ctx, user)
 	if err != nil {
 		// TODO: Interrogate 'err' to determine if this was an upstream error or if it was the users fault
 		return ErrorResponse(ErrCodeUnspecified, "listing roles for an unspecified reason")

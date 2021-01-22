@@ -95,7 +95,7 @@ func extractRole(group *okta.Group) (extractedRole, bool) {
 // If appID is an empty string, all applications will be matched.
 //
 // This is originally intended for use with Amazon AWS and references AssumeRolePolicy - it is possible that this pattern may not make sense with other authentication providers.
-func (a *Authenticator) ListRoles(ctx context.Context, user core.User, appID string) ([]core.Role, error) {
+func (a *Authenticator) ListRoles(ctx context.Context, user core.User) ([]core.Role, error) {
 	// TODO: There may be a more efficient way to list groups using filters in okta.Group.ListGroups().
 	groups, resp, err := a.client.User.ListUserGroups(ctx, user.ID)
 	if err != nil {
@@ -118,13 +118,9 @@ func (a *Authenticator) ListRoles(ctx context.Context, user core.User, appID str
 			continue
 		}
 
-		if appID != "" && r.AWSAccountID != appID {
-			continue
-		}
-
 		roles = append(roles, core.Role{
-			ID:          r.OktaGroupID,
-			AccountID:   r.AWSAccountID,
+			ID: r.OktaGroupID,
+			// The AccountID is not useful because users cannot actually use it for subsequent calls
 			AccountName: r.AWSAccountName,
 			RoleName:    r.AWSRoleName,
 		})
