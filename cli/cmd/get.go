@@ -45,6 +45,7 @@ var getCmd = &cobra.Command{
 	Example: "keyconjurer get <accountName/alias>",
 	Args:    cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
+		// TODO: Support aliases
 		if roleName == "" {
 			return ErrNoRoleProvided
 		}

@@ -20,6 +20,8 @@ var accountsCmd = &cobra.Command{
 	Long:    "Prints the list of accounts you have access to.",
 	Example: "keyconjurer accounts",
 	RunE: func(cmd *cobra.Command, args []string) error {
+		// TODO: List aliases
+
 		ctx := context.Background()
 		client, err := newClient()
 		if err != nil {
