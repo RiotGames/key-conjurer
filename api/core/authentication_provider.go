@@ -23,8 +23,11 @@ type User struct {
 
 // An Application is some SAML-enabled service that a user is entitled to.
 type Application struct {
-	ID   string
-	Name string
+	// LegacyID is used to enable legacy support for the old key-conjurer clients.
+	// This is not used past KeyConjurer version 2
+	LegacyID uint   `json:"id"`
+	ID       string `json:"@id"`
+	Name     string `json:"name"`
 }
 
 // A Role is something a user can 'assume' when accessing an application.

@@ -113,7 +113,11 @@ func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	var cfg settings.Settings
-	s := server{h: keyconjurer.NewHandler(&cfg)}
+	cfg, err := settings.NewSettings()
+	if err != nil {
+		panic(err)
+	}
+
+	s := server{h: keyconjurer.NewHandler(cfg)}
 	http.ListenAndServe("127.0.0.1:4000", &s)
 }

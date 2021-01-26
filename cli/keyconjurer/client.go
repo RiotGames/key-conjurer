@@ -190,15 +190,7 @@ func (c *Client) ListAccounts(ctx context.Context, opts *ListAccountsOptions) ([
 		return nil, err
 	}
 
-	var apps []core.Application
-	for _, app := range response.Apps {
-		apps = append(apps, core.Application{
-			ID:   app.AccountID,
-			Name: app.AccountName,
-		})
-	}
-
-	return apps, nil
+	return response.Apps, nil
 }
 
 type ListRolesOptions struct {

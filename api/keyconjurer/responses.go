@@ -78,7 +78,8 @@ func (r *Response) GetError(dest *error) error {
 // DataResponse returns a response that wraps the data in the correct format.
 // Error is always nil to make returning from a Lambda less cumbersome.
 func DataResponse(data interface{}) (Response, error) {
-	return Response{Success: true, Data: data}, nil
+	// Message must be "success" for legacy clients to correctly interpret it
+	return Response{Success: true, Message: "success", Data: data}, nil
 }
 
 var (

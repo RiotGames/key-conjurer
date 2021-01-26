@@ -5,10 +5,10 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"os"
 
 	"github.com/riotgames/key-conjurer/api/authenticators/duo"
 	"github.com/riotgames/key-conjurer/api/authenticators/okta"
+	onelogin "github.com/riotgames/key-conjurer/api/authenticators/onelogin_duo"
 	"github.com/riotgames/key-conjurer/api/aws"
 	"github.com/riotgames/key-conjurer/api/core"
 	"github.com/riotgames/key-conjurer/api/settings"
@@ -29,13 +29,14 @@ func NewHandler(cfg *settings.Settings) Handler {
 	}
 
 	providers := make(providerMap)
-	// TODO: must not get host/token from env but instead from settings
-	oktaProvider, err := okta.New(os.Getenv("OKTA_HOST"), os.Getenv("OKTA_TOKEN"), duo.New())
+	mfa := duo.New()
+	oktaProvider, err := okta.New(cfg.OktaHost, cfg.OktaToken, mfa)
 	if err != nil {
 		panic(err)
 	}
 
 	providers["okta"] = oktaProvider
+	providers["onelogin"] = onelogin.New(cfg, mfa)
 	return Handler{
 		// TODO: Change this to AWS KMS
 		crypt:                   core.NewCrypto(&core.PassThroughProvider{}),
@@ -78,10 +79,8 @@ type GetUserDataEvent struct {
 }
 
 type GetUserDataPayload struct {
-	// Devices is here for legacy purposes. It is always an empty array and it is not used by the client.
-	Devices              []Device          `json:"devices"`
-	Apps                 []UserDataAccount `json:"apps"`
-	EncryptedCredentials string            `json:"creds"`
+	Apps                 []core.Application `json:"apps"`
+	EncryptedCredentials string             `json:"creds"`
 }
 
 // GetUserDataEventHandler authenticates the user against OneLogin and retrieves a list of AWS application the user has available.
@@ -111,19 +110,13 @@ func (h *Handler) GetUserDataEventHandler(ctx context.Context, event GetUserData
 		return ErrorResponse(ErrCodeInternalServerError, "internal server error")
 	}
 
-	var apps []UserDataAccount
-	for _, app := range applications {
-		apps = append(apps, UserDataAccount{AccountID: app.ID, AccountName: app.Name})
-	}
-
 	ciphertext, err := h.crypt.Encrypt(ctx, creds)
 	if err != nil {
 		return ErrorResponse(ErrCodeUnableToEncrypt, "unable to encrypt credentials")
 	}
 
 	return DataResponse(GetUserDataPayload{
-		Devices:              []Device{},
-		Apps:                 apps,
+		Apps:                 applications,
 		EncryptedCredentials: ciphertext,
 	})
 }

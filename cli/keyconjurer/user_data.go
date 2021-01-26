@@ -177,7 +177,7 @@ func (u *UserData) UpdateFromServer(r api.GetUserDataPayload) {
 	// However, there are some shared properties.
 	var apps []*App
 	for _, app := range r.Apps {
-		apps = append(apps, &App{ID: app.AccountID, Name: app.AccountName})
+		apps = append(apps, &App{ID: app.ID, Name: app.Name})
 	}
 
 	u.Merge(UserData{Apps: apps, Creds: r.EncryptedCredentials})

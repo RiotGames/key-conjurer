@@ -55,8 +55,9 @@ func (a *Authenticator) ListApplications(ctx context.Context, user core.User) ([
 		}
 
 		awsAccounts = append(awsAccounts, core.Application{
-			ID:   app.AppInstanceId,
-			Name: app.Label,
+			LegacyID: 0,
+			ID:       app.AppInstanceId,
+			Name:     app.Label,
 		})
 	}
 

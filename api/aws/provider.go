@@ -47,10 +47,12 @@ func getRole(roleName string, response *core.SAMLResponse) (string, string, erro
 
 	roles := strings.Split(response.GetAttribute("https://aws.amazon.com/SAML/Attributes/Role"), ",")
 	if roleName == "" {
-		// This is a legacy client and thus has not provided a role to assume.
-		// In the past, we would just give them the first role in the list, but this might be buggy - unclear.
-		// We'll throw an error until we test this scenario.
-		return "", "", errors.New("legacy client support is not implemented at this time")
+		// This is for legacy support.
+		// Legacy clients would always retrieve the first two ARNs in the list, which would be
+		//   arn:aws:iam::[account-id]:role/[onelogin_role]
+		//   arn:aws:iam::[account-id]:saml-provider/[saml-provider]
+		// If we get weird breakages with Key Conjurer when it's deployed alongside legacy clients, this is almost certainly a culprit!
+		return roles[1], roles[0], nil
 	}
 
 	var roleARN string
