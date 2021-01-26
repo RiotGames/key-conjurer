@@ -10,7 +10,6 @@ import (
 	"syscall"
 
 	"github.com/riotgames/key-conjurer/api/core"
-	"github.com/riotgames/key-conjurer/cli/keyconjurer"
 	"golang.org/x/crypto/ssh/terminal"
 
 	"github.com/spf13/cobra"
@@ -63,13 +62,12 @@ var loginCmd = &cobra.Command{
 			return err
 		}
 
-		var ud keyconjurer.UserData
 		data, err := client.GetUserData(ctx, creds)
 		if err != nil {
 			return err
 		}
 
-		ud.UpdateFromServer(data)
-		return ud.SaveToFile(keyConjurerRcPath)
+		userData.UpdateFromServer(data)
+		return nil
 	},
 }

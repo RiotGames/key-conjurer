@@ -56,7 +56,7 @@ var getCmd = &cobra.Command{
 			return err
 		}
 
-		creds, err := loadCredentialsFromFile()
+		creds, err := userData.GetCredentials()
 		if err != nil {
 			return err
 		}

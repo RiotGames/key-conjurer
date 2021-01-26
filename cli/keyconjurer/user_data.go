@@ -5,19 +5,17 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
-	"path/filepath"
 
-	homedir "github.com/mitchellh/go-homedir"
 	"github.com/olekukonko/tablewriter"
 	"github.com/riotgames/key-conjurer/api/core"
 	api "github.com/riotgames/key-conjurer/api/keyconjurer"
 )
 
+var ErrNoCredentials error = errors.New("no credentials")
+
 // UserData stores all information related to the user
 type UserData struct {
-	filePath      string
 	Migrated      bool                `json:"migrated"`
 	Apps          []*App              `json:"apps"`
 	Accounts      map[string]*Account `json:"accounts"`
@@ -26,8 +24,13 @@ type UserData struct {
 	TimeRemaining uint                `json:"time_remaining"`
 }
 
-func (u *UserData) GetCredentials() core.Credentials {
-	return core.Credentials{Username: "encrypted", Password: u.Creds}
+func (u *UserData) GetCredentials() (core.Credentials, error) {
+	if u.Creds == "" {
+		// No credentials have been saved (or they have been cleared recently)
+		return core.Credentials{}, ErrNoCredentials
+	}
+
+	return core.Credentials{Username: "encrypted", Password: u.Creds}, nil
 }
 
 func (u *UserData) SetTTL(ttl uint) {
@@ -84,76 +87,19 @@ func (u *UserData) RemoveAlias(accountName string) bool {
 	return true
 }
 
-// Save writes the userData to the file provided overwriting the file if it exists
-func (u *UserData) Save() error {
-	output, err := json.Marshal(u)
-	if err != nil {
-		return errors.New("Unable to parse JSON")
-	}
-
-	file, err := os.Create(u.filePath)
-	if err != nil {
-		return fmt.Errorf("Unable to create %s reason: %w", u.filePath, err)
-	}
-	defer file.Close()
-	if _, err := file.Write(output); err != nil {
-		return fmt.Errorf("Unable to write %s reason: %w", u.filePath, err)
-	}
-	return nil
+// Write writes the userData to the file provided overwriting the file if it exists
+func (u *UserData) Write(w io.Writer) error {
+	enc := json.NewEncoder(w)
+	return enc.Encode(u)
 }
 
-// SaveToFile saves the UserData to the file system.
-func (u *UserData) SaveToFile(fp string) error {
-	expanded, err := homedir.Expand(fp)
-	if err == nil {
-		fp = expanded
-	}
-
-	dir := filepath.Dir(expanded)
-	if err := os.MkdirAll(dir, os.ModeDir|os.FileMode(0755)); err != nil {
-		return err
-	}
-
-	u.filePath = fp
-	return u.Save()
-}
-
-// LoadFromFile loads the UserData from a file.
-func (u *UserData) LoadFromFile(fp string) error {
-	expanded, err := homedir.Expand(fp)
-	if err == nil {
-		fp = expanded
-	}
-
-	dir := filepath.Dir(expanded)
-	if err := os.MkdirAll(dir, os.ModeDir|os.FileMode(0755)); err != nil {
-		return err
-	}
-
-	file, err := os.OpenFile(expanded, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
-	if err != nil {
-		return err
-	}
-	u.filePath = fp
-
-	defer file.Close()
-
-	if err := u.Read(file); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// Load populates all member values of userData using default values where needed
+// Reader populates all member values of userData using default values where needed
 func (u *UserData) Read(reader io.Reader) error {
-	body, err := ioutil.ReadAll(reader)
-	if err != nil {
-		return fmt.Errorf("unable to read %s: %w", u.filePath, err)
-	}
-
-	if err := json.Unmarshal(body, u); err != nil {
-		return fmt.Errorf("unable to read json in %s: %w", u.filePath, err)
+	dec := json.NewDecoder(reader)
+	// If we encounter an end of file, use the default values and don't treat it as an error
+	// This also conveniently allows someone to use /dev/null for the config file.
+	if err := dec.Decode(u); err != nil && !errors.Is(err, io.EOF) {
+		return err
 	}
 
 	if u.TTL < 1 {

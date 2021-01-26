@@ -5,8 +5,11 @@ import (
 	"fmt"
 	"net"
 	"net/url"
+	"os"
+	"path/filepath"
 	"strings"
 
+	"github.com/mitchellh/go-homedir"
 	"github.com/riotgames/key-conjurer/cli/keyconjurer"
 
 	"github.com/spf13/cobra"
@@ -19,6 +22,9 @@ var (
 	// This is set by the Makefile during build of the CLI. Don't use this.
 	defaultHost  string
 	authProvider string
+	// userData is a cache-like datastore for this application.
+	// It is loaded at app	lication start-up.
+	userData keyconjurer.UserData
 )
 
 func init() {
@@ -59,7 +65,40 @@ keyconjurer get <accountName>
 			return fmt.Errorf("invalid hostname: %w", err)
 		}
 
-		return nil
+		var fp string
+		if expanded, err := homedir.Expand(fp); err == nil {
+			fp = expanded
+		}
+
+		if err := os.MkdirAll(filepath.Dir(fp), os.ModeDir|os.FileMode(0755)); err != nil {
+			return err
+		}
+
+		file, err := os.OpenFile(fp, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+		if err != nil {
+			return err
+		}
+
+		return userData.Read(file)
+	},
+	PersistentPostRunE: func(*cobra.Command, []string) error {
+		var fp string
+		if expanded, err := homedir.Expand(keyConjurerRcPath); err == nil {
+			fp = expanded
+		}
+
+		dir := filepath.Dir(fp)
+		if err := os.MkdirAll(dir, os.ModeDir|os.FileMode(0755)); err != nil {
+			return err
+		}
+
+		file, err := os.Create(fp)
+		if err != nil {
+			return fmt.Errorf("unable to create %s reason: %w", fp, err)
+		}
+
+		defer file.Close()
+		return userData.Write(file)
 	},
 }
 

@@ -21,14 +21,13 @@ var accountsCmd = &cobra.Command{
 	Example: "keyconjurer accounts",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// TODO: List aliases
-
 		ctx := context.Background()
 		client, err := newClient()
 		if err != nil {
 			return err
 		}
 
-		creds, err := loadCredentialsFromFile()
+		creds, err := userData.GetCredentials()
 		if err != nil {
 			return err
 		}

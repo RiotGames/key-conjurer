@@ -1,8 +1,6 @@
 package cmd
 
 import (
-	"github.com/riotgames/key-conjurer/cli/keyconjurer"
-
 	"github.com/spf13/cobra"
 )
 
@@ -13,15 +11,6 @@ var aliasCmd = &cobra.Command{
 	Args:    cobra.ExactArgs(2),
 	Example: "keyconjurer alias FooAccount Bar",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		var ud keyconjurer.UserData
-		if err := ud.LoadFromFile(keyConjurerRcPath); err != nil {
-			return err
-		}
-
-		if err := ud.NewAlias(args[0], args[1]); err != nil {
-			return err
-		}
-
-		return ud.Save()
+		return userData.NewAlias(args[0], args[1])
 	},
 }

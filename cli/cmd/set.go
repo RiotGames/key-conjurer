@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/riotgames/key-conjurer/cli/keyconjurer"
-
 	"github.com/spf13/cobra"
 )
 
@@ -31,13 +29,8 @@ var setTTLCmd = &cobra.Command{
 			return fmt.Errorf("unable to parse value %s", args[0])
 		}
 
-		var ud keyconjurer.UserData
-		if err := ud.LoadFromFile(keyConjurerRcPath); err != nil {
-			return err
-		}
-
-		ud.SetTTL(uint(ttl))
-		return ud.Save()
+		userData.SetTTL(uint(ttl))
+		return nil
 	},
 }
 
@@ -52,12 +45,7 @@ var setTimeRemainingCmd = &cobra.Command{
 			return fmt.Errorf("unable to parse value %s", args[0])
 		}
 
-		var ud keyconjurer.UserData
-		if err := ud.LoadFromFile(keyConjurerRcPath); err != nil {
-			return err
-		}
-
-		ud.SetTimeRemaining(uint(timeRemaining))
-		return ud.Save()
+		userData.SetTimeRemaining(uint(timeRemaining))
+		return nil
 	},
 }
