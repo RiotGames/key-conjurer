@@ -132,12 +132,19 @@ type GetTemporaryCredentialEvent struct {
 	AuthenticationProvider AuthenticationProviderName `json:"authentication_provider"`
 }
 
-var errTimeoutBadSize = errors.New("ttl must be at least 1 hour and less than 8 hours")
+var (
+	errTimeoutBadSize = errors.New("ttl must be at least 1 hour and less than 8 hours")
+	errNoRoleProvided = errors.New("a role must be specified when using this authentication provider")
+)
 
 // Validate validates that the event has appropriate parameters
 func (e GetTemporaryCredentialEvent) Validate() error {
 	if e.TimeoutInHours < 1 || e.TimeoutInHours > 8 {
 		return errTimeoutBadSize
+	}
+
+	if e.RoleName == "" && e.AuthenticationProvider == AuthenticationProviderOkta {
+		return errNoRoleProvided
 	}
 
 	return nil

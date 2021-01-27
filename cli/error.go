@@ -31,8 +31,8 @@ func (u *UsageError) Error() string {
 	return u.ShortMessage
 }
 
-var (
-	// ErrNoCredentials indicates the user attempted to use a command that requires credentials to be stored on disk but had not logged in beforehand.
-	ErrNoCredentials  error = &UsageError{ShortMessage: "no credentials", Help: "You must log in using `keyconjurer login` before using this command"}
-	ErrNoRoleProvided error = &UsageError{ShortMessage: "no role provided", Help: "The --role flag must be specified when using this command"}
-)
+// ErrNoCredentials indicates the user attempted to use a command that requires credentials to be stored on disk but had not logged in beforehand.
+var ErrNoCredentials error = &UsageError{
+	ShortMessage: "no credentials",
+	Help:         "You must log in using `keyconjurer login` before using this command",
+}

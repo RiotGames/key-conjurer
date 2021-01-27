@@ -41,10 +41,6 @@ var getCmd = &cobra.Command{
 	Example: "keyconjurer get <accountName/alias>",
 	Args:    cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		if roleName == "" {
-			return ErrNoRoleProvided
-		}
-
 		ctx := context.Background()
 		client, err := newClient()
 		if err != nil {
@@ -76,6 +72,7 @@ var getCmd = &cobra.Command{
 		if account, ok := userData.FindAccount(args[0]); ok {
 			applicationID = account.ID
 		}
+
 		credentials, err := client.GetCredentials(ctx, &GetCredentialsOptions{
 			Credentials:            creds,
 			ApplicationID:          applicationID,
