@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"os"
 
 	"github.com/olekukonko/tablewriter"
 	"github.com/riotgames/key-conjurer/api/core"
@@ -13,12 +12,14 @@ import (
 	"github.com/riotgames/key-conjurer/cli/keyconjurer"
 )
 
+type accountSet map[string]*keyconjurer.Account
+
 // UserData stores all information related to the user
 type UserData struct {
-	Accounts      map[string]*keyconjurer.Account `json:"accounts"`
-	Creds         string                          `json:"creds"`
-	TTL           uint                            `json:"ttl"`
-	TimeRemaining uint                            `json:"time_remaining"`
+	Accounts      accountSet `json:"accounts"`
+	Creds         string     `json:"creds"`
+	TTL           uint       `json:"ttl"`
+	TimeRemaining uint       `json:"time_remaining"`
 }
 
 func (u *UserData) GetCredentials() (core.Credentials, error) {
@@ -48,8 +49,8 @@ func (u *UserData) FindAccount(name string) (*keyconjurer.Account, bool) {
 	return nil, false
 }
 
-func (u *UserData) ListAccounts() error {
-	accountTable := tablewriter.NewWriter(os.Stdout)
+func (u *UserData) ListAccounts(w io.Writer) error {
+	accountTable := tablewriter.NewWriter(w)
 	accountTable.SetHeader([]string{"ID", "Name", "Alias"})
 
 	for _, acc := range u.Accounts {
@@ -118,6 +119,39 @@ func (u *UserData) UpdateFromServer(r api.GetUserDataPayload) {
 	}
 
 	u.Merge(UserData{Accounts: accounts, Creds: r.EncryptedCredentials})
+}
+
+func (u *UserData) mergeAccounts(accounts []core.Application) {
+	// This could be improved by simply iterating over the stored accounts, applying aliases to the new accounts and then overwriting the map
+	m := map[string]core.Application{}
+	for _, acc := range accounts {
+		m[acc.ID] = acc
+	}
+
+	deleted := []string{}
+	for k := range u.Accounts {
+		_, ok := m[k]
+		if !ok {
+			deleted = append(deleted, k)
+		}
+	}
+
+	for _, acc := range accounts {
+		entry, ok := u.Accounts[acc.ID]
+		if !ok {
+			entry := &keyconjurer.Account{ID: acc.ID, Name: acc.Name}
+			entry.DefaultAlias()
+			u.Accounts[acc.ID] = entry
+		} else {
+			entry.Name = acc.Name
+			entry.ID = acc.ID
+			entry.DefaultAlias()
+		}
+	}
+
+	for _, k := range deleted {
+		delete(u.Accounts, k)
+	}
 }
 
 // Merge merges Apps (from API) into Accounts since command line uses 'accounts' and client code should be easy to understand

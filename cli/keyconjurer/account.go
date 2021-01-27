@@ -6,9 +6,10 @@ import (
 
 // Account is used to store information related to the AWS OneLogin App/AWS Account
 type Account struct {
-	ID    string `json:"id"`
-	Name  string `json:"name"`
-	Alias string `json:"alias"`
+	LegacyID uint   `json:"id"`
+	ID       string `json:"@id"`
+	Name     string `json:"name"`
+	Alias    string `json:"alias"`
 }
 
 func (a *Account) NormalizeName() string {

@@ -4,7 +4,6 @@ import (
 	"context"
 	"os"
 
-	"github.com/olekukonko/tablewriter"
 	api "github.com/riotgames/key-conjurer/api/keyconjurer"
 	"github.com/riotgames/key-conjurer/cli/keyconjurer"
 	"github.com/spf13/cobra"
@@ -20,7 +19,6 @@ var accountsCmd = &cobra.Command{
 	Long:    "Prints the list of accounts you have access to.",
 	Example: "keyconjurer accounts",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		// TODO: List aliases
 		ctx := context.Background()
 		client, err := newClient()
 		if err != nil {
@@ -41,13 +39,8 @@ var accountsCmd = &cobra.Command{
 			return err
 		}
 
-		tw := tablewriter.NewWriter(os.Stdout)
-		tw.SetHeader([]string{"Account ID", "Account Name"})
-		for _, account := range accounts {
-			tw.Append([]string{account.ID, account.Name})
-		}
-
-		tw.Render()
+		userData.mergeAccounts(accounts)
+		userData.ListAccounts(os.Stdout)
 		return nil
 	},
 }
