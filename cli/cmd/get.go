@@ -77,13 +77,13 @@ var getCmd = &cobra.Command{
 			ttl = 8
 		}
 
+		var applicationID = args[0]
+		if account, ok := userData.FindAccount(args[0]); ok {
+			applicationID = account.ID
+		}
 		credentials, err := client.GetCredentials(ctx, &keyconjurer.GetCredentialsOptions{
-			Credentials: creds,
-			// TODO: We need to turn args[0] into an application ID for our authentication provider.
-			// This either needs to happen on the client or the server
-			// If the user provides `okta-test-one`, for example, that won't work because that's not an application within Okta.
-
-			ApplicationID:          args[0],
+			Credentials:            creds,
+			ApplicationID:          applicationID,
 			RoleName:               roleName,
 			TimeoutInHours:         uint8(ttl),
 			AuthenticationProvider: authProvider,
