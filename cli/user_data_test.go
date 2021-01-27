@@ -26,8 +26,8 @@ func TestSetTimeRemaining(t *testing.T) {
 
 func TestFindAccount(t *testing.T) {
 	u := &UserData{
-		Accounts: map[string]*keyconjurer.Account{
-			"1": &keyconjurer.Account{
+		Accounts: map[string]*Account{
+			"1": &Account{
 				ID:    "1",
 				Name:  "testaccount",
 				Alias: "testaccount",
@@ -49,8 +49,8 @@ func TestFindAccount(t *testing.T) {
 
 func TestNewAlias(t *testing.T) {
 	u := &UserData{
-		Accounts: map[string]*keyconjurer.Account{
-			"1": &keyconjurer.Account{
+		Accounts: map[string]*Account{
+			"1": &Account{
 				ID:    "1",
 				Name:  "testaccount",
 				Alias: "testaccount",
@@ -68,8 +68,8 @@ func TestNewAlias(t *testing.T) {
 
 func TestRemoveAlias(t *testing.T) {
 	u := &UserData{
-		Accounts: map[string]*keyconjurer.Account{
-			"1": &keyconjurer.Account{
+		Accounts: map[string]*Account{
+			"1": &Account{
 				ID:    "1",
 				Name:  "testaccount",
 				Alias: "totallyacoolalias",
@@ -95,8 +95,8 @@ func TestRemoveAlias(t *testing.T) {
 func TestMergeUserData(t *testing.T) {
 	u := &UserData{}
 	toCopy := UserData{
-		Accounts: map[string]*keyconjurer.Account{
-			"1": &keyconjurer.Account{
+		Accounts: map[string]*Account{
+			"1": &Account{
 				ID:    "1",
 				Name:  "testaccount",
 				Alias: "totallyacoolalias",

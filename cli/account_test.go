@@ -13,22 +13,22 @@ func TestAccountFuncs(t *testing.T) {
 		Alias: "",
 	}
 
-	test.defaultAlias()
+	test.DefaultAlias()
 
 	assert.Equal(t, test.Alias, "test", "AWS - Test Account should become `test`")
 
-	test.setAlias("supercooltestalias")
+	test.SetAlias("supercooltestalias")
 
 	assert.Equal(t, test.Alias, "supercooltestalias", "Alias should have been set")
 
-	test.setAlias("secondalias")
+	test.SetAlias("secondalias")
 
 	assert.Equal(t, test.Alias, "secondalias", "Alias should have been reassigned")
 
-	assert.Equal(t, test.isNameMatch("Test Account"), true, "Should be able to name match with normalized name")
+	assert.Equal(t, test.IsNameMatch("Test Account"), true, "Should be able to name match with normalized name")
 
-	assert.Equalf(t, test.isNameMatch("secondalias"), true, "Should be able to name match %s with alias %s", "secondalias", test.Alias)
+	assert.Equalf(t, test.IsNameMatch("secondalias"), true, "Should be able to name match %s with alias %s", "secondalias", test.Alias)
 
-	assert.Equal(t, test.normalizeName(), "Test Account", true, "Should match normalized name")
+	assert.Equal(t, test.NormalizeName(), "Test Account", true, "Should match normalized name")
 
 }
