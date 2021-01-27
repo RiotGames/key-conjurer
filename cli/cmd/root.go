@@ -75,7 +75,9 @@ keyconjurer get <accountName>
 		}
 
 		file, err := os.OpenFile(fp, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
-		if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		} else if err != nil {
 			return err
 		}
 
