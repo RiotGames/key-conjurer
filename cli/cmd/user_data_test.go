@@ -1,8 +1,9 @@
-package keyconjurer
+package cmd
 
 import (
 	"testing"
 
+	"github.com/riotgames/key-conjurer/cli/keyconjurer"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -26,8 +27,8 @@ func TestSetTimeRemaining(t *testing.T) {
 
 func TestFindAccount(t *testing.T) {
 	u := &UserData{
-		Accounts: map[string]*Account{
-			"1": &Account{
+		Accounts: map[string]*keyconjurer.Account{
+			"1": &keyconjurer.Account{
 				ID:    "1",
 				Name:  "testaccount",
 				Alias: "testaccount",
@@ -49,8 +50,8 @@ func TestFindAccount(t *testing.T) {
 
 func TestNewAlias(t *testing.T) {
 	u := &UserData{
-		Accounts: map[string]*Account{
-			"1": &Account{
+		Accounts: map[string]*keyconjurer.Account{
+			"1": &keyconjurer.Account{
 				ID:    "1",
 				Name:  "testaccount",
 				Alias: "testaccount",
@@ -68,8 +69,8 @@ func TestNewAlias(t *testing.T) {
 
 func TestRemoveAlias(t *testing.T) {
 	u := &UserData{
-		Accounts: map[string]*Account{
-			"1": &Account{
+		Accounts: map[string]*keyconjurer.Account{
+			"1": &keyconjurer.Account{
 				ID:    "1",
 				Name:  "testaccount",
 				Alias: "totallyacoolalias",
@@ -93,11 +94,10 @@ func TestRemoveAlias(t *testing.T) {
 }
 
 func TestMergeUserData(t *testing.T) {
-	t.Log("testing merge from Apps to Accounts")
 	u := &UserData{}
 	toCopy := UserData{
-		Apps: []*App{
-			&App{
+		Accounts: map[string]*keyconjurer.Account{
+			"1": &keyconjurer.Account{
 				ID:    "1",
 				Name:  "testaccount",
 				Alias: "totallyacoolalias",
@@ -106,24 +106,6 @@ func TestMergeUserData(t *testing.T) {
 	}
 
 	u.Merge(toCopy)
-
-	accountFound, ok := u.FindAccount("totallyacoolalias")
-	assert.Equal(t, true, accountFound != nil, "account should exist and be found by alias")
-	assert.True(t, ok, "account should exist and no error generated")
-}
-
-func TestMigrateFunction(t *testing.T) {
-	u := &UserData{
-		Apps: []*App{
-			&App{
-				ID:    "1",
-				Name:  "testaccount",
-				Alias: "totallyacoolalias",
-			},
-		},
-	}
-
-	u.moveAppToAccounts()
 
 	accountFound, ok := u.FindAccount("totallyacoolalias")
 	assert.Equal(t, true, accountFound != nil, "account should exist and be found by alias")

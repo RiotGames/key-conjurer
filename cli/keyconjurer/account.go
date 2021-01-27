@@ -11,11 +11,11 @@ type Account struct {
 	Alias string `json:"alias"`
 }
 
-func (a *Account) normalizeName() string {
+func (a *Account) NormalizeName() string {
 	return strings.Replace(a.Name, "AWS - ", "", -1)
 }
 
-func (a *Account) defaultAlias() {
+func (a *Account) DefaultAlias() {
 	if a.Alias == "" {
 		alias := strings.Replace(a.Name, "AWS - ", "", -1)
 		alias = strings.Split(alias, " ")[0]
@@ -23,14 +23,14 @@ func (a *Account) defaultAlias() {
 	}
 }
 
-func (a *Account) isNameMatch(name string) bool {
+func (a *Account) IsNameMatch(name string) bool {
 	// Purposefully not checking the lowercase version of app.Alias
 	//  as the user should match the alias provided
 	if strings.ToLower(a.Name) == strings.ToLower(name) {
 		return true
 	}
 
-	if strings.ToLower(a.normalizeName()) == strings.ToLower(name) {
+	if strings.ToLower(a.NormalizeName()) == strings.ToLower(name) {
 		return true
 	}
 
@@ -41,42 +41,10 @@ func (a *Account) isNameMatch(name string) bool {
 	return false
 }
 
-func (a *Account) setAlias(alias string) {
+func (a *Account) SetAlias(alias string) {
 	if alias == "" {
-		a.defaultAlias()
+		a.DefaultAlias()
 	} else {
 		a.Alias = alias
 	}
-}
-
-// App is being depricated in favor of Accounts
-//   to keep underlying data structure names the same as cli names
-type App struct {
-	ID    string `json:"id"`
-	Name  string `json:"name"`
-	Alias string `json:"alias"`
-}
-
-func (a *App) normalizeName() string {
-	return strings.Replace(a.Name, "AWS - ", "", -1)
-}
-
-func (a *App) defaultAlias() {
-	if a.Alias == "" {
-		alias := strings.Replace(a.Name, "AWS - ", "", -1)
-		alias = strings.Split(alias, " ")[0]
-		a.Alias = alias
-	}
-}
-
-func (a *App) isNameMatch(name string) bool {
-	// Purposefully not checking the lowercase version of app.Alias
-	//  as the user should match the alias provided
-	return strings.ToLower(a.Name) == strings.ToLower(name) ||
-		strings.ToLower(a.normalizeName()) == strings.ToLower(name) ||
-		a.Alias == name
-}
-
-func (a *App) setAlias(alias string) {
-	a.Alias = alias
 }

@@ -1,4 +1,4 @@
-package keyconjurer
+package cmd
 
 import (
 	"encoding/json"
@@ -10,18 +10,15 @@ import (
 	"github.com/olekukonko/tablewriter"
 	"github.com/riotgames/key-conjurer/api/core"
 	api "github.com/riotgames/key-conjurer/api/keyconjurer"
+	"github.com/riotgames/key-conjurer/cli/keyconjurer"
 )
-
-var ErrNoCredentials error = errors.New("no credentials")
 
 // UserData stores all information related to the user
 type UserData struct {
-	Migrated      bool                `json:"migrated"`
-	Apps          []*App              `json:"apps"`
-	Accounts      map[string]*Account `json:"accounts"`
-	Creds         string              `json:"creds"`
-	TTL           uint                `json:"ttl"`
-	TimeRemaining uint                `json:"time_remaining"`
+	Accounts      map[string]*keyconjurer.Account `json:"accounts"`
+	Creds         string                          `json:"creds"`
+	TTL           uint                            `json:"ttl"`
+	TimeRemaining uint                            `json:"time_remaining"`
 }
 
 func (u *UserData) GetCredentials() (core.Credentials, error) {
@@ -41,9 +38,9 @@ func (u *UserData) SetTimeRemaining(timeRemaining uint) {
 	u.TimeRemaining = timeRemaining
 }
 
-func (u *UserData) FindAccount(name string) (*Account, bool) {
+func (u *UserData) FindAccount(name string) (*keyconjurer.Account, bool) {
 	for _, account := range u.Accounts {
-		if account.isNameMatch(name) {
+		if account.IsNameMatch(name) {
 			return account, true
 		}
 	}
@@ -67,8 +64,8 @@ func (u *UserData) ListAccounts() error {
 // NewAlias links an AWS account to a new name for use w/ cli
 func (u *UserData) NewAlias(accountName string, alias string) error {
 	for _, account := range u.Accounts {
-		if account.isNameMatch(accountName) {
-			account.setAlias(alias)
+		if account.IsNameMatch(accountName) {
+			account.SetAlias(alias)
 			return nil
 		}
 	}
@@ -83,7 +80,7 @@ func (u *UserData) RemoveAlias(accountName string) bool {
 	}
 
 	account.Alias = ""
-	account.defaultAlias()
+	account.DefaultAlias()
 	return true
 }
 
@@ -103,30 +100,24 @@ func (u *UserData) Read(reader io.Reader) error {
 	}
 
 	if u.TTL < 1 {
-		u.SetTTL(DefaultTTL)
-	}
-
-	if !u.Migrated {
-		u.moveAppToAccounts()
+		u.SetTTL(keyconjurer.DefaultTTL)
 	}
 
 	return nil
 }
 
 func (u *UserData) SetDefaults() {
-	u.TTL = DefaultTTL
-	u.TimeRemaining = DefaultTimeRemaining
+	u.TTL = keyconjurer.DefaultTTL
+	u.TimeRemaining = keyconjurer.DefaultTimeRemaining
 }
 
 func (u *UserData) UpdateFromServer(r api.GetUserDataPayload) {
-	// This is a bit of a bodge because the server does not actually return a UserData instance but an api.GetUserDataPayload instance.
-	// However, there are some shared properties.
-	var apps []*App
+	var accounts map[string]*keyconjurer.Account
 	for _, app := range r.Apps {
-		apps = append(apps, &App{ID: app.ID, Name: app.Name})
+		accounts[app.ID] = &keyconjurer.Account{ID: app.ID, Name: app.Name}
 	}
 
-	u.Merge(UserData{Apps: apps, Creds: r.EncryptedCredentials})
+	u.Merge(UserData{Accounts: accounts, Creds: r.EncryptedCredentials})
 }
 
 // Merge merges Apps (from API) into Accounts since command line uses 'accounts' and client code should be easy to understand
@@ -141,60 +132,24 @@ func (u *UserData) Merge(toCopy UserData) {
 		u.TimeRemaining = toCopy.TimeRemaining
 	}
 
-	// merge in app and accounts
-	//  still use apps but populate accounts
-	for _, app := range toCopy.Apps {
-		app.defaultAlias()
-	}
-
 	if u.Accounts == nil {
-		u.Accounts = map[string]*Account{}
+		u.Accounts = map[string]*keyconjurer.Account{}
 	}
 
-	// since accounts/app are immutable
-	// only add if they dont already exist
-	for _, app := range toCopy.Apps {
-		if _, ok := u.Accounts[app.ID]; !ok {
-			acc := &Account{
-				ID:    app.ID,
-				Alias: app.Alias,
-				Name:  app.Name,
-			}
-			acc.defaultAlias()
-			u.Accounts[acc.ID] = acc
+	for _, app := range toCopy.Accounts {
+		acc := &keyconjurer.Account{
+			ID:    app.ID,
+			Alias: app.Alias,
+			Name:  app.Name,
 		}
+		acc.DefaultAlias()
+		u.Accounts[acc.ID] = acc
 	}
 
-	// delete old not currently in accounts
 	for key := range u.Accounts {
-		keyInList := false
-		for _, app := range toCopy.Apps {
-			if key == app.ID {
-				keyInList = true
-				break
-			}
-		}
-
-		if !keyInList {
+		_, ok := toCopy.Accounts[key]
+		if !ok {
 			delete(u.Accounts, key)
 		}
 	}
-}
-
-func (u *UserData) moveAppToAccounts() {
-	if u.Accounts == nil {
-		u.Accounts = map[string]*Account{}
-	}
-
-	for _, app := range u.Apps {
-		if _, ok := u.Accounts[app.ID]; !ok {
-			u.Accounts[app.ID] = &Account{
-				Name:  app.Name,
-				ID:    app.ID,
-				Alias: app.Alias,
-			}
-		}
-	}
-
-	u.Migrated = true
 }

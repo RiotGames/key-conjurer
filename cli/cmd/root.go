@@ -24,7 +24,7 @@ var (
 	authProvider string
 	// userData is a cache-like datastore for this application.
 	// It is loaded at app	lication start-up.
-	userData keyconjurer.UserData
+	userData UserData
 )
 
 func init() {
@@ -65,7 +65,7 @@ keyconjurer get <accountName>
 			return fmt.Errorf("invalid hostname: %w", err)
 		}
 
-		var fp string
+		fp := keyConjurerRcPath
 		if expanded, err := homedir.Expand(fp); err == nil {
 			fp = expanded
 		}

@@ -147,8 +147,6 @@ func (c *Client) GetCredentials(ctx context.Context, opts *GetCredentialsOptions
 
 // GetUserData returns data on the user stored in the API.
 func (c *Client) GetUserData(ctx context.Context, creds core.Credentials) (api.GetUserDataPayload, error) {
-	// TODO: This is broken; the server does not return a UserData struct but an api.GetUserDataPayload struct
-	var ud UserData
 	request := api.GetUserDataEvent{
 		Credentials:            creds,
 		AuthenticationProvider: api.AuthenticationProviderOkta,
@@ -160,7 +158,7 @@ func (c *Client) GetUserData(ctx context.Context, creds core.Credentials) (api.G
 	}
 
 	var data api.GetUserDataPayload
-	return data, c.do(ctx, "POST", "/get_user_data", b, &ud)
+	return data, c.do(ctx, "POST", "/get_user_data", b, &data)
 }
 
 type ListAccountsOptions struct {

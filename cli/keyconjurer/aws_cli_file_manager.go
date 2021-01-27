@@ -32,7 +32,7 @@ type AWSCliEntry struct {
 }
 
 func NewAWSCliEntry(c *AWSCredentials, a *Account) *AWSCliEntry {
-	a.defaultAlias()
+	a.DefaultAlias()
 
 	return &AWSCliEntry{
 		profileName: a.Alias,
