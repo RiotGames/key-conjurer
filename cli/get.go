@@ -30,8 +30,6 @@ func init() {
 	getCmd.Flags().UintVarP(&timeRemaining, "time-remaining", "t", DefaultTimeRemaining, "Request new keys if there are no keys in the environment or the current keys expire within <time-remaining> minutes. Defaults to 60.")
 	getCmd.Flags().StringVarP(&outputType, "out", "o", outputTypeEnvironmentVariable, "Format to save new credentials in. Supported outputs: env, awscli")
 	getCmd.Flags().StringVarP(&awsCliPath, "awscli", "", "~/.aws/", "Path for directory used by the aws-cli tool. Default is \"~/.aws\".")
-	// TODO: This flag should only be required if the user has not used this command before.
-	// If the user has used this command before, we should use their previously selected role persisted in userdata
 	getCmd.Flags().StringVar(&roleName, "role", "", "The name of the role to assume.")
 	getCmd.Flags().StringVar(&authProvider, "auth-provider", keyconjurer.AuthenticationProviderOkta, "The authentication provider to use.")
 }
@@ -43,7 +41,6 @@ var getCmd = &cobra.Command{
 	Example: "keyconjurer get <accountName/alias>",
 	Args:    cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		// TODO: Support aliases
 		if roleName == "" {
 			return ErrNoRoleProvided
 		}

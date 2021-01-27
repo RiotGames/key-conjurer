@@ -186,7 +186,6 @@ func (h *Handler) GetTemporaryCredentialEventHandler(ctx context.Context, event 
 	}
 
 	return DataResponse(GetTemporaryCredentialsPayload{
-		// TODO: This needs to be the ID of the AWS account, not the ID of the Okta application.
 		AccountID:       event.AppID,
 		AccessKeyID:     *sts.AccessKeyID,
 		SecretAccessKey: *sts.SecretAccessKey,
