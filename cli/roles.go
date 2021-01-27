@@ -10,7 +10,7 @@ import (
 )
 
 func init() {
-	rolesCmd.Flags().StringVar(&authProvider, "auth-provider", keyconjurer.AuthenticationProviderOkta, "The authentication provider to use when interacting with the server.")
+	rolesCmd.Flags().StringVar(&authProvider, "provider", keyconjurer.AuthenticationProviderOkta, "The authentication provider to use when interacting with the server.")
 }
 
 var rolesCmd = &cobra.Command{

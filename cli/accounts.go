@@ -9,7 +9,7 @@ import (
 )
 
 func init() {
-	accountsCmd.Flags().StringVar(&authProvider, "auth-provider", keyconjurer.AuthenticationProviderOkta, "The authentication provider to use when interacting with the server.")
+	accountsCmd.Flags().StringVar(&authProvider, "provider", keyconjurer.AuthenticationProviderOkta, "The authentication provider to use when interacting with the server.")
 }
 
 var accountsCmd = &cobra.Command{

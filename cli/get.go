@@ -31,7 +31,7 @@ func init() {
 	getCmd.Flags().StringVarP(&outputType, "out", "o", outputTypeEnvironmentVariable, "Format to save new credentials in. Supported outputs: env, awscli")
 	getCmd.Flags().StringVarP(&awsCliPath, "awscli", "", "~/.aws/", "Path for directory used by the aws-cli tool. Default is \"~/.aws\".")
 	getCmd.Flags().StringVar(&roleName, "role", "", "The name of the role to assume.")
-	getCmd.Flags().StringVar(&authProvider, "auth-provider", keyconjurer.AuthenticationProviderOkta, "The authentication provider to use.")
+	getCmd.Flags().StringVar(&authProvider, "provider", keyconjurer.AuthenticationProviderOkta, "The authentication provider to use.")
 }
 
 var getCmd = &cobra.Command{
