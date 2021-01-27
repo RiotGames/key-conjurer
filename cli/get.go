@@ -1,12 +1,10 @@
-package cmd
+package main
 
 import (
 	"context"
 	"fmt"
 
-	api "github.com/riotgames/key-conjurer/api/keyconjurer"
-	"github.com/riotgames/key-conjurer/cli/keyconjurer"
-
+	"github.com/riotgames/key-conjurer/api/keyconjurer"
 	"github.com/spf13/cobra"
 )
 
@@ -29,13 +27,13 @@ var permittedOutputTypes = []string{outputTypeAWSCredentialsFile, outputTypeEnvi
 
 func init() {
 	getCmd.Flags().UintVar(&ttl, "ttl", 1, "The key timeout in hours from 1 to 8.")
-	getCmd.Flags().UintVarP(&timeRemaining, "time-remaining", "t", keyconjurer.DefaultTimeRemaining, "Request new keys if there are no keys in the environment or the current keys expire within <time-remaining> minutes. Defaults to 60.")
+	getCmd.Flags().UintVarP(&timeRemaining, "time-remaining", "t", DefaultTimeRemaining, "Request new keys if there are no keys in the environment or the current keys expire within <time-remaining> minutes. Defaults to 60.")
 	getCmd.Flags().StringVarP(&outputType, "out", "o", outputTypeEnvironmentVariable, "Format to save new credentials in. Supported outputs: env, awscli")
 	getCmd.Flags().StringVarP(&awsCliPath, "awscli", "", "~/.aws/", "Path for directory used by the aws-cli tool. Default is \"~/.aws\".")
 	// TODO: This flag should only be required if the user has not used this command before.
 	// If the user has used this command before, we should use their previously selected role persisted in userdata
 	getCmd.Flags().StringVar(&roleName, "role", "", "The name of the role to assume.")
-	getCmd.Flags().StringVar(&authProvider, "auth-provider", api.AuthenticationProviderOkta, "The authentication provider to use.")
+	getCmd.Flags().StringVar(&authProvider, "auth-provider", keyconjurer.AuthenticationProviderOkta, "The authentication provider to use.")
 }
 
 var getCmd = &cobra.Command{
@@ -81,7 +79,7 @@ var getCmd = &cobra.Command{
 		if account, ok := userData.FindAccount(args[0]); ok {
 			applicationID = account.ID
 		}
-		credentials, err := client.GetCredentials(ctx, &keyconjurer.GetCredentialsOptions{
+		credentials, err := client.GetCredentials(ctx, &GetCredentialsOptions{
 			Credentials:            creds,
 			ApplicationID:          applicationID,
 			RoleName:               roleName,
@@ -97,9 +95,9 @@ var getCmd = &cobra.Command{
 		case outputTypeEnvironmentVariable:
 			credentials.PrintCredsForEnv()
 		case outputTypeAWSCredentialsFile:
-			acc := keyconjurer.Account{ID: args[0], Name: args[0]}
-			newCliEntry := keyconjurer.NewAWSCliEntry(credentials, &acc)
-			return keyconjurer.SaveAWSCredentialInCLI(awsCliPath, newCliEntry)
+			acc := Account{ID: args[0], Name: args[0]}
+			newCliEntry := NewAWSCliEntry(credentials, &acc)
+			return SaveAWSCredentialInCLI(awsCliPath, newCliEntry)
 		default:
 			return fmt.Errorf("%s is an invalid output type", outputType)
 		}

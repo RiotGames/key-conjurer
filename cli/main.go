@@ -4,17 +4,15 @@ import (
 	"errors"
 	"fmt"
 	"os"
-
-	"github.com/riotgames/key-conjurer/cli/cmd"
 )
 
 func main() {
-	err := cmd.Execute()
+	err := Execute()
 	if err == nil {
 		return
 	}
 
-	var usageErr *cmd.UsageError
+	var usageErr *UsageError
 	if errors.As(err, &usageErr) {
 		fmt.Fprintln(os.Stderr, usageErr.Help)
 		os.Exit(1)

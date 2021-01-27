@@ -1,4 +1,4 @@
-package keyconjurer
+package main
 
 import (
 	"testing"

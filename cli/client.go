@@ -1,4 +1,4 @@
-package keyconjurer
+package main
 
 import (
 	"bytes"
@@ -15,11 +15,11 @@ import (
 
 	rootcerts "github.com/hashicorp/go-rootcerts"
 	"github.com/riotgames/key-conjurer/api/core"
-	api "github.com/riotgames/key-conjurer/api/keyconjurer"
+	"github.com/riotgames/key-conjurer/api/keyconjurer"
 )
 
 // client and version are injected at compile time, refer to consts.go
-var props api.ClientProperties = api.ClientProperties{
+var props keyconjurer.ClientProperties = keyconjurer.ClientProperties{
 	Name:    ClientName,
 	Version: Version,
 }
@@ -43,8 +43,8 @@ type Client struct {
 	http     *http.Client
 }
 
-// New creates a new client with the given hostname.
-func New(hostname string) (Client, error) {
+// NewClient creates a new client with the given hostname.
+func NewClient(hostname string) (Client, error) {
 	certs, err := rootcerts.LoadSystemCAs()
 	if err != nil {
 		return Client{}, fmt.Errorf("Could not load System root CA files. Reason: %v", err)
@@ -88,7 +88,7 @@ func (c *Client) do(ctx context.Context, method, url string, data []byte, respon
 		return errUnspecifiedServerError
 	}
 
-	var response api.Response
+	var response keyconjurer.Response
 	if err := json.Unmarshal(body, &response); err != nil {
 		return errInvalidJSONResponse
 	}
@@ -111,12 +111,12 @@ type GetCredentialsOptions struct {
 	ApplicationID          string
 	TimeoutInHours         uint8
 	RoleName               string
-	AuthenticationProvider api.AuthenticationProviderName
+	AuthenticationProvider keyconjurer.AuthenticationProviderName
 }
 
 // GetCredentials requests a set of temporary credentials for the requested AWS account and returns them.
 func (c *Client) GetCredentials(ctx context.Context, opts *GetCredentialsOptions) (*AWSCredentials, error) {
-	request := api.GetTemporaryCredentialEvent{
+	request := keyconjurer.GetTemporaryCredentialEvent{
 		Credentials:            opts.Credentials,
 		AppID:                  opts.ApplicationID,
 		TimeoutInHours:         opts.TimeoutInHours,
@@ -129,7 +129,7 @@ func (c *Client) GetCredentials(ctx context.Context, opts *GetCredentialsOptions
 		return nil, err
 	}
 
-	var response api.GetTemporaryCredentialsPayload
+	var response keyconjurer.GetTemporaryCredentialsPayload
 	if err := c.do(ctx, "POST", "/get_aws_creds", data, &response); err != nil {
 		return nil, fmt.Errorf("failed to generate temporary session token: %s", err.Error())
 	}
@@ -146,36 +146,36 @@ func (c *Client) GetCredentials(ctx context.Context, opts *GetCredentialsOptions
 }
 
 // GetUserData returns data on the user stored in the API.
-func (c *Client) GetUserData(ctx context.Context, creds core.Credentials) (api.GetUserDataPayload, error) {
-	request := api.GetUserDataEvent{
+func (c *Client) GetUserData(ctx context.Context, creds core.Credentials) (keyconjurer.GetUserDataPayload, error) {
+	request := keyconjurer.GetUserDataEvent{
 		Credentials:            creds,
-		AuthenticationProvider: api.AuthenticationProviderOkta,
+		AuthenticationProvider: keyconjurer.AuthenticationProviderOkta,
 	}
 
 	b, err := json.Marshal(request)
 	if err != nil {
-		return api.GetUserDataPayload{}, err
+		return keyconjurer.GetUserDataPayload{}, err
 	}
 
-	var data api.GetUserDataPayload
+	var data keyconjurer.GetUserDataPayload
 	return data, c.do(ctx, "POST", "/get_user_data", b, &data)
 }
 
 type ListAccountsOptions struct {
-	AuthenticationProvider api.AuthenticationProviderName
+	AuthenticationProvider keyconjurer.AuthenticationProviderName
 	Credentials            core.Credentials
 }
 
 // ListAccounts lists the accounts the user is entitled to access.
 func (c *Client) ListAccounts(ctx context.Context, opts *ListAccountsOptions) ([]core.Application, error) {
 	// HACK: We can re-use the GetUserData endpoint as it returns the applications the user is entitled to view.
-	payload := api.GetUserDataEvent{
+	payload := keyconjurer.GetUserDataEvent{
 		Credentials:            opts.Credentials,
 		AuthenticationProvider: opts.AuthenticationProvider,
 	}
 
 	if opts.AuthenticationProvider == "" {
-		payload.AuthenticationProvider = api.AuthenticationProviderOkta
+		payload.AuthenticationProvider = keyconjurer.AuthenticationProviderOkta
 	}
 
 	data, err := json.Marshal(payload)
@@ -183,7 +183,7 @@ func (c *Client) ListAccounts(ctx context.Context, opts *ListAccountsOptions) ([
 		return nil, err
 	}
 
-	var response api.GetUserDataPayload
+	var response keyconjurer.GetUserDataPayload
 	if err := c.do(ctx, "POST", "/get_user_data", data, &response); err != nil {
 		return nil, err
 	}
@@ -192,7 +192,7 @@ func (c *Client) ListAccounts(ctx context.Context, opts *ListAccountsOptions) ([
 }
 
 type ListRolesOptions struct {
-	AuthenticationProvider api.AuthenticationProviderName
+	AuthenticationProvider keyconjurer.AuthenticationProviderName
 	Credentials            core.Credentials
 	AccountID              string
 }
@@ -201,13 +201,13 @@ type ListRolesOptions struct {
 //
 // If AuthenticationProvider is not specified in ListRoleOptions, it will default to Okta.
 func (c *Client) ListRoles(ctx context.Context, opts *ListRolesOptions) ([]core.Role, error) {
-	payload := api.ListRolesEvent{
+	payload := keyconjurer.ListRolesEvent{
 		Credentials: opts.Credentials,
 		Provider:    opts.AuthenticationProvider,
 	}
 
 	if opts.AuthenticationProvider == "" {
-		payload.Provider = api.AuthenticationProviderOkta
+		payload.Provider = keyconjurer.AuthenticationProviderOkta
 	}
 
 	b, err := json.Marshal(payload)
@@ -215,21 +215,21 @@ func (c *Client) ListRoles(ctx context.Context, opts *ListRolesOptions) ([]core.
 		return nil, err
 	}
 
-	var result api.ListRolesPayload
+	var result keyconjurer.ListRolesPayload
 	return result.Roles, c.do(ctx, "GET", "/roles", b, &result)
 }
 
 type ListProvidersOptions struct{}
 
 // ListProviders lists the authentication providers that the user may use to authenticate with.
-func (c *Client) ListProviders(ctx context.Context, opts *ListProvidersOptions) ([]api.Provider, error) {
-	payload := api.ListProvidersEvent{}
+func (c *Client) ListProviders(ctx context.Context, opts *ListProvidersOptions) ([]keyconjurer.Provider, error) {
+	payload := keyconjurer.ListProvidersEvent{}
 	b, err := json.Marshal(payload)
 	if err != nil {
 		return nil, err
 	}
 
-	var result api.ListProvidersPayload
+	var result keyconjurer.ListProvidersPayload
 	return result.Providers, c.do(ctx, "GET", "/authentication_providers", b, &result)
 }
 

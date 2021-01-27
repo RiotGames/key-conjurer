@@ -1,4 +1,4 @@
-package cmd
+package main
 
 import (
 	"errors"
@@ -10,8 +10,6 @@ import (
 	"strings"
 
 	"github.com/mitchellh/go-homedir"
-	"github.com/riotgames/key-conjurer/cli/keyconjurer"
-
 	"github.com/spf13/cobra"
 )
 
@@ -47,7 +45,7 @@ func init() {
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:     "keyconjurer",
-	Version: fmt.Sprintf(versionString, keyconjurer.Version, keyconjurer.ClientName, defaultHost, keyconjurer.DownloadURL),
+	Version: fmt.Sprintf(versionString, Version, ClientName, defaultHost, DownloadURL),
 	Short:   "Retrieve temporary AWS API credentials.",
 	Long: `Key Conjurer retrieves temporary credentials from the Key Conjurer API.
 
@@ -144,9 +142,8 @@ func parseHostname(hostname string) (string, error) {
 	return uri.String(), nil
 }
 
-func newClient() (keyconjurer.Client, error) {
-	// hostname is guaranteed to be a valid URL thanks to our code in rootCmd.PersistentPreRunE
-	return keyconjurer.New(host)
+func newClient() (Client, error) {
+	return NewClient(host)
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.

@@ -1,9 +1,7 @@
-package cmd
+package main
 
 import (
 	"fmt"
-
-	"github.com/riotgames/key-conjurer/cli/keyconjurer"
 
 	"github.com/spf13/cobra"
 )
@@ -21,5 +19,5 @@ var versionCmd = &cobra.Command{
 	Long:    "Shows Key Conjurer version information.",
 	Example: "keyconjurer version",
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Printf(versionString, keyconjurer.Version, keyconjurer.ClientName, defaultHost, keyconjurer.DownloadURL)
+		fmt.Printf(versionString, Version, ClientName, defaultHost, DownloadURL)
 	}}

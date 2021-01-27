@@ -1,11 +1,10 @@
-package cmd
+package main
 
 import (
 	"context"
 	"os"
 
 	"github.com/olekukonko/tablewriter"
-	"github.com/riotgames/key-conjurer/cli/keyconjurer"
 	"github.com/spf13/cobra"
 )
 
@@ -20,7 +19,7 @@ var providersCmd = &cobra.Command{
 			return err
 		}
 
-		providers, err := client.ListProviders(ctx, &keyconjurer.ListProvidersOptions{})
+		providers, err := client.ListProviders(ctx, &ListProvidersOptions{})
 		if err != nil {
 			return err
 		}

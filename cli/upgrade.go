@@ -1,4 +1,4 @@
-package cmd
+package main
 
 import (
 	"context"
@@ -7,8 +7,6 @@ import (
 	"os"
 	"os/exec"
 	"runtime"
-
-	"github.com/riotgames/key-conjurer/cli/keyconjurer"
 
 	"github.com/spf13/cobra"
 )
@@ -44,7 +42,7 @@ func windowsDownload(keyConjurerRcPath string) error {
 		return fmt.Errorf("unable to create download script: %w", err)
 	}
 
-	command := fmt.Sprintf("timeout 3 && bitsadmin /transfer keyconjurerdownload /priority foreground /download %s/%s %s && del %s && exit", keyconjurer.DownloadURL, keyconjurer.WindowsBinaryName, keyConjurerRcPath, f.Name())
+	command := fmt.Sprintf("timeout 3 && bitsadmin /transfer keyconjurerdownload /priority foreground /download %s/%s %s && del %s && exit", DownloadURL, WindowsBinaryName, keyConjurerRcPath, f.Name())
 	fileData := []byte(command)
 
 	if _, err = f.Write(fileData); err != nil {

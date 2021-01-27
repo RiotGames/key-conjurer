@@ -1,9 +1,8 @@
-package cmd
+package main
 
 import (
 	"testing"
 
-	"github.com/riotgames/key-conjurer/cli/keyconjurer"
 	"github.com/stretchr/testify/assert"
 )
 

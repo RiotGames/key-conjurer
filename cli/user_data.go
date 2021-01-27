@@ -1,4 +1,4 @@
-package cmd
+package main
 
 import (
 	"encoding/json"
@@ -8,11 +8,10 @@ import (
 
 	"github.com/olekukonko/tablewriter"
 	"github.com/riotgames/key-conjurer/api/core"
-	api "github.com/riotgames/key-conjurer/api/keyconjurer"
-	"github.com/riotgames/key-conjurer/cli/keyconjurer"
+	"github.com/riotgames/key-conjurer/api/keyconjurer"
 )
 
-type accountSet map[string]*keyconjurer.Account
+type accountSet map[string]*Account
 
 // UserData stores all information related to the user
 type UserData struct {
@@ -39,7 +38,7 @@ func (u *UserData) SetTimeRemaining(timeRemaining uint) {
 	u.TimeRemaining = timeRemaining
 }
 
-func (u *UserData) FindAccount(name string) (*keyconjurer.Account, bool) {
+func (u *UserData) FindAccount(name string) (*Account, bool) {
 	for _, account := range u.Accounts {
 		if account.IsNameMatch(name) {
 			return account, true
@@ -101,21 +100,21 @@ func (u *UserData) Read(reader io.Reader) error {
 	}
 
 	if u.TTL < 1 {
-		u.SetTTL(keyconjurer.DefaultTTL)
+		u.SetTTL(DefaultTTL)
 	}
 
 	return nil
 }
 
 func (u *UserData) SetDefaults() {
-	u.TTL = keyconjurer.DefaultTTL
-	u.TimeRemaining = keyconjurer.DefaultTimeRemaining
+	u.TTL = DefaultTTL
+	u.TimeRemaining = DefaultTimeRemaining
 }
 
-func (u *UserData) UpdateFromServer(r api.GetUserDataPayload) {
-	var accounts map[string]*keyconjurer.Account
+func (u *UserData) UpdateFromServer(r keyconjurer.GetUserDataPayload) {
+	var accounts map[string]*Account
 	for _, app := range r.Apps {
-		accounts[app.ID] = &keyconjurer.Account{ID: app.ID, Name: app.Name}
+		accounts[app.ID] = &Account{ID: app.ID, Name: app.Name}
 	}
 
 	u.Merge(UserData{Accounts: accounts, Creds: r.EncryptedCredentials})
@@ -139,7 +138,7 @@ func (u *UserData) mergeAccounts(accounts []core.Application) {
 	for _, acc := range accounts {
 		entry, ok := u.Accounts[acc.ID]
 		if !ok {
-			entry := &keyconjurer.Account{ID: acc.ID, Name: acc.Name}
+			entry := &Account{ID: acc.ID, Name: acc.Name}
 			entry.DefaultAlias()
 			u.Accounts[acc.ID] = entry
 		} else {
@@ -167,11 +166,11 @@ func (u *UserData) Merge(toCopy UserData) {
 	}
 
 	if u.Accounts == nil {
-		u.Accounts = map[string]*keyconjurer.Account{}
+		u.Accounts = map[string]*Account{}
 	}
 
 	for _, app := range toCopy.Accounts {
-		acc := &keyconjurer.Account{
+		acc := &Account{
 			ID:    app.ID,
 			Alias: app.Alias,
 			Name:  app.Name,

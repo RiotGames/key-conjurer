@@ -1,18 +1,16 @@
-package cmd
+package main
 
 import (
 	"context"
 	"os"
 
 	"github.com/olekukonko/tablewriter"
-
-	api "github.com/riotgames/key-conjurer/api/keyconjurer"
-	"github.com/riotgames/key-conjurer/cli/keyconjurer"
+	"github.com/riotgames/key-conjurer/api/keyconjurer"
 	"github.com/spf13/cobra"
 )
 
 func init() {
-	rolesCmd.Flags().StringVar(&authProvider, "auth-provider", api.AuthenticationProviderOkta, "The authentication provider to use when interacting with the server.")
+	rolesCmd.Flags().StringVar(&authProvider, "auth-provider", keyconjurer.AuthenticationProviderOkta, "The authentication provider to use when interacting with the server.")
 }
 
 var rolesCmd = &cobra.Command{
@@ -36,7 +34,7 @@ You must be logged in.`,
 			return err
 		}
 
-		roles, err := client.ListRoles(ctx, &keyconjurer.ListRolesOptions{
+		roles, err := client.ListRoles(ctx, &ListRolesOptions{
 			AuthenticationProvider: authProvider,
 			Credentials:            creds,
 		})
