@@ -149,5 +149,32 @@ func TestLegacyUnmarshalJSON(t *testing.T) {
 }
 
 func TestModernUnmarshalJSON(t *testing.T) {
+	blob := `{
+		"v": "1",
+		"accounts": {
+			"okta": {
+				"1": { "id":"1", "name": "AWS - name" }
+			}
+		},
+		"aliases": {
+			"name": ["okta", "1"]
+		},
+		"ttl": 1,
+		"time_remaining": 0,
+		"creds": "eyJ1c2VybmFtZSI6InVzZXJuYW1lIiwicGFzc3dvcmQiOiJwYXNzd29yZCJ9"
+	}`
+	c := Config{}
 
+	assert.NoError(t, json.Unmarshal([]byte(blob), &c))
+
+	acc, ok := c.FindAccount("name")
+	assert.True(t, ok)
+	assert.Equal(t, "AWS - name", acc.Name)
+	assert.Equal(t, "name", acc.Alias)
+	assert.Equal(t, "1", acc.ID)
+
+	assert.Equal(t, uint(0), c.TimeRemaining)
+	assert.Equal(t, uint(1), c.TTL)
+
+	assert.Equal(t, "eyJ1c2VybmFtZSI6InVzZXJuYW1lIiwicGFzc3dvcmQiOiJwYXNzd29yZCJ9", c.Creds)
 }
