@@ -68,7 +68,7 @@ var getCmd = &cobra.Command{
 			ttl = 8
 		}
 
-		var applicationID = args[0]
+		applicationID := args[0]
 		if account, ok := userData.FindAccount(args[0]); ok {
 			applicationID = account.ID
 		}

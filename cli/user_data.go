@@ -99,20 +99,19 @@ func (u *UserData) Read(reader io.Reader) error {
 		return err
 	}
 
+	if u.Accounts == nil {
+		u.Accounts = make(accountSet)
+	}
+
 	if u.TTL < 1 {
-		u.SetTTL(DefaultTTL)
+		u.TTL = DefaultTTL
 	}
 
 	return nil
 }
 
-func (u *UserData) SetDefaults() {
-	u.TTL = DefaultTTL
-	u.TimeRemaining = DefaultTimeRemaining
-}
-
 func (u *UserData) UpdateFromServer(r keyconjurer.GetUserDataPayload) {
-	var accounts map[string]*Account
+	accounts := map[string]*Account{}
 	for _, app := range r.Apps {
 		accounts[app.ID] = &Account{ID: app.ID, Name: app.Name}
 	}
