@@ -11,6 +11,6 @@ var unaliasCmd = &cobra.Command{
 	Args:    cobra.ExactArgs(1),
 	Example: "keyconjurer alias FooAccount Bar",
 	Run: func(cmd *cobra.Command, args []string) {
-		userData.RemoveAlias(args[0])
+		config.RemoveAlias(args[0])
 	},
 }

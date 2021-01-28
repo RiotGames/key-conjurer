@@ -28,8 +28,7 @@ You must be logged in.`,
 			return err
 		}
 
-		creds, err := userData.GetCredentials()
-
+		creds, err := config.GetCredentials()
 		if err != nil {
 			return err
 		}

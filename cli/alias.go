@@ -11,6 +11,6 @@ var aliasCmd = &cobra.Command{
 	Args:    cobra.ExactArgs(2),
 	Example: "keyconjurer alias FooAccount Bar",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		return userData.NewAlias(args[0], args[1])
+		return config.NewAlias(args[0], args[1])
 	},
 }

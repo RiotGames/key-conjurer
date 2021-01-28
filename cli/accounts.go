@@ -24,7 +24,7 @@ var accountsCmd = &cobra.Command{
 			return err
 		}
 
-		creds, err := userData.GetCredentials()
+		creds, err := config.GetCredentials()
 		if err != nil {
 			return err
 		}
@@ -38,8 +38,8 @@ var accountsCmd = &cobra.Command{
 			return err
 		}
 
-		userData.mergeAccounts(accounts)
-		userData.ListAccounts(os.Stdout)
+		config.mergeAccounts(accounts)
+		config.ListAccounts(os.Stdout)
 		return nil
 	},
 }

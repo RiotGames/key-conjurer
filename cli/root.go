@@ -20,9 +20,8 @@ var (
 	// This is set by the Makefile during build of the CLI. Don't use this.
 	defaultHost  string
 	authProvider string
-	// userData is a cache-like datastore for this application.
-	// It is loaded at app	lication start-up.
-	userData UserData
+	// config is a cache-like datastore for this application. It is loaded at app start-up.
+	config Config
 )
 
 func init() {
@@ -79,7 +78,7 @@ keyconjurer get <accountName>
 			return err
 		}
 
-		return userData.Read(file)
+		return config.Read(file)
 	},
 	PersistentPostRunE: func(*cobra.Command, []string) error {
 		var fp string
@@ -98,7 +97,7 @@ keyconjurer get <accountName>
 		}
 
 		defer file.Close()
-		return userData.Write(file)
+		return config.Write(file)
 	},
 }
 

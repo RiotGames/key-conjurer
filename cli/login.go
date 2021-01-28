@@ -67,7 +67,7 @@ var loginCmd = &cobra.Command{
 			return err
 		}
 
-		userData.UpdateFromServer(data)
+		config.UpdateFromServer(data)
 		return nil
 	},
 }

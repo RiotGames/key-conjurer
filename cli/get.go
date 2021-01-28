@@ -47,7 +47,7 @@ var getCmd = &cobra.Command{
 			return err
 		}
 
-		creds, err := userData.GetCredentials()
+		creds, err := config.GetCredentials()
 		if err != nil {
 			return err
 		}
@@ -69,7 +69,7 @@ var getCmd = &cobra.Command{
 		}
 
 		applicationID := args[0]
-		if account, ok := userData.FindAccount(args[0]); ok {
+		if account, ok := config.FindAccount(args[0]); ok {
 			applicationID = account.ID
 		}
 

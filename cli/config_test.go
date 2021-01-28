@@ -7,25 +7,25 @@ import (
 )
 
 func TestSetTTL(t *testing.T) {
-	u := &UserData{}
+	u := &Config{}
 
-	assert.Equal(t, uint(0), u.TTL, "UserData.TTL should be set to default <uint(0)>")
+	assert.Equal(t, uint(0), u.TTL, "Config.TTL should be set to default <uint(0)>")
 	u.SetTTL(1000)
-	assert.Equal(t, uint(1000), u.TTL, "UserData.TTL should be set to 1000")
+	assert.Equal(t, uint(1000), u.TTL, "Config.TTL should be set to 1000")
 	u.TTL = 1001
-	assert.Equal(t, uint(1001), u.TTL, "UserData.TTL should be set to 1001")
+	assert.Equal(t, uint(1001), u.TTL, "Config.TTL should be set to 1001")
 }
 
 func TestSetTimeRemaining(t *testing.T) {
-	u := &UserData{}
+	u := &Config{}
 
-	assert.Equal(t, uint(0), u.TimeRemaining, "UserData.TimeRemaining should be set to default <uint(0)>")
+	assert.Equal(t, uint(0), u.TimeRemaining, "Config.TimeRemaining should be set to default <uint(0)>")
 	u.SetTimeRemaining(1000)
-	assert.Equal(t, uint(1000), u.TimeRemaining, "UserData.TimeRemaining should be set to 1000")
+	assert.Equal(t, uint(1000), u.TimeRemaining, "Config.TimeRemaining should be set to 1000")
 }
 
 func TestFindAccount(t *testing.T) {
-	u := &UserData{
+	u := &Config{
 		Accounts: map[string]*Account{
 			"1": &Account{
 				ID:    "1",
@@ -48,7 +48,7 @@ func TestFindAccount(t *testing.T) {
 }
 
 func TestNewAlias(t *testing.T) {
-	u := &UserData{
+	u := &Config{
 		Accounts: map[string]*Account{
 			"1": &Account{
 				ID:    "1",
@@ -67,7 +67,7 @@ func TestNewAlias(t *testing.T) {
 }
 
 func TestRemoveAlias(t *testing.T) {
-	u := &UserData{
+	u := &Config{
 		Accounts: map[string]*Account{
 			"1": &Account{
 				ID:    "1",
@@ -93,8 +93,8 @@ func TestRemoveAlias(t *testing.T) {
 }
 
 func TestMergeUserData(t *testing.T) {
-	u := &UserData{}
-	toCopy := UserData{
+	u := &Config{}
+	toCopy := Config{
 		Accounts: map[string]*Account{
 			"1": &Account{
 				ID:    "1",

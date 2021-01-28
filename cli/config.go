@@ -13,33 +13,33 @@ import (
 
 type accountSet map[string]*Account
 
-// UserData stores all information related to the user
-type UserData struct {
+// Config stores all information related to the user
+type Config struct {
 	Accounts      accountSet `json:"accounts"`
 	Creds         string     `json:"creds"`
 	TTL           uint       `json:"ttl"`
 	TimeRemaining uint       `json:"time_remaining"`
 }
 
-func (u *UserData) GetCredentials() (core.Credentials, error) {
-	if u.Creds == "" {
+func (c *Config) GetCredentials() (core.Credentials, error) {
+	if c.Creds == "" {
 		// No credentials have been saved (or they have been cleared recently)
 		return core.Credentials{}, ErrNoCredentials
 	}
 
-	return core.Credentials{Username: "encrypted", Password: u.Creds}, nil
+	return core.Credentials{Username: "encrypted", Password: c.Creds}, nil
 }
 
-func (u *UserData) SetTTL(ttl uint) {
-	u.TTL = ttl
+func (c *Config) SetTTL(ttl uint) {
+	c.TTL = ttl
 }
 
-func (u *UserData) SetTimeRemaining(timeRemaining uint) {
-	u.TimeRemaining = timeRemaining
+func (c *Config) SetTimeRemaining(timeRemaining uint) {
+	c.TimeRemaining = timeRemaining
 }
 
-func (u *UserData) FindAccount(name string) (*Account, bool) {
-	for _, account := range u.Accounts {
+func (c *Config) FindAccount(name string) (*Account, bool) {
+	for _, account := range c.Accounts {
 		if account.IsNameMatch(name) {
 			return account, true
 		}
@@ -48,11 +48,11 @@ func (u *UserData) FindAccount(name string) (*Account, bool) {
 	return nil, false
 }
 
-func (u *UserData) ListAccounts(w io.Writer) error {
+func (c *Config) ListAccounts(w io.Writer) error {
 	accountTable := tablewriter.NewWriter(w)
 	accountTable.SetHeader([]string{"ID", "Name", "Alias"})
 
-	for _, acc := range u.Accounts {
+	for _, acc := range c.Accounts {
 		accountTable.Append([]string{acc.ID, acc.Name, acc.Alias})
 	}
 
@@ -62,8 +62,8 @@ func (u *UserData) ListAccounts(w io.Writer) error {
 }
 
 // NewAlias links an AWS account to a new name for use w/ cli
-func (u *UserData) NewAlias(accountName string, alias string) error {
-	for _, account := range u.Accounts {
+func (c *Config) NewAlias(accountName string, alias string) error {
+	for _, account := range c.Accounts {
 		if account.IsNameMatch(accountName) {
 			account.SetAlias(alias)
 			return nil
@@ -73,8 +73,8 @@ func (u *UserData) NewAlias(accountName string, alias string) error {
 }
 
 // RemoveAlias removes the alias associated with the current account
-func (u *UserData) RemoveAlias(accountName string) bool {
-	account, ok := u.FindAccount(accountName)
+func (c *Config) RemoveAlias(accountName string) bool {
+	account, ok := c.FindAccount(accountName)
 	if !ok {
 		return false
 	}
@@ -84,42 +84,42 @@ func (u *UserData) RemoveAlias(accountName string) bool {
 	return true
 }
 
-// Write writes the userData to the file provided overwriting the file if it exists
-func (u *UserData) Write(w io.Writer) error {
+// Write writes the config to the file provided overwriting the file if it exists
+func (c *Config) Write(w io.Writer) error {
 	enc := json.NewEncoder(w)
-	return enc.Encode(u)
+	return enc.Encode(c)
 }
 
-// Reader populates all member values of userData using default values where needed
-func (u *UserData) Read(reader io.Reader) error {
+// Reader populates all member values of config using default values where needed
+func (c *Config) Read(reader io.Reader) error {
 	dec := json.NewDecoder(reader)
 	// If we encounter an end of file, use the default values and don't treat it as an error
 	// This also conveniently allows someone to use /dev/null for the config file.
-	if err := dec.Decode(u); err != nil && !errors.Is(err, io.EOF) {
+	if err := dec.Decode(c); err != nil && !errors.Is(err, io.EOF) {
 		return err
 	}
 
-	if u.Accounts == nil {
-		u.Accounts = make(accountSet)
+	if c.Accounts == nil {
+		c.Accounts = make(accountSet)
 	}
 
-	if u.TTL < 1 {
-		u.TTL = DefaultTTL
+	if c.TTL < 1 {
+		c.TTL = DefaultTTL
 	}
 
 	return nil
 }
 
-func (u *UserData) UpdateFromServer(r keyconjurer.GetUserDataPayload) {
+func (c *Config) UpdateFromServer(r keyconjurer.GetUserDataPayload) {
 	accounts := map[string]*Account{}
 	for _, app := range r.Apps {
 		accounts[app.ID] = &Account{ID: app.ID, Name: app.Name}
 	}
 
-	u.Merge(UserData{Accounts: accounts, Creds: r.EncryptedCredentials})
+	c.Merge(Config{Accounts: accounts, Creds: r.EncryptedCredentials})
 }
 
-func (u *UserData) mergeAccounts(accounts []core.Application) {
+func (c *Config) mergeAccounts(accounts []core.Application) {
 	// This could be improved by simply iterating over the stored accounts, applying aliases to the new accounts and then overwriting the map
 	m := map[string]core.Application{}
 	for _, acc := range accounts {
@@ -127,7 +127,7 @@ func (u *UserData) mergeAccounts(accounts []core.Application) {
 	}
 
 	deleted := []string{}
-	for k := range u.Accounts {
+	for k := range c.Accounts {
 		_, ok := m[k]
 		if !ok {
 			deleted = append(deleted, k)
@@ -135,11 +135,11 @@ func (u *UserData) mergeAccounts(accounts []core.Application) {
 	}
 
 	for _, acc := range accounts {
-		entry, ok := u.Accounts[acc.ID]
+		entry, ok := c.Accounts[acc.ID]
 		if !ok {
 			entry := &Account{ID: acc.ID, Name: acc.Name}
 			entry.DefaultAlias()
-			u.Accounts[acc.ID] = entry
+			c.Accounts[acc.ID] = entry
 		} else {
 			entry.Name = acc.Name
 			entry.ID = acc.ID
@@ -148,24 +148,24 @@ func (u *UserData) mergeAccounts(accounts []core.Application) {
 	}
 
 	for _, k := range deleted {
-		delete(u.Accounts, k)
+		delete(c.Accounts, k)
 	}
 }
 
 // Merge merges Apps (from API) into Accounts since command line uses 'accounts' and client code should be easy to understand
-func (u *UserData) Merge(toCopy UserData) {
-	u.Creds = toCopy.Creds
+func (c *Config) Merge(toCopy Config) {
+	c.Creds = toCopy.Creds
 
 	if toCopy.TTL != 0 {
-		u.TTL = toCopy.TTL
+		c.TTL = toCopy.TTL
 	}
 
 	if toCopy.TimeRemaining != 0 {
-		u.TimeRemaining = toCopy.TimeRemaining
+		c.TimeRemaining = toCopy.TimeRemaining
 	}
 
-	if u.Accounts == nil {
-		u.Accounts = map[string]*Account{}
+	if c.Accounts == nil {
+		c.Accounts = map[string]*Account{}
 	}
 
 	for _, app := range toCopy.Accounts {
@@ -175,13 +175,13 @@ func (u *UserData) Merge(toCopy UserData) {
 			Name:  app.Name,
 		}
 		acc.DefaultAlias()
-		u.Accounts[acc.ID] = acc
+		c.Accounts[acc.ID] = acc
 	}
 
-	for key := range u.Accounts {
+	for key := range c.Accounts {
 		_, ok := toCopy.Accounts[key]
 		if !ok {
-			delete(u.Accounts, key)
+			delete(c.Accounts, key)
 		}
 	}
 }
