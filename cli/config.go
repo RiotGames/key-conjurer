@@ -133,6 +133,10 @@ func (a accountSet) Alias(id, name string) bool {
 	return true
 }
 
+func (a *accountSet) MarshalJSON() ([]byte, error) {
+	return json.Marshal(a.accounts)
+}
+
 func (a *accountSet) UnmarshalJSON(buf []byte) error {
 	var m map[string]struct {
 		Name  string
@@ -152,6 +156,10 @@ func (a *accountSet) UnmarshalJSON(buf []byte) error {
 }
 
 func (a *accountSet) ReplaceWith(other []Account) {
+	if a.accounts == nil {
+		a.accounts = make(map[string]*Account)
+	}
+
 	m := map[string]struct{}{}
 	for _, acc := range other {
 		copy := acc
@@ -178,10 +186,10 @@ func (s accountSet) WriteTable(w io.Writer) {
 
 // Config stores all information related to the user
 type Config struct {
-	Accounts      accountSet `json:"accounts"`
-	Creds         string     `json:"creds"`
-	TTL           uint       `json:"ttl"`
-	TimeRemaining uint       `json:"time_remaining"`
+	Accounts      *accountSet `json:"accounts"`
+	Creds         string      `json:"creds"`
+	TTL           uint        `json:"ttl"`
+	TimeRemaining uint        `json:"time_remaining"`
 }
 
 func (c *Config) GetCredentials() (core.Credentials, error) {

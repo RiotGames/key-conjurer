@@ -73,6 +73,12 @@ var loginCmd = &cobra.Command{
 		}
 
 		config.Creds = data.EncryptedCredentials
+		var entries []Account
+		for _, acc := range data.Apps {
+			entries = append(entries, Account{ID: acc.ID, Name: acc.Name, Alias: generateDefaultAlias(acc.Name)})
+		}
+
+		config.Accounts.ReplaceWith(entries)
 		return nil
 	},
 }
