@@ -38,8 +38,14 @@ var accountsCmd = &cobra.Command{
 			return err
 		}
 
-		config.mergeAccounts(accounts)
-		config.ListAccounts(os.Stdout)
+		var entries []Account
+		for _, acc := range accounts {
+			entries = append(entries, Account{ID: acc.ID, Name: acc.Name, Alias: generateDefaultAlias(acc.Name)})
+		}
+
+		cfg := config.Accounts
+		cfg.ReplaceWith(entries)
+		cfg.WriteTable(os.Stdout)
 		return nil
 	},
 }

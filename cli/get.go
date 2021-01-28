@@ -69,7 +69,7 @@ var getCmd = &cobra.Command{
 		}
 
 		applicationID := args[0]
-		if account, ok := config.FindAccount(args[0]); ok {
+		if account, ok := config.Accounts.Resolve(args[0]); ok {
 			applicationID = account.ID
 		}
 

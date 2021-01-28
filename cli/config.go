@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"strconv"
 
@@ -11,7 +10,6 @@ import (
 
 	"github.com/olekukonko/tablewriter"
 	"github.com/riotgames/key-conjurer/api/core"
-	"github.com/riotgames/key-conjurer/api/keyconjurer"
 )
 
 type maybeLegacyID string
@@ -61,14 +59,6 @@ func (a *Account) NormalizeName() string {
 	return strings.Replace(a.Name, "AWS - ", "", -1)
 }
 
-func (a *Account) DefaultAlias() {
-	if a.Alias == "" {
-		alias := strings.Replace(a.Name, "AWS - ", "", -1)
-		alias = strings.Split(alias, " ")[0]
-		a.Alias = strings.ToLower(alias)
-	}
-}
-
 func (a *Account) IsNameMatch(name string) bool {
 	// Purposefully not checking the lowercase version of app.Alias
 	//  as the user should match the alias provided
@@ -87,15 +77,104 @@ func (a *Account) IsNameMatch(name string) bool {
 	return false
 }
 
-func (a *Account) SetAlias(alias string) {
-	if alias == "" {
-		a.DefaultAlias()
-	} else {
-		a.Alias = alias
+type accountSet struct {
+	accounts map[string]*Account
+}
+
+func generateDefaultAlias(name string) string {
+	alias := strings.Replace(name, "AWS - ", "", -1)
+	alias = strings.Split(alias, " ")[0]
+	return strings.ToLower(alias)
+}
+
+func (a *accountSet) ForEach(f func(id string, account Account, aliases []string)) {
+	for id, acc := range a.accounts {
+		f(id, *acc, []string{acc.Alias})
 	}
 }
 
-type accountSet map[string]*Account
+// Add adds an account to the set.
+func (a *accountSet) Add(id string, account Account) {
+	if a.accounts == nil {
+		a.accounts = make(map[string]*Account)
+	}
+	a.accounts[id] = &account
+}
+
+// Unalias will remove all aliases for an account that matches the given name or given alias.
+func (a *accountSet) Unalias(name string) bool {
+	for _, acc := range a.accounts {
+		if acc.IsNameMatch(name) {
+			acc.Alias = ""
+			return true
+		}
+	}
+
+	return false
+}
+
+func (a accountSet) Resolve(name string) (Account, bool) {
+	for _, acc := range a.accounts {
+		if acc.IsNameMatch(name) {
+			return *acc, true
+		}
+	}
+
+	return Account{}, false
+}
+
+func (a accountSet) Alias(id, name string) bool {
+	entry, ok := a.accounts[id]
+	if !ok {
+		return false
+	}
+
+	entry.Alias = name
+	return true
+}
+
+func (a *accountSet) UnmarshalJSON(buf []byte) error {
+	var m map[string]struct {
+		Name  string
+		Alias string
+	}
+
+	if err := json.Unmarshal(buf, &m); err != nil {
+		return err
+	}
+
+	// Now we just need to copy each entry into the set itself
+	for id, val := range m {
+		a.Add(id, Account{ID: id, Name: val.Name, Alias: val.Alias})
+	}
+
+	return nil
+}
+
+func (a *accountSet) ReplaceWith(other []Account) {
+	m := map[string]struct{}{}
+	for _, acc := range other {
+		copy := acc
+		a.accounts[acc.ID] = &copy
+		m[acc.ID] = struct{}{}
+	}
+
+	for k := range a.accounts {
+		if _, ok := m[k]; !ok {
+			delete(a.accounts, k)
+		}
+	}
+}
+
+func (s accountSet) WriteTable(w io.Writer) {
+	tbl := tablewriter.NewWriter(w)
+	tbl.SetHeader([]string{"ID", "Name", "Aliases (comma-separated)"})
+	s.ForEach(func(id string, acc Account, aliases []string) {
+		tbl.Append([]string{id, acc.Name, strings.Join(aliases, ",")})
+	})
+
+	tbl.Render()
+}
 
 // Config stores all information related to the user
 type Config struct {
@@ -114,60 +193,6 @@ func (c *Config) GetCredentials() (core.Credentials, error) {
 	return core.Credentials{Username: "encrypted", Password: c.Creds}, nil
 }
 
-func (c *Config) SetTTL(ttl uint) {
-	c.TTL = ttl
-}
-
-func (c *Config) SetTimeRemaining(timeRemaining uint) {
-	c.TimeRemaining = timeRemaining
-}
-
-func (c *Config) FindAccount(name string) (*Account, bool) {
-	for _, account := range c.Accounts {
-		if account.IsNameMatch(name) {
-			return account, true
-		}
-	}
-
-	return nil, false
-}
-
-func (c *Config) ListAccounts(w io.Writer) error {
-	accountTable := tablewriter.NewWriter(w)
-	accountTable.SetHeader([]string{"ID", "Name", "Alias"})
-
-	for _, acc := range c.Accounts {
-		accountTable.Append([]string{acc.ID, acc.Name, acc.Alias})
-	}
-
-	accountTable.Render()
-
-	return nil
-}
-
-// NewAlias links an AWS account to a new name for use w/ cli
-func (c *Config) NewAlias(accountName string, alias string) error {
-	for _, account := range c.Accounts {
-		if account.IsNameMatch(accountName) {
-			account.SetAlias(alias)
-			return nil
-		}
-	}
-	return fmt.Errorf("Unable to find account %v and set alias %v", accountName, alias)
-}
-
-// RemoveAlias removes the alias associated with the current account
-func (c *Config) RemoveAlias(accountName string) bool {
-	account, ok := c.FindAccount(accountName)
-	if !ok {
-		return false
-	}
-
-	account.Alias = ""
-	account.DefaultAlias()
-	return true
-}
-
 // Write writes the config to the file provided overwriting the file if it exists
 func (c *Config) Write(w io.Writer) error {
 	enc := json.NewEncoder(w)
@@ -183,89 +208,9 @@ func (c *Config) Read(reader io.Reader) error {
 		return err
 	}
 
-	if c.Accounts == nil {
-		c.Accounts = make(accountSet)
-	}
-
 	if c.TTL < 1 {
 		c.TTL = DefaultTTL
 	}
 
 	return nil
-}
-
-func (c *Config) UpdateFromServer(r keyconjurer.GetUserDataPayload) {
-	accounts := map[string]*Account{}
-	for _, app := range r.Apps {
-		accounts[app.ID] = &Account{ID: app.ID, Name: app.Name}
-	}
-
-	c.Merge(Config{Accounts: accounts, Creds: r.EncryptedCredentials})
-}
-
-func (c *Config) mergeAccounts(accounts []core.Application) {
-	// This could be improved by simply iterating over the stored accounts, applying aliases to the new accounts and then overwriting the map
-	m := map[string]core.Application{}
-	for _, acc := range accounts {
-		m[acc.ID] = acc
-	}
-
-	deleted := []string{}
-	for k := range c.Accounts {
-		_, ok := m[k]
-		if !ok {
-			deleted = append(deleted, k)
-		}
-	}
-
-	for _, acc := range accounts {
-		entry, ok := c.Accounts[acc.ID]
-		if !ok {
-			entry := &Account{ID: acc.ID, Name: acc.Name}
-			entry.DefaultAlias()
-			c.Accounts[acc.ID] = entry
-		} else {
-			entry.Name = acc.Name
-			entry.ID = acc.ID
-			entry.DefaultAlias()
-		}
-	}
-
-	for _, k := range deleted {
-		delete(c.Accounts, k)
-	}
-}
-
-// Merge merges Apps (from API) into Accounts since command line uses 'accounts' and client code should be easy to understand
-func (c *Config) Merge(toCopy Config) {
-	c.Creds = toCopy.Creds
-
-	if toCopy.TTL != 0 {
-		c.TTL = toCopy.TTL
-	}
-
-	if toCopy.TimeRemaining != 0 {
-		c.TimeRemaining = toCopy.TimeRemaining
-	}
-
-	if c.Accounts == nil {
-		c.Accounts = map[string]*Account{}
-	}
-
-	for _, app := range toCopy.Accounts {
-		acc := &Account{
-			ID:    app.ID,
-			Alias: app.Alias,
-			Name:  app.Name,
-		}
-		acc.DefaultAlias()
-		c.Accounts[acc.ID] = acc
-	}
-
-	for key := range c.Accounts {
-		_, ok := toCopy.Accounts[key]
-		if !ok {
-			delete(c.Accounts, key)
-		}
-	}
 }

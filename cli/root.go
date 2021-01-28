@@ -29,8 +29,6 @@ func init() {
 	rootCmd.SetVersionTemplate(`{{printf "%s" .Version}}`)
 	rootCmd.AddCommand(loginCmd)
 	rootCmd.AddCommand(accountsCmd)
-	rootCmd.AddCommand(aliasCmd)
-	rootCmd.AddCommand(unaliasCmd)
 	rootCmd.AddCommand(getCmd)
 	rootCmd.AddCommand(setCmd)
 	rootCmd.AddCommand(upgradeCmd)

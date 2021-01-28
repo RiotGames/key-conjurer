@@ -29,7 +29,7 @@ var setTTLCmd = &cobra.Command{
 			return fmt.Errorf("unable to parse value %s", args[0])
 		}
 
-		config.SetTTL(uint(ttl))
+		config.TTL = uint(ttl)
 		return nil
 	},
 }
@@ -45,7 +45,7 @@ var setTimeRemainingCmd = &cobra.Command{
 			return fmt.Errorf("unable to parse value %s", args[0])
 		}
 
-		config.SetTimeRemaining(uint(timeRemaining))
+		config.TimeRemaining = uint(timeRemaining)
 		return nil
 	},
 }
