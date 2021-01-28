@@ -27,7 +27,7 @@ func TestSetTimeRemaining(t *testing.T) {
 func TestFindAccount(t *testing.T) {
 	u := &Config{
 		Accounts: map[string]*Account{
-			"1": &Account{
+			"1": {
 				ID:    "1",
 				Name:  "testaccount",
 				Alias: "testaccount",
@@ -50,7 +50,7 @@ func TestFindAccount(t *testing.T) {
 func TestNewAlias(t *testing.T) {
 	u := &Config{
 		Accounts: map[string]*Account{
-			"1": &Account{
+			"1": {
 				ID:    "1",
 				Name:  "testaccount",
 				Alias: "testaccount",
@@ -69,7 +69,7 @@ func TestNewAlias(t *testing.T) {
 func TestRemoveAlias(t *testing.T) {
 	u := &Config{
 		Accounts: map[string]*Account{
-			"1": &Account{
+			"1": {
 				ID:    "1",
 				Name:  "testaccount",
 				Alias: "totallyacoolalias",
@@ -96,7 +96,7 @@ func TestMergeUserData(t *testing.T) {
 	u := &Config{}
 	toCopy := Config{
 		Accounts: map[string]*Account{
-			"1": &Account{
+			"1": {
 				ID:    "1",
 				Name:  "testaccount",
 				Alias: "totallyacoolalias",
