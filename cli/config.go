@@ -5,11 +5,95 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"strconv"
+
+	"strings"
 
 	"github.com/olekukonko/tablewriter"
 	"github.com/riotgames/key-conjurer/api/core"
 	"github.com/riotgames/key-conjurer/api/keyconjurer"
 )
+
+type maybeLegacyID string
+
+func (i *maybeLegacyID) UnmarshalJSON(buf []byte) error {
+	var id1 uint64
+	var id2 string
+
+	if err := json.Unmarshal(buf, &id1); err == nil {
+		*i = maybeLegacyID(strconv.FormatUint(id1, 10))
+		return nil
+	}
+
+	if err := json.Unmarshal(buf, &id2); err != nil {
+		return err
+	}
+
+	*i = maybeLegacyID(id2)
+	return nil
+}
+
+// Account is used to store information related to the AWS OneLogin App/AWS Account
+type Account struct {
+	ID    string `json:"id"`
+	Name  string `json:"name"`
+	Alias string `json:"alias"`
+}
+
+func (a *Account) UnmarshalJSON(buf []byte) error {
+	var onDiskRepresentation struct {
+		ID    maybeLegacyID `json:"id"`
+		Name  string        `json:"name"`
+		Alias string        `json:"alias"`
+	}
+
+	if err := json.Unmarshal(buf, &onDiskRepresentation); err != nil {
+		return err
+	}
+
+	a.ID = string(onDiskRepresentation.ID)
+	a.Name = onDiskRepresentation.Name
+	a.Alias = onDiskRepresentation.Alias
+	return nil
+}
+
+func (a *Account) NormalizeName() string {
+	return strings.Replace(a.Name, "AWS - ", "", -1)
+}
+
+func (a *Account) DefaultAlias() {
+	if a.Alias == "" {
+		alias := strings.Replace(a.Name, "AWS - ", "", -1)
+		alias = strings.Split(alias, " ")[0]
+		a.Alias = strings.ToLower(alias)
+	}
+}
+
+func (a *Account) IsNameMatch(name string) bool {
+	// Purposefully not checking the lowercase version of app.Alias
+	//  as the user should match the alias provided
+	if strings.ToLower(a.Name) == strings.ToLower(name) {
+		return true
+	}
+
+	if strings.ToLower(a.NormalizeName()) == strings.ToLower(name) {
+		return true
+	}
+
+	if a.Alias == name {
+		return true
+	}
+
+	return false
+}
+
+func (a *Account) SetAlias(alias string) {
+	if alias == "" {
+		a.DefaultAlias()
+	} else {
+		a.Alias = alias
+	}
+}
 
 type accountSet map[string]*Account
 
