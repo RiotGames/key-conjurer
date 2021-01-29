@@ -7,33 +7,20 @@ import (
 	vault "github.com/riotgames/vault-go-client"
 )
 
-func init() {
-	registerRetriever("vault", NewSettingsFromVault)
+type vaultConfig struct {
+	RoleName        string `mapstructure:"vault.roleName"`
+	AWSAuthPath     string `mapstructure:"vault.secretMountPath"`
+	SecretMountPath string `mapstructure:"vault.secretPath"`
+	SecretPath      string `mapstructure:"vault.awsAuthPath"`
 }
 
-func getVaultConfig() (map[string]string, error) {
-	vaultSettings := map[string]string{
-		"vaultRoleName":        os.Getenv("VAULT_ROLE_NAME"),
-		"vaultSecretMountPath": os.Getenv("VAULT_SECRET_MOUNT_PATH"),
-		"vaultSecretPath":      os.Getenv("VAULT_SECRET_PATH"),
-		"vaultAWSAuthPath":     os.Getenv("VAULT_AWS_AUTH_PATH")}
-
-	for key, value := range vaultSettings {
-		if value == "" {
-			return vaultSettings, fmt.Errorf("%s was not set", key)
-		}
-	}
-
-	return vaultSettings, nil
-}
-
-// NewSettingsFromVault pulls configuration from a Vault instance
-//  located at VAULT_ADDR
-func NewSettingsFromVault() (*Settings, error) {
+func retrieveFromVault() (*Settings, error) {
 	awsRegion := os.Getenv("AWSRegion")
-	vaultConfig, err := getVaultConfig()
-	if err != nil {
-		return nil, err
+	cfg := vaultConfig{
+		RoleName:        os.Getenv("VAULT_ROLE_NAME"),
+		SecretMountPath: os.Getenv("VAULT_SECRET_MOUNT_PATH"),
+		SecretPath:      os.Getenv("VAULT_SECRET_PATH"),
+		AWSAuthPath:     os.Getenv("VAULT_AWS_AUTH_PATH"),
 	}
 
 	settings := &Settings{AwsRegion: awsRegion}
@@ -43,8 +30,8 @@ func NewSettingsFromVault() (*Settings, error) {
 	}
 
 	opts := vault.IAMLoginOptions{
-		Role:      vaultConfig["vaultRoleName"],
-		MountPath: vaultConfig["vaultAWSAuthPath"],
+		Role:      cfg.RoleName,
+		MountPath: cfg.AWSAuthPath,
 	}
 
 	if _, err := client.Auth.IAM.Login(opts); err != nil {
@@ -52,13 +39,13 @@ func NewSettingsFromVault() (*Settings, error) {
 	}
 
 	kvOpts := vault.KV2GetOptions{
-		MountPath:     vaultConfig["vaultSecretMountPath"],
-		SecretPath:    vaultConfig["vaultSecretPath"],
+		MountPath:     cfg.SecretMountPath,
+		SecretPath:    cfg.SecretPath,
 		UnmarshalInto: settings,
 	}
 
 	if _, err := client.KV2.Get(kvOpts); err != nil {
-		return nil, fmt.Errorf("Unable to get vault settings from %s", vaultConfig["vaultSecretMounthPath"]+"/"+vaultConfig["vaultSecretPath"])
+		return nil, fmt.Errorf("Unable to get vault settings from %s", cfg.SecretMountPath+"/"+cfg.SecretPath)
 	}
 
 	return settings, nil

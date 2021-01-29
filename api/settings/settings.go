@@ -49,4 +49,5 @@ func retrieveFromEnv() (*Settings, error) {
 
 func init() {
 	registerRetriever("env", retrieveFromEnv)
+	registerRetriever("vault", retrieveFromVault)
 }
