@@ -10,7 +10,7 @@ import (
 	ps "github.com/mitchellh/go-ps"
 )
 
-// Credentials are used to store and print out temporary AWS Credentials
+// AWSCredentials are used to store and print out temporary AWS Credentials
 // Note: verified that onelogin uses int as ID (so no leading 0's)
 // ... but does mean we can have negative user ids
 type AWSCredentials struct {
