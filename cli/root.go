@@ -26,18 +26,23 @@ var (
 
 func init() {
 	rootCmd.PersistentFlags().StringVar(&keyConjurerRcPath, "keyconjurer-rc-path", "~/.keyconjurerrc", "path to .keyconjurerrc file")
+	rootCmd.PersistentFlags().StringVar(&host, "host", defaultHost, "The host of the KeyConjurer API")
 	rootCmd.SetVersionTemplate(`{{printf "%s" .Version}}`)
 	rootCmd.AddCommand(loginCmd)
 	rootCmd.AddCommand(accountsCmd)
 	rootCmd.AddCommand(getCmd)
 	rootCmd.AddCommand(setCmd)
 	rootCmd.AddCommand(upgradeCmd)
-	rootCmd.AddCommand(versionCmd)
 	rootCmd.AddCommand(rolesCmd)
 	rootCmd.AddCommand(providersCmd)
-
-	rootCmd.PersistentFlags().StringVar(&host, "host", defaultHost, "The host of the KeyConjurer API")
 }
+
+const versionString string = `
+	Version: 		%s
+	Client: 		%s
+	Default Hostname:	%s
+	Upgrade URL:		%s
+`
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
