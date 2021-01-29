@@ -15,6 +15,11 @@ type Credentials struct {
 	Password string `json:"password"`
 }
 
+// Encrypted indicates whether or not the credentials are encrypted
+func (c Credentials) Encrypted() bool {
+	return c.Username == "encrypted"
+}
+
 // A User represents a user from an Authentication Provider.
 // This struct is used to guarantee that the user has originated from an authenticator, rather than being a POGO
 type User struct {

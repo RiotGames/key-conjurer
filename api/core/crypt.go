@@ -62,8 +62,7 @@ func (c *Crypto) Encrypt(ctx context.Context, credentials Credentials) (string, 
 // If the credentials object is not encrypted, this is a no-op.
 func (c *Crypto) Decrypt(ctx context.Context, credentials *Credentials) error {
 	// TODO we probably want better sentinel errors so we can more easily return the appropriate status code
-	if credentials.Username != "encrypted" {
-		// Credentials are not encrypted
+	if !credentials.Encrypted() {
 		return nil
 	}
 
