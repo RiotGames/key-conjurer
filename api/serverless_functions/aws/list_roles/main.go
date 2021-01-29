@@ -5,6 +5,7 @@ import (
 
 	"github.com/riotgames/key-conjurer/api/consts"
 	"github.com/riotgames/key-conjurer/api/keyconjurer"
+	"github.com/riotgames/key-conjurer/api/settings"
 
 	"github.com/aws/aws-lambda-go/lambda"
 )
