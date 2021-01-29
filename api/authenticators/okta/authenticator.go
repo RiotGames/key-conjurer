@@ -195,3 +195,12 @@ func New(host, token string, mfa duo.Duo) (*Authenticator, error) {
 
 	return &Authenticator{client: client, ctx: ctx, mfa: mfa, oktaAuthClient: newOktaAuthClient(host)}, nil
 }
+
+func Must(host, token string, mfa duo.Duo) *Authenticator {
+	auth, err := New(host, token, mfa)
+	if err != nil {
+		panic(err)
+	}
+
+	return auth
+}

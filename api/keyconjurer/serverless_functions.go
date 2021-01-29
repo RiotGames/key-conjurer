@@ -28,21 +28,16 @@ func NewHandler(cfg *settings.Settings) Handler {
 		panic(err)
 	}
 
-	providers := make(providerMap)
 	mfa := duo.New()
-	oktaProvider, err := okta.New(cfg.OktaHost, cfg.OktaToken, mfa)
-	if err != nil {
-		panic(err)
-	}
-
-	providers["okta"] = oktaProvider
-	providers["onelogin"] = onelogin.New(cfg, mfa)
 	return Handler{
 		// TODO: Change this to AWS KMS
-		crypt:                   core.NewCrypto(&core.PassThroughProvider{}),
-		cfg:                     cfg,
-		aws:                     client,
-		authenticationProviders: providers,
+		crypt: core.NewCrypto(&core.PassThroughProvider{}),
+		cfg:   cfg,
+		aws:   client,
+		authenticationProviders: providerMap{
+			AuthenticationProviderOkta:     okta.Must(cfg.OktaHost, cfg.OktaToken, mfa),
+			AuthenticationProviderOneLogin: onelogin.New(cfg, mfa),
+		},
 	}
 }
 
