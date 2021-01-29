@@ -7,7 +7,7 @@ import (
 )
 
 func main() {
-	err := Execute()
+	err := rootCmd.Execute()
 	if err == nil {
 		return
 	}
