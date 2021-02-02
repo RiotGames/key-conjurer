@@ -43,25 +43,6 @@ module "get_list_providers" {
   lambda_arn     = aws_lambda_function.keyconjurer-list_providers.arn
 }
 
-module "post_get_user_data" {
-  source         = "./gateway_post_endpoint"
-  account_number = var.account_number
-  region         = var.region
-  rest_api_id    = aws_api_gateway_rest_api.keyconjurer.id
-  resource_id    = aws_api_gateway_resource.get_user_data.id
-  uri_arn        = aws_lambda_function.keyconjurer-get_user_data.invoke_arn
-  lambda_arn     = aws_lambda_function.keyconjurer-get_user_data.arn
-}
-
-module "post_get_user_data" {
-  source         = "./gateway_post_endpoint"
-  account_number = var.account_number
-  region         = var.region
-  rest_api_id    = aws_api_gateway_rest_api.keyconjurer.id
-  resource_id    = aws_api_gateway_resource.get_user_data.id
-  uri_arn        = aws_lambda_function.keyconjurer-get_user_data.invoke_arn
-  lambda_arn     = aws_lambda_function.keyconjurer-get_user_data.arn
-}
 
 module "post_get_aws_creds" {
   source         = "./gateway_post_endpoint"
@@ -73,15 +54,19 @@ module "post_get_aws_creds" {
   lambda_arn     = aws_lambda_function.keyconjurer-get_aws_creds.arn
 }
 
+module "post_get_user_data" {
+  source         = "./gateway_post_endpoint"
+  account_number = var.account_number
+  region         = var.region
+  rest_api_id    = aws_api_gateway_rest_api.keyconjurer.id
+  resource_id    = aws_api_gateway_resource.get_user_data.id
+  uri_arn        = aws_lambda_function.keyconjurer-get_user_data.invoke_arn
+  lambda_arn     = aws_lambda_function.keyconjurer-get_user_data.arn
+}
+
 module "options_get_user_data" {
   source      = "./gateway_options_endpoint"
   rest_api_id = aws_api_gateway_rest_api.keyconjurer.id
   resource_id = aws_api_gateway_resource.get_user_data.id
-}
-
-module "options_get_aws_creds" {
-  source      = "./gateway_options_endpoint"
-  rest_api_id = aws_api_gateway_rest_api.keyconjurer.id
-  resource_id = aws_api_gateway_resource.get_aws_creds.id
 }
 
