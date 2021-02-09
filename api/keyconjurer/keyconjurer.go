@@ -1,6 +1,8 @@
 package keyconjurer
 
 import (
+	"fmt"
+
 	"github.com/riotgames/key-conjurer/api/authenticators"
 	cloudprovider "github.com/riotgames/key-conjurer/api/cloud-providers"
 	"github.com/riotgames/key-conjurer/api/settings"
@@ -15,17 +17,18 @@ type KeyConjurer struct {
 	Logger         *logrus.Entry
 }
 
-// New creates an KeyConjurer service
-func NewKeyConjurer(client, clientVersion string, auth authenticators.Authenticator, logger *logrus.Entry, keyConjurerSettings *settings.Settings) *KeyConjurer {
+// NewKeyConjurer creates an KeyConjurer service
+func NewKeyConjurer(auth authenticators.Authenticator, logger *logrus.Entry, keyConjurerSettings *settings.Settings) (*KeyConjurer, error) {
 	provider, err := cloudprovider.NewProvider(keyConjurerSettings, logger)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
+
 	return &KeyConjurer{
 		providerClient: provider,
 		Authenticator:  auth,
 		Logger:         logger,
-	}
+	}, nil
 }
 
 // GetUserData retrieves the users devices and apps from OneLogin. The apps
@@ -33,8 +36,7 @@ func NewKeyConjurer(client, clientVersion string, auth authenticators.Authentica
 func (a *KeyConjurer) GetUserData(user *cloudprovider.User) (*UserData, error) {
 	authAccounts, err := a.Authenticator.Authenticate(user.Username, user.Password)
 	if err != nil {
-		a.Logger.Error("error authenticating reason: ", err.Error())
-		return nil, err
+		return nil, fmt.Errorf("error authenticating: %w", err)
 	}
 
 	userData := &UserData{
@@ -46,13 +48,11 @@ func (a *KeyConjurer) GetUserData(user *cloudprovider.User) (*UserData, error) {
 	return userData, nil
 }
 
-// GetAwsCreds authenticates the user against OneLogin, sends a Duo push request
-//  to the user, then retrieves AWS credentials
+// GetTemporaryCredentialsForUser authenticates the user against OneLogin, sends a Duo push request to the user, then retrieves AWS credentials
 func (a *KeyConjurer) GetTemporaryCredentialsForUser(user *cloudprovider.User, appID string, keyTimeoutInHours int) (interface{}, error) {
 	samlAssertion, err := a.Authenticator.Authorize(user.Username, user.Password, appID)
 	if err != nil {
-		a.Logger.Error("unable to parse saml assertion reason: ", err.Error())
-		return nil, err
+		return nil, fmt.Errorf("unable to parse saml assertion: %w", err)
 	}
 
 	return a.providerClient.GetTemporaryCredentialsForUser(samlAssertion, keyTimeoutInHours)

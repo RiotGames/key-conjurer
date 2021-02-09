@@ -1,7 +1,7 @@
 package cmd
 
 import (
-	"log"
+	"fmt"
 
 	"github.com/riotgames/key-conjurer/cli/keyconjurer"
 
@@ -30,28 +30,34 @@ var getCmd = &cobra.Command{
 	Long:    "Retrieves temporary AWS API credentials for the specified account.  It sends a push request to the first Duo device it finds associated with your account.",
 	Example: "keyconjurer get <accountName/alias>",
 	Args:    cobra.ExactArgs(1),
-	Run: func(cmd *cobra.Command, args []string) {
-		userData := keyconjurer.Login(keyConjurerRcPath, false)
-		accountName := args[0]
+	RunE: func(cmd *cobra.Command, args []string) error {
+		userData, err := keyconjurer.Login(keyConjurerRcPath, false)
+		if err != nil {
+			return err
+		}
 
 		// make sure we enforce limit
 		if ttl > 8 {
 			ttl = 8
 		}
 
+		accountName := args[0]
 		credentials, err := keyconjurer.GetCredentials(userData, accountName, ttl)
 		if err != nil {
-			if saveError := userData.Save(); saveError != nil {
-				log.Println(saveError)
+			if err := userData.Save(); err != nil {
+				return err
 			}
-			log.Fatal(err)
+
+			return err
 		}
+
 		account, err := userData.FindAccount(accountName)
 		if err != nil {
-			if saveError := userData.Save(); err != nil {
-				log.Println(saveError)
+			if err := userData.Save(); err != nil {
+				return err
 			}
-			log.Fatal(err)
+
+			return err
 		}
 
 		switch outputType {
@@ -59,9 +65,10 @@ var getCmd = &cobra.Command{
 			credentials.PrintCredsForEnv()
 		case "awscli":
 			newCliEntry := keyconjurer.NewAWSCliEntry(credentials, account)
-			keyconjurer.SaveAWSCredentialInCLI(awsCliPath, newCliEntry)
+			return keyconjurer.SaveAWSCredentialInCLI(awsCliPath, newCliEntry)
 		default:
-			log.Fatalf("%s is an invalid output type.\n", outputType)
+			return fmt.Errorf("%s is an invalid output type", outputType)
 		}
 
+		return nil
 	}}

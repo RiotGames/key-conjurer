@@ -1,13 +1,11 @@
 package keyconjurer
 
 import (
-	"log"
 	"os"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -26,20 +24,9 @@ func init() {
 		"AWSKEY_EXPIRATION",
 		"AWSKEY_ACCOUNT",
 	}
-
-	logger := logrus.New()
-	logger.SetOutput(os.Stderr)
-	level, err := logrus.ParseLevel("debug")
-	if err != nil {
-		log.Fatal(err)
-	}
-	logger.SetLevel(level)
-
-	Logger = logger
 }
 
 func resetEnv(t *testing.T, env []string) {
-	//log.Println("current env: ", env)
 	currentEnv := map[string]string{}
 	for _, kvstring := range env {
 		kv := strings.Split(kvstring, "=")

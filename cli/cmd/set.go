@@ -1,8 +1,7 @@
 package cmd
 
 import (
-	"log"
-	"os"
+	"fmt"
 	"strconv"
 
 	"github.com/riotgames/key-conjurer/cli/keyconjurer"
@@ -25,15 +24,19 @@ var setTTLCmd = &cobra.Command{
 	Short: "Sets ttl value in number of hours.",
 	Long:  "Sets ttl value in number of hours.",
 	Args:  cobra.ExactArgs(1),
-	Run: func(cmd *cobra.Command, args []string) {
-		userData := keyconjurer.Login(keyConjurerRcPath, false)
+	RunE: func(cmd *cobra.Command, args []string) error {
+		userData, err := keyconjurer.Login(keyConjurerRcPath, false)
+		if err != nil {
+			return err
+		}
+
 		ttl, err := strconv.ParseUint(args[0], 10, 32)
 		if err != nil {
-			log.Printf("Unable to parse value %v\n", args[0])
-			os.Exit(1)
+			return fmt.Errorf("unable to parse value %s", args[0])
 		}
+
 		userData.SetTTL(uint(ttl))
-		userData.Save()
+		return userData.Save()
 	}}
 
 var setTimeRemainingCmd = &cobra.Command{
@@ -41,13 +44,17 @@ var setTimeRemainingCmd = &cobra.Command{
 	Short: "Sets time remaining value in number of minutes.",
 	Long:  "Sets time remaining value in number of minutes. Using minutes is an artifact from when keys could only live for 1 hour.",
 	Args:  cobra.ExactArgs(1),
-	Run: func(cmd *cobra.Command, args []string) {
-		userData := keyconjurer.Login(keyConjurerRcPath, false)
+	RunE: func(cmd *cobra.Command, args []string) error {
+		userData, err := keyconjurer.Login(keyConjurerRcPath, false)
+		if err != nil {
+			return err
+		}
+
 		timeRemaining, err := strconv.ParseUint(args[0], 10, 32)
 		if err != nil {
-			log.Printf("Unable to parse value %v\n", args[0])
-			os.Exit(1)
+			return fmt.Errorf("unable to parse value %s", args[0])
 		}
+
 		userData.SetTimeRemaining(uint(timeRemaining))
-		userData.Save()
+		return userData.Save()
 	}}

@@ -20,11 +20,11 @@ type Settings struct {
 	OneLoginSubdomain      string `json:"oneLoginSubdomain"`
 }
 
-type SettingsRetrieverFunc = func(logger *logrus.Entry) *Settings
+type SettingsRetrieverFunc = func(logger *logrus.Entry) (*Settings, error)
 
 var SettingsRetrievers = map[string]SettingsRetrieverFunc{}
 
-func NewSettings(logger *logrus.Entry) *Settings {
+func NewSettings(logger *logrus.Entry) (*Settings, error) {
 	logger.Infof("Settings Retriever in Use: %s", consts.SettingsRetrieverSelect)
 	return SettingsRetrievers[consts.SettingsRetrieverSelect](logger)
 }
@@ -33,5 +33,6 @@ func registerRetriever(name string, retrieverFunc SettingsRetrieverFunc) {
 	if _, ok := SettingsRetrievers[name]; ok {
 		log.Fatalf("Already had registered retriever: %s", name)
 	}
+
 	SettingsRetrievers[name] = retrieverFunc
 }

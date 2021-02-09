@@ -19,8 +19,12 @@ var accountsCmd = &cobra.Command{
 	Short:   "Prints the list of accounts you have access to.",
 	Long:    "Prints the list of accounts you have access to.",
 	Example: "keyconjurer accounts",
-	Run: func(cmd *cobra.Command, args []string) {
-		userData := keyconjurer.Login(keyConjurerRcPath, false)
+	RunE: func(cmd *cobra.Command, args []string) error {
+		userData, err := keyconjurer.Login(keyConjurerRcPath, false)
+		if err != nil {
+			return err
+		}
+
 		//need update path
-		userData.ListAccounts()
+		return userData.ListAccounts()
 	}}

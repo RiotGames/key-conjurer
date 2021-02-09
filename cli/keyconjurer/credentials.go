@@ -1,8 +1,10 @@
 package keyconjurer
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
+	"strconv"
 	"time"
 )
 
@@ -21,7 +23,6 @@ func GetCredentials(u *UserData, accountName string, ttl uint) (*Credentials, er
 	// check if account is an account currently assigned
 	accountFound, err := u.FindAccount(accountName)
 	if err != nil {
-		Logger.Warnf("account <%s> is not currently cached by Key Conjurer; please login or have the account assigned to you\n", accountName)
 		return nil, err
 	}
 
@@ -45,7 +46,6 @@ func GetCredentials(u *UserData, accountName string, ttl uint) (*Credentials, er
 		fmt.Fprintln(os.Stderr, "Sending Duo Push")
 		credentials, err = getCredentialsFromKeyConjurer(u.Creds, accountFound, credsTTL)
 		if err != nil {
-			Logger.Fatalln(err.Error())
 			return nil, err
 		}
 	}
@@ -58,17 +58,26 @@ func GetCredentials(u *UserData, accountName string, ttl uint) (*Credentials, er
 // requests a set of temporary credentials for the requested AWS account and returns
 //  them via the inputed credentials
 func getCredentialsFromKeyConjurer(encryptedAD string, account *Account, ttl uint) (*Credentials, error) {
-	Logger.Debugf("getting aws credentials using user creds <%v,%v,%v>", encryptedAD, account, ttl)
-	data := newKeyConjurerCredRequestJSON(Client, Version, "encrypted", encryptedAD, account.ID, ttl)
+	request := CredsRequest{
+		Client:         Client,
+		ClientVersion:  Version,
+		Username:       "encrypted",
+		Password:       encryptedAD,
+		AppID:          strconv.FormatUint(uint64(account.ID), 10),
+		TimeoutInHours: ttl,
+	}
 
-	responseCredData := &Credentials{}
-	err := doKeyConjurerAPICall("/get_aws_creds", data, responseCredData)
+	data, err := json.Marshal(request)
 	if err != nil {
-		Logger.Debugln("error calling Key Conjurer /get_aws_creds api")
 		return nil, err
 	}
 
-	return responseCredData, nil
+	responseCredData := Credentials{}
+	if err := doKeyConjurerAPICall("/get_aws_creds", data, &responseCredData); err != nil {
+		return nil, err
+	}
+
+	return &responseCredData, nil
 }
 
 // load current ENV credentials is available
@@ -86,7 +95,6 @@ func envCredsValid(account *Account, minutesTimeWindow uint) bool {
 	// generate new creds
 	currentAccount, ok := os.LookupEnv("AWSKEY_ACCOUNT")
 	if !ok || currentAccount != fmt.Sprint(account.ID) {
-		Logger.Infof("env creds invalid as account <%v> doesnt match AWSKEY_ACCOUNT <%v>\n", fmt.Sprint(account.ID), currentAccount)
 		return false
 	}
 
@@ -94,7 +102,6 @@ func envCredsValid(account *Account, minutesTimeWindow uint) bool {
 	// generate new creds
 	currentExpiration, ok := os.LookupEnv("AWSKEY_EXPIRATION")
 	if !ok {
-		Logger.Warnln("env creds invalid as key expired")
 		return false
 	}
 
@@ -102,8 +109,6 @@ func envCredsValid(account *Account, minutesTimeWindow uint) bool {
 	// generate new creds
 	expiration, err := time.Parse(time.RFC3339, currentExpiration)
 	if err != nil {
-		Logger.Warnf("env cerds invalid as timestamp <%v> is not RFC3339 compliant\n", currentExpiration)
-		Logger.Errorln(err)
 		return false
 	}
 

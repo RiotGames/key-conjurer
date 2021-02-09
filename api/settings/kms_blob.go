@@ -3,6 +3,7 @@ package settings
 import (
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"os"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -17,14 +18,16 @@ func init() {
 
 // NewSettingsFromKMSBlob decrypts the encrypted settings in environment
 //  variable EncryptedSettings then returns a new Settings struct.
-func NewSettingsFromKMSBlob(logger *logrus.Entry) *Settings {
+func NewSettingsFromKMSBlob(logger *logrus.Entry) (*Settings, error) {
 	awsRegion := os.Getenv("AWSRegion")
 	encryptedSettings := os.Getenv("EncryptedSettings")
 
 	settings := &Settings{AwsRegion: awsRegion}
 
-	config := session.Must(session.NewSession(&aws.Config{
-		Region: aws.String(settings.AwsRegion)}))
+	config, err := session.NewSession(&aws.Config{Region: aws.String(settings.AwsRegion)})
+	if err != nil {
+		return nil, err
+	}
 
 	kmsClient := kms.New(config)
 
@@ -36,16 +39,12 @@ func NewSettingsFromKMSBlob(logger *logrus.Entry) *Settings {
 
 	result, err := kmsClient.Decrypt(input)
 	if err != nil {
-		logger.Error("aws client failed to decrypt reason: ", err.Error())
-		logger.Fatal(err.Error())
-		panic(err)
+		return nil, fmt.Errorf("aws client failed to decrypt: %w", err)
 	}
 
 	if err := json.Unmarshal(result.Plaintext, &settings); err != nil {
-		logger.Error("unable to unmarshal reason: ", err.Error())
-		logger.Fatal(err.Error())
-		panic(err)
+		return nil, fmt.Errorf("unable to marshal to JSON: %w", err)
 	}
 
-	return settings
+	return settings, nil
 }

@@ -2,22 +2,19 @@ package cmd
 
 import (
 	"fmt"
-	"log"
-	"os"
 
 	"github.com/riotgames/key-conjurer/cli/keyconjurer"
 
-	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
-var keyConjurerRcPath string
-var logLevel string
-var devFlag bool
+var (
+	keyConjurerRcPath string
+	devFlag           bool
+)
 
 func init() {
 	rootCmd.PersistentFlags().StringVar(&keyConjurerRcPath, "keyconjurer-rc-path", "~/.keyconjurerrc", "path to .keyconjurerrc file")
-	rootCmd.PersistentFlags().StringVarP(&logLevel, "verbosity", "v", logrus.ErrorLevel.String(), "Log level (debug, info, warn, error, fatal, panic)")
 	rootCmd.PersistentFlags().BoolVarP(&devFlag, "dev", "d", false, "flag to use dev server")
 	rootCmd.SetVersionTemplate(`{{printf "%s" .Version}}`)
 	rootCmd.AddCommand(loginCmd)
@@ -43,28 +40,12 @@ keyconjurer accounts
 keyconjurer get <accountName>
 `,
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
-		setKeyConjurerLogger()
 		keyconjurer.Dev = devFlag
 	},
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
-func Execute() {
-	if err := rootCmd.Execute(); err != nil {
-		log.Println(err)
-		os.Exit(1)
-	}
-}
-
-func setKeyConjurerLogger() {
-	logger := logrus.New()
-	logger.SetOutput(os.Stderr)
-	level, err := logrus.ParseLevel(logLevel)
-	if err != nil {
-		log.Fatal(err)
-	}
-	logger.SetLevel(level)
-
-	keyconjurer.Logger = logger
+func Execute() error {
+	return rootCmd.Execute()
 }
