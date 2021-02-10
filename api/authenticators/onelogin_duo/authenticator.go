@@ -1,102 +1,72 @@
 package oneloginduo
 
 import (
+	"context"
 	"fmt"
+	"strconv"
 	"strings"
 
-	"github.com/riotgames/key-conjurer/api/authenticators"
+	"github.com/riotgames/key-conjurer/api/core"
+
+	"github.com/riotgames/key-conjurer/api/authenticators/duo"
 	"github.com/riotgames/key-conjurer/api/settings"
 
-	saml "github.com/RobotsAndPencils/go-saml"
 	"github.com/rnikoopour/onelogin"
-	"github.com/sirupsen/logrus"
 )
 
-type OneLoginSaml struct {
-	b64String    string
-	samlResponse *saml.Response
-	logger       *logrus.Entry
+type Authenticator struct {
+	settings *settings.Settings
+	mfa      duo.Duo
 }
 
-func (s OneLoginSaml) GetBase64String() string {
-	return s.b64String
+// New creates a new OneLogin authenticator with the given MFA instance
+func New(settings *settings.Settings, mfa duo.Duo) *Authenticator {
+	return &Authenticator{
+		settings: settings,
+		mfa:      mfa,
+	}
 }
 
-func (s OneLoginSaml) GetSamlResponse() *saml.Response {
-	return s.samlResponse
-}
-
-type DuoMFA struct {
-	logger *logrus.Entry
-}
-
-func NewDuoMFA(logger *logrus.Entry) *DuoMFA {
-	return &DuoMFA{
-		logger: logger}
-}
-
-func (d *DuoMFA) Do(args ...string) (string, error) {
-	d.logger.Debug("prepping push")
-	duo := NewDuo(d.logger)
-
-	if len(args) < 4 {
-		return "", ErrorDuoArgsError
+func (a *Authenticator) Authenticate(ctx context.Context, creds core.Credentials) (core.User, error) {
+	o := newOneLogin(a.settings)
+	user, err := o.SamlClient.Oauth.Authenticate(ctx, creds.Username, creds.Password)
+	if err != nil {
+		return core.User{}, err
 	}
 
-	txSig := args[0]
-	stateToken := args[1]
-	callbackUrl := args[2]
-	apiHost := args[3]
-
-	d.logger.Info("sending duo push")
-	return duo.SendPush(txSig, stateToken, callbackUrl, apiHost)
+	return core.User{ID: strconv.FormatInt(user.ID, 10)}, nil
 }
 
-type OneLoginAuthenticator struct {
-	Settings *settings.Settings
-	MFA      authenticators.MFA
-	logger   *logrus.Entry
-}
-
-func New(logger *logrus.Entry, settings *settings.Settings) authenticators.Authenticator {
-	return &OneLoginAuthenticator{
-		Settings: settings,
-		logger:   logger}
-}
-
-func (ola *OneLoginAuthenticator) SetMFA(mfa authenticators.MFA) {
-	ola.MFA = mfa
-}
-
-func (ola *OneLoginAuthenticator) Authenticate(username string, password string) ([]authenticators.Account, error) {
-	oneLoginClient := NewOneLogin(ola.Settings, ola.logger)
-
-	authenticatedUser, err := oneLoginClient.AuthenticateUser(username, password)
+func (a *Authenticator) ListApplications(ctx context.Context, user core.User) ([]core.Application, error) {
+	o := newOneLogin(a.settings)
+	id, err := strconv.ParseInt(user.ID, 10, 64)
 	if err != nil {
-		ola.logger.Error("failed to authenticate user reason: ", err.Error())
 		return nil, err
 	}
 
-	allUserApps, err := oneLoginClient.GetUserApps(authenticatedUser)
+	apps, err := o.ReadUserClient.User.GetApps(ctx, id)
 	if err != nil {
-		ola.logger.Error("unable to get user apps reason: ", err.Error())
 		return nil, err
 	}
 
-	accounts := make([]authenticators.Account, len(allUserApps))
-	for index, app := range allUserApps {
-		accounts[index] = app
+	applications := []core.Application{}
+	for _, app := range *apps {
+		if strings.HasPrefix(app.Name, "AWS") {
+			applications = append(applications, core.Application{
+				LegacyID: uint(app.ID),
+				ID:       strconv.FormatInt(app.ID, 10),
+				Name:     app.Name,
+			})
+		}
 	}
 
-	return accounts, nil
+	return applications, nil
 }
 
-func (ola *OneLoginAuthenticator) Authorize(username string, password string, appID string) (authenticators.SamlResponse, error) {
-	oneLoginClient := NewOneLogin(ola.Settings, ola.logger)
-
-	stateTokenResponse, err := oneLoginClient.GetStateToken(username, password, appID)
+func (ola *Authenticator) GenerateSAMLAssertion(ctx context.Context, creds core.Credentials, appID string) (*core.SAMLResponse, error) {
+	o := newOneLogin(ola.settings)
+	stateTokenResponse, err := o.SamlClient.SAML.SamlAssertion(ctx, creds.Username, creds.Password, appID)
 	if err != nil {
-		ola.logger.Error("unable to get state token reason: ", err.Error())
 		return nil, err
 	}
 
@@ -110,32 +80,19 @@ func (ola *OneLoginAuthenticator) Authorize(username string, password string, ap
 	txSignature := signatures[0]
 	appSignature := signatures[1]
 
-	if ola.MFA == nil {
-		ola.logger.Error("mfa is nil")
-	}
-
-	ola.logger.Info("sending mfa push")
-	mfaCookie, err := ola.MFA.Do(txSignature, stateTokenResponse.StateToken, stateTokenResponse.CallbackUrl, device.ApiHostName)
+	mfaCookie, err := ola.mfa.SendPush(txSignature, stateTokenResponse.StateToken, stateTokenResponse.CallbackUrl, device.ApiHostName)
 	if err != nil {
-		ola.logger.Error("unable to get mfacookie reason: ", err.Error())
 		return nil, err
 	}
 
 	mfaToken := fmt.Sprintf("%v:%v", mfaCookie, appSignature)
-	ola.logger.Info("KeyConjurer", "Authorize", "Getting SAML assertion")
-	samlString, err := oneLoginClient.GetSamlAssertion(mfaToken, stateTokenResponse.StateToken, appID, fmt.Sprint(device.Id))
+
+	samlString, err := o.GetSamlAssertion(ctx, mfaToken, stateTokenResponse.StateToken, appID, fmt.Sprint(device.Id))
 	if err != nil {
-		ola.logger.Error("unable to get saml assertion")
 		return nil, err
 	}
 
-	response, err := saml.ParseEncodedResponse(samlString)
-	if err != nil {
-		ola.logger.Error("unable to parse saml assertion into saml response")
-		return nil, err
-	}
-	return OneLoginSaml{
-		b64String:    samlString,
-		samlResponse: response,
-		logger:       ola.logger}, nil
+	return core.ParseEncodedResponse(samlString)
 }
+
+var _ core.AuthenticationProvider = &Authenticator{}

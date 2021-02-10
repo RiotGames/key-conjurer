@@ -20,6 +20,12 @@ resource "aws_api_gateway_rest_api" "keyconjurer" {
             "Principal": "*",
             "Action": "execute-api:Invoke",
             "Resource": "execute-api:/*/POST/*"
+        },
+        {
+            "Effect": "Allow",
+            "Principal": "*",
+            "Action": "execute-api:Invoke",
+            "Resource": "execute-api:/*/GET/*"
         }
     ]
 }
@@ -30,8 +36,10 @@ resource "aws_api_gateway_deployment" "live" {
   depends_on = [
     module.post_get_user_data,
     module.post_get_aws_creds,
+    module.post_list_providers,
     module.options_get_user_data,
-    module.options_get_aws_creds
+    module.options_get_aws_creds,
+    module.options_list_providers,
   ]
   rest_api_id = aws_api_gateway_rest_api.keyconjurer.id
   stage_name  = "live"
