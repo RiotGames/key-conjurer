@@ -179,7 +179,12 @@ func (h *Handler) GetTemporaryCredentialEventHandler(ctx context.Context, event 
 
 	sts, err := h.aws.GetTemporaryCredentialsForUser(ctx, event.RoleName, response, int(event.TimeoutInHours))
 	if err != nil {
-		return ErrorResponse(ErrCodeInternalServerError, "unable to get AWS credentials")
+		var errRoleNotFound aws.ErrRoleNotFound
+		if errors.As(err, &errRoleNotFound) {
+			return ErrorResponse(ErrBadRequest, errRoleNotFound.Error())
+		}
+
+		return ErrorResponse(ErrCodeInternalServerError, err.Error())
 	}
 
 	return DataResponse(GetTemporaryCredentialsPayload{
