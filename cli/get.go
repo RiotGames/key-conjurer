@@ -34,9 +34,11 @@ func init() {
 }
 
 var getCmd = &cobra.Command{
-	Use:     "get <accountName/alias>",
-	Short:   "Retrieves temporary AWS API credentials.",
-	Long:    "Retrieves temporary AWS API credentials for the specified account.  It sends a push request to the first Duo device it finds associated with your account.",
+	Use:   "get <accountName/alias>",
+	Short: "Retrieves temporary AWS API credentials.",
+	Long: `Retrieves temporary AWS API credentials for the specified account.  It sends a push request to the first Duo device it finds associated with your account.
+
+A role must be specified when using this command through the --role flag. You may list the roles you can assume through the roles command.`,
 	Example: "keyconjurer get <accountName/alias>",
 	Args:    cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
@@ -68,14 +70,12 @@ var getCmd = &cobra.Command{
 		}
 
 		applicationID := args[0]
-		if account, ok := config.FindAccount(args[0]); ok {
+		account, ok := config.FindAccount(args[0])
+		if ok {
 			applicationID = account.ID
 		}
 
-		if !quiet {
-			fmt.Println("sending authentication request for account %q - you may be asked to authenticate with Duo", applicationID)
-		}
-
+		logInfo("sending authentication request for account %q - you may be asked to authenticate with Duo", account.Name)
 		credentials, err := client.GetCredentials(ctx, &GetCredentialsOptions{
 			Credentials:            creds,
 			ApplicationID:          applicationID,

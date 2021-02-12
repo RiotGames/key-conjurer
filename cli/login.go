@@ -83,6 +83,7 @@ var loginCmd = &cobra.Command{
 		}
 
 		config.Accounts.ReplaceWith(entries)
+		logInfo("logged into %q successfully", creds.Username)
 		return nil
 	},
 }
