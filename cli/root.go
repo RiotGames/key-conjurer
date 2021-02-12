@@ -28,6 +28,7 @@ var (
 func init() {
 	rootCmd.PersistentFlags().StringVar(&keyConjurerRcPath, "keyconjurer-rc-path", "~/.keyconjurerrc", "path to .keyconjurerrc file")
 	rootCmd.PersistentFlags().StringVar(&host, "host", defaultHost, "The host of the KeyConjurer API")
+	rootCmd.PersistentFlags().BoolVar(&quiet, "quiet", false, "tells the CLI to be quiet; stdout will not contain human-readable informational messages")
 	rootCmd.SetVersionTemplate(`{{printf "%s" .Version}}`)
 	rootCmd.AddCommand(loginCmd)
 	rootCmd.AddCommand(accountsCmd)
@@ -38,7 +39,7 @@ func init() {
 	rootCmd.AddCommand(&providersCmd)
 	rootCmd.AddCommand(&aliasCmd)
 	rootCmd.AddCommand(&unaliasCmd)
-	rootCmd.PersistentFlags().BoolVar(&quiet, "quiet", false, "tells the CLI to be quiet; stdout will not contain human-readable informational messages")
+	rootCmd.AddCommand(&rolesCmd)
 }
 
 const versionString string = `
