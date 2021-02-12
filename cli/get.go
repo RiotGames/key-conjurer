@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/riotgames/key-conjurer/api/keyconjurer"
 	"github.com/spf13/cobra"
 )
 
@@ -31,7 +30,7 @@ func init() {
 	getCmd.Flags().StringVarP(&outputType, "out", "o", outputTypeEnvironmentVariable, "Format to save new credentials in. Supported outputs: env, awscli")
 	getCmd.Flags().StringVarP(&awsCliPath, "awscli", "", "~/.aws/", "Path for directory used by the aws-cli tool. Default is \"~/.aws\".")
 	getCmd.Flags().StringVar(&roleName, "role", "", "The name of the role to assume.")
-	getCmd.Flags().StringVar(&authProvider, "provider", keyconjurer.AuthenticationProviderOkta, "The authentication provider to use.")
+	getCmd.Flags().StringVar(&identityProvider, "identity-provider", defaultIdentityProvider, "The identity provider to use. Refer to `keyconjurer identity-providers` for more info.")
 }
 
 var getCmd = &cobra.Command{
@@ -73,12 +72,16 @@ var getCmd = &cobra.Command{
 			applicationID = account.ID
 		}
 
+		if !quiet {
+			fmt.Println("sending authentication request for account %q - you may be asked to authenticate with Duo", applicationID)
+		}
+
 		credentials, err := client.GetCredentials(ctx, &GetCredentialsOptions{
 			Credentials:            creds,
 			ApplicationID:          applicationID,
 			RoleName:               roleName,
 			TimeoutInHours:         uint8(ttl),
-			AuthenticationProvider: authProvider,
+			AuthenticationProvider: identityProvider,
 		})
 
 		if err != nil {

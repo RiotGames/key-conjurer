@@ -47,7 +47,7 @@ func promptForCredentials(r io.Reader) (core.Credentials, error) {
 }
 
 func init() {
-	loginCmd.Flags().StringVar(&authProvider, "provider", keyconjurer.AuthenticationProviderOkta, "The authentication provider to use.")
+	loginCmd.Flags().StringVar(&identityProvider, "identity-provider", keyconjurer.AuthenticationProviderOkta, "The identity provider to use.")
 }
 
 var loginCmd = &cobra.Command{
@@ -69,7 +69,7 @@ var loginCmd = &cobra.Command{
 
 		data, err := client.GetUserData(ctx, &GetUserDataOptions{
 			Credentials:            creds,
-			AuthenticationProvider: authProvider,
+			AuthenticationProvider: identityProvider,
 		})
 
 		if err != nil {

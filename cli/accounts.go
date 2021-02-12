@@ -4,12 +4,11 @@ import (
 	"context"
 	"os"
 
-	"github.com/riotgames/key-conjurer/api/keyconjurer"
 	"github.com/spf13/cobra"
 )
 
 func init() {
-	accountsCmd.Flags().StringVar(&authProvider, "provider", keyconjurer.AuthenticationProviderOkta, "The authentication provider to use when interacting with the server.")
+	accountsCmd.Flags().StringVar(&identityProvider, "identity-provider", defaultIdentityProvider, "The identity provider to use. Refer to `keyconjurer identity-providers` for more info.")
 }
 
 var accountsCmd = &cobra.Command{
@@ -31,7 +30,7 @@ var accountsCmd = &cobra.Command{
 
 		accounts, err := client.ListAccounts(ctx, &ListAccountsOptions{
 			Credentials:            creds,
-			AuthenticationProvider: authProvider,
+			AuthenticationProvider: identityProvider,
 		})
 
 		if err != nil {

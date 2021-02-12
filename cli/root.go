@@ -18,10 +18,11 @@ var (
 	// host of the API server. Don't use this. You probably meant to use newClient() instead.
 	host string
 	// This is set by the Makefile during build of the CLI. Don't use this.
-	defaultHost  string
-	authProvider string
+	defaultHost      string
+	identityProvider string
 	// config is a cache-like datastore for this application. It is loaded at app start-up.
 	config Config
+	quiet  bool
 )
 
 func init() {
@@ -37,6 +38,7 @@ func init() {
 	rootCmd.AddCommand(&providersCmd)
 	rootCmd.AddCommand(&aliasCmd)
 	rootCmd.AddCommand(&unaliasCmd)
+	rootCmd.PersistentFlags().BoolVar(&quiet, "quiet", false, "tells the CLI to be quiet; stdout will not contain human-readable informational messages")
 }
 
 const versionString string = `

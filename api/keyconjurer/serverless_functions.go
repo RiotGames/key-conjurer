@@ -129,7 +129,7 @@ type GetTemporaryCredentialEvent struct {
 
 var (
 	errTimeoutBadSize = errors.New("ttl must be at least 1 hour and less than 8 hours")
-	errNoRoleProvided = errors.New("a role must be specified when using this authentication provider")
+	errNoRoleProvided = errors.New("a role must be specified when using this identity provider")
 )
 
 // Validate validates that the event has appropriate parameters

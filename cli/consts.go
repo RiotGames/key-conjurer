@@ -2,6 +2,8 @@ package main
 
 import (
 	"time"
+
+	"github.com/riotgames/key-conjurer/api/keyconjurer"
 )
 
 // Vars for build time
@@ -27,3 +29,5 @@ const DarwinBinaryName string = "keyconjurer-darwin"
 
 // CLI HTTP Timeouts
 var ClientHttpTimeoutInSeconds time.Duration = 30
+
+const defaultIdentityProvider = keyconjurer.AuthenticationProviderOkta
