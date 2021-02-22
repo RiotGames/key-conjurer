@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/riotgames/key-conjurer/api/authenticators/duo"
 	"github.com/riotgames/key-conjurer/api/authenticators/okta"
 	onelogin "github.com/riotgames/key-conjurer/api/authenticators/onelogin_duo"
@@ -29,9 +30,17 @@ func NewHandler(cfg *settings.Settings) Handler {
 	}
 
 	mfa := duo.New()
+	var prov core.CryptoProvider = &core.PassThroughProvider{}
+	if cfg.AwsKMSKeyID != "" {
+		prov = core.NewKMSProvider(&core.KMSProviderConfig{
+			KMSKeyID: cfg.AwsKMSKeyID,
+			// TODO: I think this might cause issues if the KMS secret is not in the same region as the Lambda
+			Session: session.New(),
+		})
+	}
+
 	return Handler{
-		// TODO: Change this to AWS KMS
-		crypt: core.NewCrypto(&core.PassThroughProvider{}),
+		crypt: core.NewCrypto(prov),
 		cfg:   cfg,
 		aws:   client,
 		authenticationProviders: providerMap{

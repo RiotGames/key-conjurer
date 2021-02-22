@@ -4,7 +4,50 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/kms"
 )
+
+type KMSProviderConfig struct {
+	KMSKeyID string
+	Session  *session.Session
+}
+
+type KMSProvider struct {
+	keyID  *string
+	client *kms.KMS
+}
+
+func NewKMSProvider(opts *KMSProviderConfig) KMSProvider {
+	return KMSProvider{
+		keyID:  aws.String(opts.KMSKeyID),
+		client: kms.New(opts.Session),
+	}
+}
+
+func (k KMSProvider) Encrypt(ctx context.Context, input []byte) ([]byte, error) {
+	in := kms.EncryptInput{KeyId: k.keyID, Plaintext: input}
+	out, err := k.client.EncryptWithContext(ctx, &in)
+	if err != nil {
+		return nil, err
+	}
+
+	return out.CiphertextBlob, err
+}
+
+func (k KMSProvider) Decrypt(ctx context.Context, input []byte) ([]byte, error) {
+	in := kms.DecryptInput{CiphertextBlob: input}
+	result, err := k.client.DecryptWithContext(ctx, &in)
+	if err != nil {
+		return nil, err
+	}
+
+	return result.Plaintext, nil
+}
+
+var _ CryptoProvider = KMSProvider{}
 
 // PassThroughProvider is a CryptoProvider that performs no operations on its input
 type PassThroughProvider struct{}
