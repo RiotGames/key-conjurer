@@ -1,10 +1,35 @@
 import React, { Component } from "react";
 import { Message, Ref, Form, Card } from "semantic-ui-react";
-
+import * as PropTypes from "prop-types";
 import { requestKeys } from "./../actions";
 import { subscribe } from "./../stores";
 
 const timeouts = [1, 2, 3, 4, 5, 6, 7, 8];
+
+const RoleInput = ({ onChange, value }) => {
+  return (
+    <>
+      <Form.Input
+        fluid
+        label="Role"
+        onChange={onChange}
+        value={value}
+        list="common-roles"
+      />
+      <datalist id="common-roles">
+        <option value="GL-Power">GL-Power</option>
+        <option value="GL-NetEng">GL-NetEng</option>
+        <option value="GL-Admin">GL-Admin</option>
+      </datalist>
+      <Message info>
+        The suggestions provided are there for convenience, but may not
+        necessarily match up to the roles you have access to. You can find out
+        what roles you have access to by checking out{" "}
+        <a href="#">this confluence page</a>.
+      </Message>
+    </>
+  );
+};
 
 class KeyRequestForm extends Component {
   state = {
@@ -18,6 +43,7 @@ class KeyRequestForm extends Component {
     error: false,
     errorEvent: "",
     errorMessage: "",
+    role: "",
   };
   accountsField = React.createRef();
 
@@ -28,40 +54,25 @@ class KeyRequestForm extends Component {
     this.setState({ [name]: data.value });
   };
 
-  requestKeys = (event) => {
-    const { username, password, selectedAccount, timeout } = this.state;
-    this.setState(
-      {
-        keyRequest: true,
-        error: false,
-        errorEvent: "",
-        errorMessage: "",
-      },
-      (_) => requestKeys({ username, password, selectedAccount, timeout })
-    );
-  };
-
   setAccount = (event, data) => this.setState({ selectedAccount: data.value });
+
+  componentDidUpdate(_prevProps, prevState) {
+    if (prevState.accounts.length !== this.state.accounts.length) {
+      this.accountsField.current.lastChild.firstElementChild.focus();
+    }
+  }
 
   componentDidMount() {
     subscribe("idpInfo", ({ apps: accounts }) => {
-      this.setState(
-        {
+      this.setState((prevState) => {
+        return {
           accounts,
-        },
-        () => {
-          if (accounts.length) {
-            this.accountsField.current.lastChild.firstElementChild.focus();
-          } else {
-            this.setState({
-              accounts: [],
-              Keyrequest: false,
-              selectedAccount: "",
-            });
-          }
-        }
-      );
+          selectedAccount:
+            accounts.length === 0 ? "" : prevState.selectedAccount,
+        };
+      });
     });
+
     subscribe("userInfo", ({ username, password }) => {
       this.setState({
         username,
@@ -81,6 +92,26 @@ class KeyRequestForm extends Component {
     });
   }
 
+  handleSubmit = (_event) => {
+    console.log(this.state);
+    const { username, password, selectedAccount, timeout, role } = this.state;
+    this.setState({
+      keyRequest: true,
+      error: false,
+      errorEvent: "",
+      errorMessage: "",
+    });
+
+    requestKeys({
+      username,
+      password,
+      selectedAccount,
+      timeout,
+      idp: this.props.idp,
+      role,
+    });
+  };
+
   render() {
     const {
       accounts,
@@ -90,6 +121,7 @@ class KeyRequestForm extends Component {
       error,
       errorEvent,
       errorMessage,
+      role,
     } = this.state;
 
     const timeoutOptions = timeouts.map((timeout) => ({
@@ -110,7 +142,7 @@ class KeyRequestForm extends Component {
           <Card.Header>Key Request</Card.Header>
           <Card.Meta>Will MFA push on request</Card.Meta>
           <Card.Description>
-            <Form loading={requestSent}>
+            <Form loading={requestSent} onSubmit={this.handleSubmit}>
               <Form.Group>
                 <Ref innerRef={this.accountsField}>
                   <Form.Dropdown
@@ -119,7 +151,7 @@ class KeyRequestForm extends Component {
                     selection
                     label="Account"
                     onChange={this.setAccount}
-                    placeholder={`${accountPlaceHolder}`}
+                    placeholder={accountPlaceHolder}
                     width={14}
                     options={accountOptions}
                   />
@@ -134,11 +166,12 @@ class KeyRequestForm extends Component {
                   options={timeoutOptions}
                 />
               </Form.Group>
-              <Form.Group widths="equal">
-                <Form.Button fluid primary onClick={this.requestKeys}>
-                  Request Keys
-                </Form.Button>
-              </Form.Group>
+              {this.props.idp === "okta" && (
+                <RoleInput value={role} onChange={this.handleChange("role")} />
+              )}
+              <Form.Button fluid primary type="submit">
+                Request Keys
+              </Form.Button>
             </Form>
             {keyRequest ? <Message positive>Sending Push</Message> : ""}
             {error && errorEvent === "keyRequest" ? (
@@ -152,5 +185,9 @@ class KeyRequestForm extends Component {
     );
   }
 }
+
+KeyRequestForm.propTypes = {
+  idp: PropTypes.string.isRequired,
+};
 
 export default KeyRequestForm;

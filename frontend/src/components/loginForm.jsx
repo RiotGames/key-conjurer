@@ -1,8 +1,8 @@
 import React, { Component } from "react";
 import { Form, Card, Message } from "semantic-ui-react";
-
 import { authenticate, updateUserInfo } from "./../actions";
 import { subscribe } from "./../stores";
+import * as PropTypes from "prop-types";
 
 class LoginForm extends Component {
   state = {
@@ -16,7 +16,7 @@ class LoginForm extends Component {
     errorMessage: "",
   };
 
-  handleTextChange = (property) => (event, data) => {
+  handleTextChange = (property) => (_event, data) => {
     const { username, password } = this.state;
     updateUserInfo({
       username: "username" === property ? data.value : username,
@@ -24,61 +24,33 @@ class LoginForm extends Component {
     });
   };
 
-  handleCheckChange = (name) => (event) => {
-    this.setState({ encryptCreds: !this.state.encryptCreds });
-  };
-
-  authUser = (event) => {
-    const { username, password, encryptCreds } = this.state;
-    this.setState(
-      {
-        loginRequest: true,
-        error: false,
-        errorMessage: "",
-      },
-      (_) => authenticate(username, password, encryptCreds)
-    );
-  };
-
   componentDidMount() {
     if (localStorage.creds) {
-      this.setState(
-        {
-          autoAuth: true,
-          encryptCreds: true,
-        },
-        (_) =>
-          updateUserInfo({
-            username: "encrypted",
-            password: localStorage.creds,
-          })
-      );
+      updateUserInfo({
+        username: "encrypted",
+        password: localStorage.creds,
+      });
+
+      this.setState({
+        username: "encrypted",
+        password: localStorage.creds,
+      });
     }
 
     subscribe("userInfo", ({ username, password }) => {
-      this.setState(
-        {
-          username,
-          password,
-        },
-        (_) => {
-          if (this.state.autoAuth) {
-            this.setState(
-              {
-                autoAuth: false,
-              },
-              (_) => this.authUser()
-            );
-          }
-        }
-      );
+      this.setState({
+        username,
+        password,
+      });
     });
+
     subscribe("request", ({ requestSent }) =>
       this.setState({
         requestSent,
         loginRequest: requestSent && this.state.loginRequest,
       })
     );
+
     subscribe("errors", ({ error, event, message: errorMessage }) => {
       if (event === "login") {
         this.setState({ error, errorMessage, errorEvent: event });
@@ -86,12 +58,25 @@ class LoginForm extends Component {
     });
   }
 
+  authUser = (_event) => {
+    const { username, password } = this.state;
+    this.setState({
+      loginRequest: true,
+      error: false,
+      errorMessage: "",
+    });
+    authenticate(username, password, this.props.idp);
+  };
+
+  handleSubmit = () => {
+    this.authUser();
+  };
+
   render() {
     const {
       username,
       password,
       requestSent,
-      encryptCreds,
       error,
       errorEvent,
       errorMessage,
@@ -102,7 +87,7 @@ class LoginForm extends Component {
         <Card.Content>
           <Card.Header>Auth</Card.Header>
           <Card.Description>
-            <Form loading={requestSent}>
+            <Form loading={requestSent} onSubmit={this.handleSubmit}>
               <Form.Group widths="equal" inline>
                 <Form.Input
                   fluid
@@ -111,6 +96,7 @@ class LoginForm extends Component {
                   value={username}
                   onChange={this.handleTextChange("username")}
                   autoFocus
+                  autoComplete="off"
                 />
                 <Form.Input
                   fluid
@@ -118,26 +104,17 @@ class LoginForm extends Component {
                   label="Password"
                   placeholder="Password"
                   value={password}
-                  onKeyDown={(e) => e.key === "Enter" && this.authUser()}
                   onChange={this.handleTextChange("password")}
+                  autoComplete="off"
                 />
               </Form.Group>
-              <Form.Group widths="equal" inline>
-                <Form.Checkbox
-                  label="Save Creds"
-                  checked={encryptCreds}
-                  onChange={this.handleCheckChange("encryptCreds")}
-                />
-                <Form.Button fluid primary onClick={this.authUser}>
-                  Authenticate
-                </Form.Button>
-              </Form.Group>
+              <Form.Button fluid primary type="submit">
+                Authenticate
+              </Form.Button>
             </Form>
           </Card.Description>
-          {error && errorEvent === "login" ? (
+          {error && errorEvent === "login" && (
             <Message negative>{errorMessage}</Message>
-          ) : (
-            ""
           )}
         </Card.Content>
       </Card>
@@ -146,3 +123,7 @@ class LoginForm extends Component {
 }
 
 export default LoginForm;
+
+LoginForm.propTypes = {
+  idp: PropTypes.string.isRequired,
+};
