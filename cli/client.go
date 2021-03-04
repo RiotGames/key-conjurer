@@ -8,7 +8,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"runtime"
 	"strings"
@@ -226,18 +225,22 @@ func getBinaryName() string {
 }
 
 // GetLatestBinary downloads the latest keyconjurer binary from the web.
-func (c *Client) GetLatestBinary(ctx context.Context) ([]byte, error) {
+func (c *Client) DownloadLatestBinary(ctx context.Context, w io.Writer) error {
 	binaryURL := fmt.Sprintf("%s/%s", DownloadURL, getBinaryName())
-	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, binaryURL, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, binaryURL, nil)
+	if err != nil {
+		return fmt.Errorf("could not upgrade: %w", err)
+	}
+
 	res, err := c.http.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("could not get binary upgrade: %w", err)
+		return fmt.Errorf("could not upgrade: %w", err)
 	}
 
-	body, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		return nil, errors.New("Unable to parse response")
+	if res.StatusCode != 200 {
+		return errors.New("could not upgrade: response did not indicate success - are you being blocked by the server?")
 	}
 
-	return body, nil
+	_, err = io.Copy(w, res.Body)
+	return err
 }
