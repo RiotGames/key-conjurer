@@ -149,14 +149,10 @@ func (d *Duo) sendMfaPush(sid, txSignature, callbackURL, apiHostName string) (st
 		return "", ErrorDuoCommunication
 	}
 
+	dec := json.NewDecoder(resp.Body)
 	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return "", ErrorHTTPBodyError
-	}
-
-	duoPromptResponse := &duoPromptResponse{}
-	if err := json.Unmarshal(body, duoPromptResponse); err != nil {
+	duoPromptResponse := duoPromptResponse{}
+	if err := dec.Decode(&duoPromptResponse); err != nil {
 		return "", ErrorJSONMarshalError
 	}
 
@@ -186,13 +182,10 @@ func (d *Duo) checkMfaStatus(sid, txid, apiHostName string) (*duoPushResponse, e
 		return nil, ErrorDuoCommunication
 	}
 	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return nil, ErrorHTTPBodyError
-	}
 
-	pushResponse := &duoPushResponse{}
-	if err := json.Unmarshal(body, pushResponse); err != nil {
+	pushResponse := duoPushResponse{}
+	dec := json.NewDecoder(resp.Body)
+	if err := dec.Decode(&pushResponse); err != nil {
 		return nil, ErrorJSONUnmarshalError
 	}
 
@@ -209,15 +202,13 @@ func (d *Duo) checkMfaStatus(sid, txid, apiHostName string) (*duoPushResponse, e
 			return nil, ErrorDuoCommunication
 		}
 		defer resp.Body.Close()
-		body, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			return nil, ErrorHTTPBodyError
-		}
-		pushResponse = &duoPushResponse{}
-		if err := json.Unmarshal(body, pushResponse); err != nil {
+
+		dec := json.NewDecoder(resp.Body)
+		pushResponse = duoPushResponse{}
+		if err := dec.Decode(&pushResponse); err != nil {
 			return nil, ErrorJSONUnmarshalError
 		}
 	}
 
-	return pushResponse, nil
+	return &pushResponse, nil
 }
