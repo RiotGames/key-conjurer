@@ -186,7 +186,8 @@ func (h *Handler) GetTemporaryCredentialEventHandler(ctx context.Context, event 
 
 	response, err := provider.GenerateSAMLAssertion(ctx, creds, event.AppID)
 	if err != nil {
-		return ErrorResponse(ErrCodeInternalServerError, "unable to generate SAML assertion")
+		msg := fmt.Sprintf("unable to generate SAML assertion: %s", err)
+		return ErrorResponse(ErrCodeInternalServerError, msg)
 	}
 
 	sts, err := h.aws.GetTemporaryCredentialsForUser(ctx, event.RoleName, response, int(event.TimeoutInHours))
