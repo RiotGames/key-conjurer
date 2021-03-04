@@ -75,7 +75,7 @@ A role must be specified when using this command through the --role flag. You ma
 			applicationID = account.ID
 		}
 
-		logInfo("sending authentication request for account %q - you may be asked to authenticate with Duo", account.Name)
+		logInfo("# sending authentication request for account %q - you may be asked to authenticate with Duo", account.Name)
 		credentials, err := client.GetCredentials(ctx, &GetCredentialsOptions{
 			Credentials:            creds,
 			ApplicationID:          applicationID,
