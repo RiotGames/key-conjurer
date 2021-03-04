@@ -140,12 +140,17 @@ var (
 )
 
 // Validate validates that the event has appropriate parameters
-func (e GetTemporaryCredentialEvent) Validate() error {
+func (e *GetTemporaryCredentialEvent) Validate() error {
 	if e.TimeoutInHours < 1 || e.TimeoutInHours > 8 {
 		return errTimeoutBadSize
 	}
 
-	if e.RoleName == "" && e.AuthenticationProvider == AuthenticationProviderOkta {
+	if e.AuthenticationProvider == AuthenticationProviderOneLogin {
+		// We don't use role names in OneLogin
+		e.RoleName = ""
+	}
+
+	if e.AuthenticationProvider == AuthenticationProviderOkta && e.RoleName == "" {
 		return errNoRoleProvided
 	}
 
