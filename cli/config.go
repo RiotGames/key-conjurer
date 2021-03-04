@@ -168,8 +168,14 @@ func (a *accountSet) ReplaceWith(other []Account) {
 
 	m := map[string]struct{}{}
 	for _, acc := range other {
-		copy := acc
-		a.accounts[acc.ID] = &copy
+		// Preserve the alias if the account ID is the same and it already exists
+		if entry, ok := a.accounts[acc.ID]; ok {
+			// The name is the only thing that might change.
+			entry.Name = acc.Name
+		} else {
+			a.accounts[acc.ID] = &acc
+		}
+
 		m[acc.ID] = struct{}{}
 	}
 
@@ -270,4 +276,12 @@ func (c *Config) FindAccount(name string) (Account, bool) {
 	}
 
 	return Account{}, false
+}
+
+func (c *Config) UpdateAccounts(entries []Account) {
+	c.Accounts.ReplaceWith(entries)
+}
+
+func (c *Config) DumpAccounts(w io.Writer) {
+	c.Accounts.WriteTable(w)
 }
