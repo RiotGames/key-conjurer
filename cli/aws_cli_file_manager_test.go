@@ -4,24 +4,31 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestAwsCliCredsFile(t *testing.T) {
-	credsFile, _ := getAwsCliCredentialsFile("~/.aws/credentials")
+	credsFile, err := getAwsCliCredentialsFile("~/.aws/credentials")
+	require.NoError(t, err)
+
 	for _, section := range credsFile.Sections() {
 		t.Log(section.Name(), section.KeyStrings())
 	}
 }
 
 func TestAwsCliConfigFile(t *testing.T) {
-	configFile, _ := getAwsCliConfigFile("~/.aws/config")
+	configFile, err := getAwsCliConfigFile("~/.aws/config")
+	require.NoError(t, err)
+
 	for _, section := range configFile.Sections() {
 		t.Log(section.Name(), section.KeyStrings())
 	}
 }
 
 func TestAwsCliFileNoSlash(t *testing.T) {
-	awscli, _ := getAwsCliByPath("~/.aws")
+	awscli, err := getAwsCliByPath("~/.aws/")
+	require.NoError(t, err)
+
 	for _, section := range awscli.creds.Sections() {
 		t.Log(section.Name(), section.Keys())
 	}
@@ -32,7 +39,9 @@ func TestAwsCliFileNoSlash(t *testing.T) {
 }
 
 func TestAwsCliFileWithSlash(t *testing.T) {
-	awscli, _ := getAwsCliByPath("~/.aws/")
+	awscli, err := getAwsCliByPath("~/.aws/")
+	require.NoError(t, err)
+
 	for _, section := range awscli.creds.Sections() {
 		t.Log(section.Name(), section.Keys())
 	}
@@ -43,7 +52,9 @@ func TestAwsCliFileWithSlash(t *testing.T) {
 }
 
 func TestAddAWSCliEntry(t *testing.T) {
-	awscli, _ := getAwsCliByPath("~/.aws/")
+	awscli, err := getAwsCliByPath("~/.aws/")
+	require.NoError(t, err)
+
 	entry := &AWSCliEntry{
 		profileName: "test-profile",
 		keyId:       "notanid",
@@ -51,32 +62,31 @@ func TestAddAWSCliEntry(t *testing.T) {
 		token:       "notatoken",
 	}
 
-	awscli.saveCredentialEntry(entry)
+	err = awscli.saveCredentialEntry(entry)
+	require.NoError(t, err)
 
-	assert.Equal(t, true, awscli.creds.Section("test-profile") != nil, "section should have been added above")
-
-	testSection := awscli.creds.Section("test-profile")
-
+	sec := awscli.creds.Section("test-profile")
+	require.NotNil(t, sec, "section should have been added above")
 	testinikeys := []string{"aws_access_key_id", "aws_secret_access_key", "aws_session_token"}
 	testinivals := []string{"notanid", "notakey", "notatoken"}
 
 	for idx, inikey := range testinikeys {
-		assert.Equalf(t, true, testSection.HasKey(inikey), "section should have %s field\n")
-		key := testSection.Key(inikey)
-		assert.Equalf(t, true, key.Value() == testinivals[idx], "field %s should have value %s\n", inikey, testinivals[idx])
+		require.Truef(t, sec.HasKey(inikey), "section should have %s field\n", inikey)
+		key := sec.Key(inikey)
+		require.Truef(t, key.Value() == testinivals[idx], "field %s should have value %s\n", inikey, testinivals[idx])
 	}
 
-	awscli.creds.SaveTo(awscli.creds.Path)
+	require.NoError(t, awscli.creds.SaveTo(awscli.creds.Path))
 
 	// retest by reloading into file
-	awscli, _ = getAwsCliByPath("~/.aws/")
-	assert.Equal(t, true, awscli.creds.Section("test-profile") != nil, "section should have been added above")
+	awscli, err = getAwsCliByPath("~/.aws/")
+	require.NoError(t, err)
 
-	testSection = awscli.creds.Section("test-profile")
-
+	assert.True(t, awscli.creds.Section("test-profile") != nil, "section should have been added above")
+	sec = awscli.creds.Section("test-profile")
 	for idx, inikey := range testinikeys {
-		assert.Equalf(t, true, testSection.HasKey(inikey), "section should have %s field\n")
-		key := testSection.Key(inikey)
-		assert.Equalf(t, true, key.Value() == testinivals[idx], "field %s should have value %s\n", inikey, testinivals[idx])
+		assert.Truef(t, sec.HasKey(inikey), "section should have %s field\n", inikey)
+		key := sec.Key(inikey)
+		assert.Truef(t, key.Value() == testinivals[idx], "field %s should have value %s\n", inikey, testinivals[idx])
 	}
 }

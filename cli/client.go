@@ -78,19 +78,15 @@ func (c *Client) do(ctx context.Context, url string, r io.Reader, responseStruct
 		return fmt.Errorf("error sending http request: %w", err)
 	}
 
-	defer res.Body.Close()
-	body, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		return fmt.Errorf("unable to parse response: %w", err)
-	}
-
 	// With our AWS Lambda setup, the server will always return HTTP 200 unless there was an internal error on the server's end.
 	if res.StatusCode >= 500 {
 		return errUnspecifiedServerError
 	}
 
+	dec := json.NewDecoder(res.Body)
+	defer res.Body.Close()
 	var response keyconjurer.Response
-	if err := json.Unmarshal(body, &response); err != nil {
+	if err := dec.Decode(&response); err != nil {
 		return errInvalidJSONResponse
 	}
 
