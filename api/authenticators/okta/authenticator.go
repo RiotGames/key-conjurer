@@ -2,6 +2,7 @@ package okta
 
 import (
 	"context"
+	"errors"
 	"net/url"
 	"strings"
 
@@ -114,8 +115,7 @@ func (a *Authenticator) GenerateSAMLAssertion(ctx context.Context, creds core.Cr
 	}
 
 	if f == nil {
-		// TODO: No factors that matched criteria - return sentinel error here
-		return nil, nil
+		return nil, errors.New("no Duo web factor found")
 	}
 
 	vf, err := a.oktaAuthClient.VerifyFactor(ctx, st.StateToken, *f)

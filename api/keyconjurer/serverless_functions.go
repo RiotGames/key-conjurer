@@ -109,9 +109,7 @@ func (h *Handler) GetUserDataEventHandler(ctx context.Context, event GetUserData
 
 	applications, err := provider.ListApplications(ctx, user)
 	if err != nil {
-		// TODO: provide more detailed errors - this could fail because of an upstream error or because of a server error
-		// TODO: We should derive the error code from the error returned, rather than specifying it in this handler
-		return ErrorResponse(ErrCodeInternalServerError, "internal server error")
+		return ErrorResponse(ErrCodeInternalServerError, fmt.Sprintf("failed to retrieve applications: %s", err))
 	}
 
 	ciphertext, err := h.crypt.Encrypt(ctx, creds)
