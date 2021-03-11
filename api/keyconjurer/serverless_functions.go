@@ -10,38 +10,43 @@ import (
 	"github.com/riotgames/key-conjurer/api/authenticators/okta"
 	onelogin "github.com/riotgames/key-conjurer/api/authenticators/onelogin_duo"
 	"github.com/riotgames/key-conjurer/api/aws"
+	"github.com/riotgames/key-conjurer/api/consts"
 	"github.com/riotgames/key-conjurer/api/core"
 	"github.com/riotgames/key-conjurer/api/settings"
+	"github.com/sirupsen/logrus"
 )
 
 type Handler struct {
 	crypt                   core.Crypto
 	cfg                     *settings.Settings
 	aws                     *aws.Provider
+	log                     *logrus.Entry
 	authenticationProviders providerMap
 }
 
 func NewHandler(cfg *settings.Settings) Handler {
 	client, err := aws.NewProvider(cfg.AwsRegion)
 	if err != nil {
-		// TODO Probably shouldn't be a panic
 		panic(err)
 	}
 
-	mfa := duo.New()
 	var prov core.CryptoProvider = &core.PassThroughProvider{}
 	if cfg.AwsKMSKeyID != "" {
 		prov = core.NewKMSProvider(&core.KMSProviderConfig{
 			KMSKeyID: cfg.AwsKMSKeyID,
-			// TODO: I think this might cause issues if the KMS secret is not in the same region as the Lambda
-			Session: session.New(),
+			Session:  session.New(),
 		})
 	}
 
+	mfa := duo.New()
 	return Handler{
 		crypt: core.NewCrypto(prov),
-		cfg:   cfg,
-		aws:   client,
+		log: newLogger(loggerSettings{
+			Level:            logrus.DebugLevel,
+			LogstashEndpoint: consts.LogstashEndpoint,
+		}),
+		cfg: cfg,
+		aws: client,
 		authenticationProviders: providerMap{
 			AuthenticationProviderOkta:     okta.Must(cfg.OktaHost, cfg.OktaToken, mfa),
 			AuthenticationProviderOneLogin: onelogin.New(cfg, mfa),
