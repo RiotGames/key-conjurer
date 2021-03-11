@@ -51,3 +51,27 @@ resource "aws_lambda_function" "keyconjurer-get_user_data" {
 
   tags = var.tags
 }
+
+
+resource "aws_lambda_function" "keyconjurer-list_providers" {
+  function_name    = "keyconjurer-${terraform.workspace}-list_providers"
+  description      = "[${terraform.workspace}] List the providers a user can use"
+  s3_bucket        = var.s3_tf_bucket
+  s3_key           = "${terraform.workspace}/list_providers.zip"
+  source_code_hash = "true"
+  role             = aws_iam_role.keyconjurer-lambda.arn
+  handler          = "list_providers"
+  runtime          = "go1.x"
+  timeout          = 300
+
+  environment {
+    variables = var.lambda_env
+  }
+
+  vpc_config {
+    subnet_ids         = var.subnets
+    security_group_ids = [aws_security_group.keyconjurer-default.id]
+  }
+
+  tags = var.tags
+}
