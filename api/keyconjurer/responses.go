@@ -7,8 +7,6 @@ import (
 )
 
 // Response is the generic structure of the lambda responses.
-//
-// The unmarshalling of this structure is particularly poorly handled due to backwards compatibility concerns.
 type Response struct {
 	Success bool
 	// DEPRECATED: Use ErrorData.Message in the Data field if you intend to communicate error messages to the user.
@@ -20,6 +18,9 @@ type Response struct {
 }
 
 func (r *Response) UnmarshalJSON(b []byte) error {
+	// UnmarshalJSON() is called when decoding to the Response type via the encoding/json library.
+	// This function is required because the representation of the Data field on the wire needs to be deferred to a later point, as the type of Data is not known when the data is unmarshalled.
+	// Using json.RawMessage allows us to partially decode the struct to retrieve the Success and Message fields without attempting to interpret the meaning of the Data field until a later point, which is done using GetPayload or GetError.
 	var inner struct {
 		Success bool
 		Message string
