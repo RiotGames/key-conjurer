@@ -152,17 +152,16 @@ func (h *Handler) GetTemporaryCredentialEventHandler(ctx context.Context, event 
 		return ErrorResponse(ErrBadRequest, err.Error())
 	}
 
-	creds := event.Credentials
+	if err := h.crypt.Decrypt(ctx, &event.Credentials); err != nil {
+		return ErrorResponse(ErrCodeUnableToDecrypt, "unable to decrypt credentials")
+	}
+
 	provider, ok := h.authenticationProviders.Get(event.AuthenticationProvider)
 	if !ok {
 		return ErrorResponse(ErrCodeInvalidProvider, "invalid provider")
 	}
 
-	if err := h.crypt.Decrypt(ctx, &creds); err != nil {
-		return ErrorResponse(ErrCodeUnableToDecrypt, "unable to decrypt credentials")
-	}
-
-	response, err := provider.GenerateSAMLAssertion(ctx, creds, event.AppID)
+	response, err := provider.GenerateSAMLAssertion(ctx, event.Credentials, event.AppID)
 	if err != nil {
 		msg := fmt.Sprintf("unable to generate SAML assertion: %s", err)
 		return ErrorResponse(ErrCodeInternalServerError, msg)
