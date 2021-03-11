@@ -69,29 +69,34 @@ type GetUserDataPayload struct {
 //
 // This MUST be backwards compatible with the old version of KeyConjurer for a time.
 func (h *Handler) GetUserDataEventHandler(ctx context.Context, event GetUserDataEvent) (Response, error) {
-	creds := event.Credentials
-	provider, ok := h.authenticationProviders.Get(event.AuthenticationProvider)
-	if !ok {
-		return ErrorResponse(ErrCodeInvalidProvider, "the provider you supplied is unsupported by this version of KeyConjurer")
-	}
-
-	if err := h.crypt.Decrypt(ctx, &creds); err != nil {
+	log := h.log
+	if err := h.crypt.Decrypt(ctx, &event.Credentials); err != nil {
+		log.Errorf("unable to decrypt credentials: %s", err)
 		return ErrorResponse(ErrCodeUnableToDecrypt, "unable to decrypt credentials")
 	}
 
-	user, err := provider.Authenticate(ctx, creds)
+	log = h.log.WithFields(logrus.Fields{"username": event.Credentials.Username, "idp": event.AuthenticationProvider})
+	provider, ok := h.authenticationProviders.Get(event.AuthenticationProvider)
+	if !ok {
+		log.Infof("unknown provider %q", provider)
+		return ErrorResponse(ErrCodeInvalidProvider, "the provider you supplied is unsupported by this version of KeyConjurer")
+	}
+
+	user, err := provider.Authenticate(ctx, event.Credentials)
 	if err != nil {
-		// TODO: provide more detailed errors - this could fail because of an upstream error (provider being down) or because of an error with the users credentials
+		log.Errorf("failed to authenticate user: %s", err)
 		return ErrorResponse(ErrCodeInvalidCredentials, "credentials are incorrect")
 	}
 
 	applications, err := provider.ListApplications(ctx, user)
 	if err != nil {
+		log.Errorf("failed to retrieve applications: %s", err)
 		return ErrorResponse(ErrCodeInternalServerError, fmt.Sprintf("failed to retrieve applications: %s", err))
 	}
 
-	ciphertext, err := h.crypt.Encrypt(ctx, creds)
+	ciphertext, err := h.crypt.Encrypt(ctx, event.Credentials)
 	if err != nil {
+		log.Errorf("failed to encrypt credentials: %s", err)
 		return ErrorResponse(ErrCodeUnableToEncrypt, "unable to encrypt credentials")
 	}
 
@@ -148,22 +153,28 @@ type GetTemporaryCredentialsPayload struct {
 //
 // This MUST be backwards compatible with the old version of KeyConjurer for a time.
 func (h *Handler) GetTemporaryCredentialEventHandler(ctx context.Context, event GetTemporaryCredentialEvent) (Response, error) {
+	log := h.log
 	if err := event.Validate(); err != nil {
+		log.Info("bad request: %s", err.Error())
 		return ErrorResponse(ErrBadRequest, err.Error())
 	}
 
 	if err := h.crypt.Decrypt(ctx, &event.Credentials); err != nil {
+		log.Errorf("unable to decrypt credentials: %s", err)
 		return ErrorResponse(ErrCodeUnableToDecrypt, "unable to decrypt credentials")
 	}
 
+	log = h.log.WithFields(logrus.Fields{"username": event.Credentials.Username, "idp": event.AuthenticationProvider, "account_id": event.AppID})
 	provider, ok := h.authenticationProviders.Get(event.AuthenticationProvider)
 	if !ok {
+		log.Infof("unknown provider %q", provider)
 		return ErrorResponse(ErrCodeInvalidProvider, "invalid provider")
 	}
 
 	response, err := provider.GenerateSAMLAssertion(ctx, event.Credentials, event.AppID)
 	if err != nil {
 		msg := fmt.Sprintf("unable to generate SAML assertion: %s", err)
+		log.Errorf(msg)
 		return ErrorResponse(ErrCodeInternalServerError, msg)
 	}
 
@@ -171,9 +182,11 @@ func (h *Handler) GetTemporaryCredentialEventHandler(ctx context.Context, event 
 	if err != nil {
 		var errRoleNotFound aws.ErrRoleNotFound
 		if errors.As(err, &errRoleNotFound) {
+			log.Infof("role %q either does not exist or the user is not entitled to it", event.RoleName)
 			return ErrorResponse(ErrBadRequest, errRoleNotFound.Error())
 		}
 
+		log.Errorf("failed to generate temporary session credentials: %s", err.Error())
 		return ErrorResponse(ErrCodeInternalServerError, err.Error())
 	}
 
