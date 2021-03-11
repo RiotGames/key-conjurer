@@ -248,6 +248,19 @@ func (o *oktaAuthClient) CreateSession(ctx context.Context, vf verifyFactorRespo
 	return s, nil
 }
 
+func getHrefLink(app okta.Application) (string, bool) {
+	links := app.Links.(map[string]interface{})
+	appLinks := links["appLinks"].([]interface{})
+	for _, interf := range appLinks {
+		entry := interf.(map[string]interface{})
+		if entry["type"] == "text/html" {
+			return entry["href"].(string), true
+		}
+	}
+
+	return "", false
+}
+
 // GetSAMLResponse attempts to initiate a SAML request for the given Application.
 func (o *oktaAuthClient) GetSAMLResponse(ctx context.Context, application okta.Application, session session) (*core.SAMLResponse, error) {
 	endpoint, ok := getHrefLink(application)
