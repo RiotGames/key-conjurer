@@ -69,13 +69,14 @@ A role must be specified when using this command through the --role flag. You ma
 			ttl = 8
 		}
 
-		applicationID := args[0]
-		account, ok := config.FindAccount(args[0])
+		var label, applicationID = args[0], args[0]
+		account, ok := config.FindAccount(applicationID)
 		if ok {
 			applicationID = account.ID
+			label = account.ID
 		}
 
-		logInfo("# sending authentication request for account %q - you may be asked to authenticate with Duo", account.Name)
+		logInfo("# sending authentication request for account %q - you may be asked to authenticate with Duo", label)
 		credentials, err := client.GetCredentials(ctx, &GetCredentialsOptions{
 			Credentials:            creds,
 			ApplicationID:          applicationID,
