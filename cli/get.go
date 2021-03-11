@@ -73,7 +73,7 @@ A role must be specified when using this command through the --role flag. You ma
 		account, ok := config.FindAccount(applicationID)
 		if ok {
 			applicationID = account.ID
-			label = account.ID
+			label = account.Name
 		}
 
 		logInfo("# sending authentication request for account %q - you may be asked to authenticate with Duo", label)
