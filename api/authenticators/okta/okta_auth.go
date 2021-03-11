@@ -269,6 +269,10 @@ func (o *oktaAuthClient) GetSAMLResponse(ctx context.Context, application okta.A
 	}
 
 	uri, err := url.Parse(endpoint)
+	if err != nil {
+		return nil, err
+	}
+
 	uri.RawQuery = url.Values{"sessionToken": []string{session.SessionToken.String()}}.Encode()
 
 	// We use a custom client to ensure that we do not follow redirects, as this will break the flow.
@@ -282,11 +286,19 @@ func (o *oktaAuthClient) GetSAMLResponse(ctx context.Context, application okta.A
 
 	// This request will give us a session cookie that we can use.
 	resp, err := client.Get(uri.String())
+	if err != nil {
+		return nil, err
+	}
+
 	if resp.StatusCode != http.StatusFound {
 		return nil, fmt.Errorf("Okta returned a status code of %d for endpoint %s instead of %d", resp.StatusCode, uri.Path, http.StatusFound)
 	}
 
 	req, err := http.NewRequest("GET", resp.Header.Get("Location"), nil)
+	if err != nil {
+		return nil, err
+	}
+
 	var sid *http.Cookie
 	for _, cookie := range resp.Cookies() {
 		if cookie.Name == "sid" {
@@ -304,6 +316,10 @@ func (o *oktaAuthClient) GetSAMLResponse(ctx context.Context, application okta.A
 
 	// Now we have the SAML URL, we can send a request to that URL with our cookie to get the SAML response
 	req, err = http.NewRequest("GET", resp.Header.Get("Location"), nil)
+	if err != nil {
+		return nil, err
+	}
+
 	req.AddCookie(sid)
 	resp, err = client.Do(req)
 	if err != nil {
