@@ -83,7 +83,9 @@ var loginCmd = &cobra.Command{
 		}
 
 		config.Accounts.ReplaceWith(entries)
-		fmt.Fprintf(os.Stderr, "logged into %q successfully\n", creds.Username)
+		if !quiet {
+			fmt.Fprintf(os.Stderr, "logged into %q successfully\n", creds.Username)
+		}
 		return nil
 	},
 }

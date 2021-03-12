@@ -85,7 +85,10 @@ A role must be specified when using this command through the --role flag. You ma
 			return nil
 		}
 
-		fmt.Fprintf(os.Stderr, "sending authentication request for account %q - you may be asked to authenticate with Duo\n", label)
+		if !quiet {
+			fmt.Fprintf(os.Stderr, "sending authentication request for account %q - you may be asked to authenticate with Duo\n", label)
+		}
+
 		credentials, err = client.GetCredentials(ctx, &GetCredentialsOptions{
 			Credentials:            creds,
 			ApplicationID:          applicationID,
