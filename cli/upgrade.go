@@ -64,13 +64,14 @@ func defaultDownload(ctx context.Context, keyConjurerRcPath string) error {
 		return err
 	}
 
-	binary, err := client.GetLatestBinary(ctx)
+	f, err := os.OpenFile(keyConjurerRcPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0744)
 	if err != nil {
-		return fmt.Errorf("unable to download the latest binary: %w", err)
+		return fmt.Errorf("unable to open %q: %w", keyConjurerRcPath, err)
 	}
 
-	if err := ioutil.WriteFile(keyConjurerRcPath, binary, 0744); err != nil {
-		return fmt.Errorf("could not save binary: %w", err)
+	defer f.Close()
+	if err := client.DownloadLatestBinary(ctx, f); err != nil {
+		return fmt.Errorf("unable to download the latest binary: %w", err)
 	}
 
 	return nil

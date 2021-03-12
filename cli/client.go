@@ -8,7 +8,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"runtime"
 	"strings"
@@ -78,19 +77,15 @@ func (c *Client) do(ctx context.Context, url string, r io.Reader, responseStruct
 		return fmt.Errorf("error sending http request: %w", err)
 	}
 
-	defer res.Body.Close()
-	body, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		return fmt.Errorf("unable to parse response: %w", err)
-	}
-
 	// With our AWS Lambda setup, the server will always return HTTP 200 unless there was an internal error on the server's end.
 	if res.StatusCode >= 500 {
 		return errUnspecifiedServerError
 	}
 
+	dec := json.NewDecoder(res.Body)
+	defer res.Body.Close()
 	var response keyconjurer.Response
-	if err := json.Unmarshal(body, &response); err != nil {
+	if err := dec.Decode(&response); err != nil {
 		return errInvalidJSONResponse
 	}
 
@@ -124,7 +119,7 @@ func (c *Client) encodeJSON(data interface{}) (bytes.Buffer, error) {
 }
 
 // GetCredentials requests a set of temporary credentials for the requested AWS account and returns them.
-func (c *Client) GetCredentials(ctx context.Context, opts *GetCredentialsOptions) (*AWSCredentials, error) {
+func (c *Client) GetCredentials(ctx context.Context, opts *GetCredentialsOptions) (AWSCredentials, error) {
 	request := keyconjurer.GetTemporaryCredentialEvent{
 		Credentials:            opts.Credentials,
 		AppID:                  opts.ApplicationID,
@@ -135,12 +130,12 @@ func (c *Client) GetCredentials(ctx context.Context, opts *GetCredentialsOptions
 
 	buf, err := c.encodeJSON(request)
 	if err != nil {
-		return nil, err
+		return AWSCredentials{}, err
 	}
 
 	var response keyconjurer.GetTemporaryCredentialsPayload
 	if err := c.do(ctx, "/get_aws_creds", &buf, &response); err != nil {
-		return nil, fmt.Errorf("failed to generate temporary session token: %s", err.Error())
+		return AWSCredentials{}, fmt.Errorf("failed to generate temporary session token: %s", err.Error())
 	}
 
 	aws := AWSCredentials{
@@ -151,7 +146,7 @@ func (c *Client) GetCredentials(ctx context.Context, opts *GetCredentialsOptions
 		Expiration:      response.Expiration,
 	}
 
-	return &aws, nil
+	return aws, nil
 }
 
 type GetUserDataOptions struct {
@@ -230,18 +225,22 @@ func getBinaryName() string {
 }
 
 // GetLatestBinary downloads the latest keyconjurer binary from the web.
-func (c *Client) GetLatestBinary(ctx context.Context) ([]byte, error) {
+func (c *Client) DownloadLatestBinary(ctx context.Context, w io.Writer) error {
 	binaryURL := fmt.Sprintf("%s/%s", DownloadURL, getBinaryName())
-	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, binaryURL, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, binaryURL, nil)
+	if err != nil {
+		return fmt.Errorf("could not upgrade: %w", err)
+	}
+
 	res, err := c.http.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("could not get binary upgrade: %w", err)
+		return fmt.Errorf("could not upgrade: %w", err)
 	}
 
-	body, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		return nil, errors.New("Unable to parse response")
+	if res.StatusCode != 200 {
+		return errors.New("could not upgrade: response did not indicate success - are you being blocked by the server?")
 	}
 
-	return body, nil
+	_, err = io.Copy(w, res.Body)
+	return err
 }

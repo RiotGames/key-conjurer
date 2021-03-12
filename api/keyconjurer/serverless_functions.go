@@ -4,76 +4,54 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net/http"
 
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/riotgames/key-conjurer/api/authenticators/duo"
 	"github.com/riotgames/key-conjurer/api/authenticators/okta"
 	onelogin "github.com/riotgames/key-conjurer/api/authenticators/onelogin_duo"
 	"github.com/riotgames/key-conjurer/api/aws"
+	"github.com/riotgames/key-conjurer/api/consts"
 	"github.com/riotgames/key-conjurer/api/core"
 	"github.com/riotgames/key-conjurer/api/settings"
+	"github.com/sirupsen/logrus"
 )
 
 type Handler struct {
 	crypt                   core.Crypto
 	cfg                     *settings.Settings
 	aws                     *aws.Provider
+	log                     *logrus.Entry
 	authenticationProviders providerMap
 }
 
 func NewHandler(cfg *settings.Settings) Handler {
 	client, err := aws.NewProvider(cfg.AwsRegion)
 	if err != nil {
-		// TODO Probably shouldn't be a panic
 		panic(err)
 	}
 
-	mfa := duo.New()
 	var prov core.CryptoProvider = &core.PassThroughProvider{}
 	if cfg.AwsKMSKeyID != "" {
 		prov = core.NewKMSProvider(&core.KMSProviderConfig{
 			KMSKeyID: cfg.AwsKMSKeyID,
-			// TODO: I think this might cause issues if the KMS secret is not in the same region as the Lambda
-			Session: session.New(),
+			Session:  session.New(),
 		})
 	}
 
+	mfa := duo.New()
 	return Handler{
 		crypt: core.NewCrypto(prov),
-		cfg:   cfg,
-		aws:   client,
+		log: newLogger(loggerSettings{
+			Level:            logrus.DebugLevel,
+			LogstashEndpoint: consts.LogstashEndpoint,
+		}),
+		cfg: cfg,
+		aws: client,
 		authenticationProviders: providerMap{
 			AuthenticationProviderOkta:     okta.Must(cfg.OktaHost, cfg.OktaToken, mfa),
 			AuthenticationProviderOneLogin: onelogin.New(cfg, mfa),
 		},
 	}
-}
-
-// ClientProperties is information provided by the client about itself.
-//
-// This should not be relied on existing as it is user-provided information.
-// Newer versions of KeyConjurer place this information in the User-Agent header of their requests.
-// Older versions send it in their POST bodies in the GetUserData and GetAwsCreds endpoints.
-type ClientProperties struct {
-	Name    string `json:"client"`
-	Version string `json:"clientVersion"`
-}
-
-// FromRequestHeader updates the current properties from the given request's headers
-func (c *ClientProperties) FromRequestHeader(r *http.Request) bool {
-	ua := r.Header.Get("user-agent")
-	if ua == "" {
-		return false
-	}
-
-	n, err := fmt.Sscanf(ua, "%s / %s", &c.Name, &c.Version)
-	return n != 2 || err != nil
-}
-
-// UserAgent constructs a user agent string for this ClientProperties instance.
-func (c *ClientProperties) UserAgent() string {
-	return fmt.Sprintf("%s / %s", c.Name, c.Version)
 }
 
 type GetUserDataEvent struct {
@@ -91,29 +69,34 @@ type GetUserDataPayload struct {
 //
 // This MUST be backwards compatible with the old version of KeyConjurer for a time.
 func (h *Handler) GetUserDataEventHandler(ctx context.Context, event GetUserDataEvent) (Response, error) {
-	creds := event.Credentials
-	provider, ok := h.authenticationProviders.Get(event.AuthenticationProvider)
-	if !ok {
-		return ErrorResponse(ErrCodeInvalidProvider, "the provider you supplied is unsupported by this version of KeyConjurer")
-	}
-
-	if err := h.crypt.Decrypt(ctx, &creds); err != nil {
+	log := h.log
+	if err := h.crypt.Decrypt(ctx, &event.Credentials); err != nil {
+		log.Errorf("unable to decrypt credentials: %s", err)
 		return ErrorResponse(ErrCodeUnableToDecrypt, "unable to decrypt credentials")
 	}
 
-	user, err := provider.Authenticate(ctx, creds)
+	log = h.log.WithFields(logrus.Fields{"username": event.Credentials.Username, "idp": event.AuthenticationProvider})
+	provider, ok := h.authenticationProviders.Get(event.AuthenticationProvider)
+	if !ok {
+		log.Infof("unknown provider %q", provider)
+		return ErrorResponse(ErrCodeInvalidProvider, "the provider you supplied is unsupported by this version of KeyConjurer")
+	}
+
+	user, err := provider.Authenticate(ctx, event.Credentials)
 	if err != nil {
-		// TODO: provide more detailed errors - this could fail because of an upstream error (provider being down) or because of an error with the users credentials
+		log.Errorf("failed to authenticate user: %s", err)
 		return ErrorResponse(ErrCodeInvalidCredentials, "credentials are incorrect")
 	}
 
 	applications, err := provider.ListApplications(ctx, user)
 	if err != nil {
+		log.Errorf("failed to retrieve applications: %s", err)
 		return ErrorResponse(ErrCodeInternalServerError, fmt.Sprintf("failed to retrieve applications: %s", err))
 	}
 
-	ciphertext, err := h.crypt.Encrypt(ctx, creds)
+	ciphertext, err := h.crypt.Encrypt(ctx, event.Credentials)
 	if err != nil {
+		log.Errorf("failed to encrypt credentials: %s", err)
 		return ErrorResponse(ErrCodeUnableToEncrypt, "unable to encrypt credentials")
 	}
 
@@ -140,12 +123,17 @@ var (
 )
 
 // Validate validates that the event has appropriate parameters
-func (e GetTemporaryCredentialEvent) Validate() error {
+func (e *GetTemporaryCredentialEvent) Validate() error {
 	if e.TimeoutInHours < 1 || e.TimeoutInHours > 8 {
 		return errTimeoutBadSize
 	}
 
-	if e.RoleName == "" && e.AuthenticationProvider == AuthenticationProviderOkta {
+	if e.AuthenticationProvider == AuthenticationProviderOneLogin {
+		// We don't use role names in OneLogin
+		e.RoleName = ""
+	}
+
+	if e.AuthenticationProvider == AuthenticationProviderOkta && e.RoleName == "" {
 		return errNoRoleProvided
 	}
 
@@ -165,32 +153,40 @@ type GetTemporaryCredentialsPayload struct {
 //
 // This MUST be backwards compatible with the old version of KeyConjurer for a time.
 func (h *Handler) GetTemporaryCredentialEventHandler(ctx context.Context, event GetTemporaryCredentialEvent) (Response, error) {
+	log := h.log
 	if err := event.Validate(); err != nil {
+		log.Info("bad request: %s", err.Error())
 		return ErrorResponse(ErrBadRequest, err.Error())
 	}
 
-	creds := event.Credentials
-	provider, ok := h.authenticationProviders.Get(event.AuthenticationProvider)
-	if !ok {
-		return ErrorResponse(ErrCodeInvalidProvider, "invalid provider")
-	}
-
-	if err := h.crypt.Decrypt(ctx, &creds); err != nil {
+	if err := h.crypt.Decrypt(ctx, &event.Credentials); err != nil {
+		log.Errorf("unable to decrypt credentials: %s", err)
 		return ErrorResponse(ErrCodeUnableToDecrypt, "unable to decrypt credentials")
 	}
 
-	response, err := provider.GenerateSAMLAssertion(ctx, creds, event.AppID)
+	log = h.log.WithFields(logrus.Fields{"username": event.Credentials.Username, "idp": event.AuthenticationProvider, "account_id": event.AppID})
+	provider, ok := h.authenticationProviders.Get(event.AuthenticationProvider)
+	if !ok {
+		log.Infof("unknown provider %q", provider)
+		return ErrorResponse(ErrCodeInvalidProvider, "invalid provider")
+	}
+
+	response, err := provider.GenerateSAMLAssertion(ctx, event.Credentials, event.AppID)
 	if err != nil {
-		return ErrorResponse(ErrCodeInternalServerError, "unable to generate SAML assertion")
+		msg := fmt.Sprintf("unable to generate SAML assertion: %s", err)
+		log.Errorf(msg)
+		return ErrorResponse(ErrCodeInternalServerError, msg)
 	}
 
 	sts, err := h.aws.GetTemporaryCredentialsForUser(ctx, event.RoleName, response, int(event.TimeoutInHours))
 	if err != nil {
 		var errRoleNotFound aws.ErrRoleNotFound
 		if errors.As(err, &errRoleNotFound) {
+			log.Infof("role %q either does not exist or the user is not entitled to it", event.RoleName)
 			return ErrorResponse(ErrBadRequest, errRoleNotFound.Error())
 		}
 
+		log.Errorf("failed to generate temporary session credentials: %s", err.Error())
 		return ErrorResponse(ErrCodeInternalServerError, err.Error())
 	}
 

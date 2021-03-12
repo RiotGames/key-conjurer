@@ -7,6 +7,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/RobotsAndPencils/go-saml"
+
 	"github.com/riotgames/key-conjurer/api/core"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -40,39 +42,50 @@ type STSTokenResponse struct {
 	Expiration      string  `json:"expiration"`
 }
 
-func getRole(roleName string, response *core.SAMLResponse) (string, string, error) {
+type roleProviderPair struct {
+	RoleARN     string
+	ProviderARN string
+}
+
+func getRole(roleName string, response *saml.Response) (string, string, error) {
 	if response == nil {
 		return "", "", errors.New("Unable to get SAML assertion")
 	}
 
-	roles := strings.Split(response.GetAttribute("https://aws.amazon.com/SAML/Attributes/Role"), ",")
 	if roleName == "" {
 		// This is for legacy support.
 		// Legacy clients would always retrieve the first two ARNs in the list, which would be
 		//   arn:aws:iam::[account-id]:role/[onelogin_role]
 		//   arn:aws:iam::[account-id]:saml-provider/[saml-provider]
 		// If we get weird breakages with Key Conjurer when it's deployed alongside legacy clients, this is almost certainly a culprit!
+		roles := strings.Split(response.GetAttribute("https://aws.amazon.com/SAML/Attributes/Role"), ",")
 		return roles[1], roles[0], nil
 	}
 
-	var roleARN string
-	for _, arn := range roles[1:] {
-		idx := strings.Index(arn, "role/")
-		parts := strings.Split(arn[idx:], "/")
+	var pairs []roleProviderPair
+	for _, v := range response.GetAttributeValues("https://aws.amazon.com/SAML/Attributes/Role") {
+		parts := strings.Split(v, ",")
+		pairs = append(pairs, roleProviderPair{RoleARN: parts[1], ProviderARN: parts[0]})
+	}
+
+	var pair roleProviderPair
+	for _, p := range pairs {
+		idx := strings.Index(p.RoleARN, "role/")
+		parts := strings.Split(p.RoleARN[idx:], "/")
 		if parts[1] == roleName {
-			roleARN = arn
+			pair = p
 		}
 	}
 
-	if roleARN == "" {
+	if pair.RoleARN == "" {
 		return "", "", ErrRoleNotFound{Name: roleName}
 	}
 
-	return roles[0], roleARN, nil
+	return pair.ProviderARN, pair.RoleARN, nil
 }
 
 func (p *Provider) GetTemporaryCredentialsForUser(ctx context.Context, roleName string, response *core.SAMLResponse, ttlInHours int) (STSTokenResponse, error) {
-	principalARN, roleARN, err := getRole(roleName, response)
+	principalARN, roleARN, err := getRole(roleName, &response.Response)
 	if err != nil {
 		return STSTokenResponse{}, err
 	}

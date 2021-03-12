@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"strings"
 
@@ -32,8 +31,13 @@ type AWSCliEntry struct {
 }
 
 func NewAWSCliEntry(c *AWSCredentials, a *Account) *AWSCliEntry {
+	name := a.Name
+	if a.Alias != "" {
+		name = a.Alias
+	}
+
 	return &AWSCliEntry{
-		profileName: a.Alias,
+		profileName: name,
 		keyId:       c.AccessKeyID,
 		key:         c.SecretAccessKey,
 		token:       c.SessionToken,
@@ -46,7 +50,7 @@ type awsCliCredentialsFile struct {
 }
 
 func touchFile(path string) (*os.File, error) {
-	return os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+	return os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0664)
 }
 
 func getAwsCliCredentialsFile(credsPath string) (*awsCliCredentialsFile, error) {
@@ -61,13 +65,9 @@ func getAwsCliCredentialsFile(credsPath string) (*awsCliCredentialsFile, error) 
 	}
 	defer f.Close()
 
-	b, err := ioutil.ReadAll(f)
-	if err != nil {
-		return nil, err
-	}
-
 	var creds awsCliCredentialsFile
-	creds.File, err = ini.Load(b)
+	creds.File, err = ini.Load(f)
+	creds.Path = path
 	return &creds, err
 }
 
@@ -83,13 +83,9 @@ func getAwsCliConfigFile(configPath string) (*awsCliConfigFile, error) {
 	}
 	defer f.Close()
 
-	b, err := ioutil.ReadAll(f)
-	if err != nil {
-		return nil, err
-	}
-
 	var cfg awsCliConfigFile
-	cfg.File, err = ini.Load(b)
+	cfg.File, err = ini.Load(f)
+	cfg.Path = path
 	return &cfg, err
 }
 
@@ -109,12 +105,12 @@ func getAwsCliByPath(path string) (*awsCli, error) {
 		credsPath = fmt.Sprintf("%s/%s", fullPath, "credentials")
 	}
 
-	creds, err := getAwsCliCredentialsFile(configPath)
+	creds, err := getAwsCliCredentialsFile(credsPath)
 	if err != nil {
 		return nil, err
 	}
 
-	cfg, err := getAwsCliConfigFile(credsPath)
+	cfg, err := getAwsCliConfigFile(configPath)
 	if err != nil {
 		return nil, err
 	}
@@ -128,35 +124,16 @@ func getAwsCliByPath(path string) (*awsCli, error) {
 
 func (a *awsCli) saveCredentialEntry(entry *AWSCliEntry) error {
 	var section *ini.Section
-
-	section, err := a.creds.GetSection(entry.profileName)
-	if err != nil {
-		// create new section
-		section, err = a.creds.NewSection(entry.profileName)
-		return err
+	var err error
+	if section, err = a.creds.GetSection(entry.profileName); err != nil {
+		if section, err = a.creds.NewSection(entry.profileName); err != nil {
+			return err
+		}
 	}
 
-	if section.HasKey("aws_access_key_id") {
-		section.Key("aws_access_key_id").SetValue(entry.keyId)
-	} else {
-		_, err := section.NewKey("aws_access_key_id", entry.keyId)
-		return err
-	}
-
-	if section.HasKey("aws_secret_access_key") {
-		section.Key("aws_secret_access_key").SetValue(entry.key)
-	} else {
-		_, err := section.NewKey("aws_secret_access_key", entry.key)
-		return err
-	}
-
-	if section.HasKey("aws_session_token") {
-		section.Key("aws_session_token").SetValue(entry.token)
-	} else {
-		_, err := section.NewKey("aws_session_token", entry.token)
-		return err
-	}
-
+	section.Key("aws_access_key_id").SetValue(entry.keyId)
+	section.Key("aws_secret_access_key").SetValue(entry.key)
+	section.Key("aws_session_token").SetValue(entry.token)
 	return nil
 }
 
@@ -172,7 +149,5 @@ func SaveAWSCredentialInCLI(awscliPath string, entries ...*AWSCliEntry) error {
 		}
 	}
 
-	cli.creds.SaveTo(cli.creds.Path)
-
-	return nil
+	return cli.creds.SaveTo(cli.creds.Path)
 }

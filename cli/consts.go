@@ -17,7 +17,7 @@ var Dev bool = false
 const DefaultTTL uint = 1
 
 // DefaultTimeRemaining for new key requests in minutes
-const DefaultTimeRemaining uint = 60
+const DefaultTimeRemaining uint = 5
 
 // available API  endpoints
 var DownloadURL string

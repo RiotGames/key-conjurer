@@ -42,9 +42,8 @@ var accountsCmd = &cobra.Command{
 			entries = append(entries, Account{ID: acc.ID, Name: acc.Name, Alias: generateDefaultAlias(acc.Name)})
 		}
 
-		cfg := config.Accounts
-		cfg.ReplaceWith(entries)
-		cfg.WriteTable(os.Stdout)
+		config.UpdateAccounts(entries)
+		config.DumpAccounts(os.Stdout)
 		return nil
 	},
 }

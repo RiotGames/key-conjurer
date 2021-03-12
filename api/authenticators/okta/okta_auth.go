@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"strings"
@@ -102,16 +101,16 @@ func (o *oktaAuthClient) do(ctx context.Context, method, path string, data, resu
 		return
 	}
 
-	b, err = ioutil.ReadAll(response.Body)
+	dec := json.NewDecoder(response.Body)
 	defer response.Body.Close()
 
 	switch response.StatusCode {
 	case http.StatusOK:
-		err = json.Unmarshal(b, result)
+		err = dec.Decode(result)
 		return
 	default:
 		var inner okta.Error
-		err = json.Unmarshal(b, &inner)
+		err = dec.Decode(&inner)
 		if err != nil {
 			return
 		}
@@ -203,19 +202,14 @@ func (o *oktaAuthClient) SubmitVerifyFactorResponse(ctx context.Context, vf veri
 	if err != nil {
 		return err
 	}
-
-	b, err := ioutil.ReadAll(resp.Body)
 	resp.Body.Close()
-	if err != nil {
-		return err
-	}
-
+	dec := json.NewDecoder(resp.Body)
 	switch resp.StatusCode {
 	case http.StatusOK:
 		return nil
 	default:
 		var e okta.Error
-		if err := json.Unmarshal(b, &e); err != nil {
+		if err := dec.Decode(&e); err != nil {
 			return err
 		}
 

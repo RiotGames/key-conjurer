@@ -93,3 +93,37 @@ func TestConfigAliasesWork(t *testing.T) {
 	_, ok = cfg.FindAccount("alias")
 	assert.False(t, ok)
 }
+
+func TestAliasesPreservedAfterReplaceWith(t *testing.T) {
+	cfg := Config{}
+	cfg.AddAccount("riot-1", Account{ID: "riot-1", Name: "AWS - riot 1", Alias: "riot-1"})
+	cfg.Alias("riot-1", "my-alias")
+
+	_, ok := cfg.FindAccount("riot-1")
+	assert.True(t, ok)
+	_, ok = cfg.FindAccount("my-alias")
+	assert.True(t, ok)
+
+	cfg.UpdateAccounts([]Account{
+		{ID: "riot-1", Name: "AWS - riot 1", Alias: ""},
+		{ID: "riot-2", Name: "AWS - riot 2", Alias: ""},
+	})
+
+	_, ok = cfg.FindAccount("riot-1")
+	assert.True(t, ok)
+	_, ok = cfg.FindAccount("my-alias")
+	assert.True(t, ok)
+	_, ok = cfg.FindAccount("riot-2")
+	assert.True(t, ok)
+
+	cfg.UpdateAccounts([]Account{
+		{ID: "riot-2", Name: "AWS - riot 2", Alias: ""},
+	})
+
+	_, ok = cfg.FindAccount("riot-1")
+	assert.False(t, ok)
+	_, ok = cfg.FindAccount("my-alias")
+	assert.False(t, ok)
+	_, ok = cfg.FindAccount("riot-2")
+	assert.True(t, ok)
+}
