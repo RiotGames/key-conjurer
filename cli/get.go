@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 	"fmt"
+	"os"
+	"time"
 
 	"github.com/spf13/cobra"
 )
@@ -76,6 +78,13 @@ A role must be specified when using this command through the --role flag. You ma
 			label = account.Name
 		}
 
+		var credentials AWSCredentials
+		credentials.LoadFromEnv()
+		if credentials.ValidUntil(account, time.Duration(timeRemaining)*time.Minute) {
+			fmt.Fprintln(os.Stdout, credentials)
+			return nil
+		}
+
 		fmt.Fprintf(os.Stderr, "sending authentication request for account %q - you may be asked to authenticate with Duo\n", label)
 		credentials, err = client.GetCredentials(ctx, &GetCredentialsOptions{
 			Credentials:            creds,
@@ -91,14 +100,13 @@ A role must be specified when using this command through the --role flag. You ma
 
 		switch outputType {
 		case outputTypeEnvironmentVariable:
-			credentials.PrintCredsForEnv()
+			fmt.Fprintln(os.Stdout, credentials)
+			return nil
 		case outputTypeAWSCredentialsFile:
 			acc := Account{ID: args[0], Name: args[0]}
-			newCliEntry := NewAWSCliEntry(credentials, &acc)
+			newCliEntry := NewAWSCliEntry(&credentials, &acc)
 			return SaveAWSCredentialInCLI(awsCliPath, newCliEntry)
 		default:
 			return fmt.Errorf("%s is an invalid output type", outputType)
 		}
-
-		return nil
 	}}

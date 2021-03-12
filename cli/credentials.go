@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"runtime"
 	"strings"
@@ -21,42 +22,31 @@ type AWSCredentials struct {
 	Expiration      string `json:"Expiration"`
 }
 
-// load current ENV credentials is available
-func getCredentialsFromENV() *AWSCredentials {
-	return &AWSCredentials{
-		AccessKeyID:     os.Getenv("AWS_ACCESS_KEY_ID"),
-		SecretAccessKey: os.Getenv("AWS_SECRET_ACCESS_KEY"),
-		SessionToken:    os.Getenv("AWS_SESSION_TOKEN"),
-		Expiration:      os.Getenv("AWSKEY_EXPIRATION"),
-	}
+func (c *AWSCredentials) LoadFromEnv() {
+	c.AccountID = os.Getenv("AWSKEY_ACCOUNT")
+	c.AccessKeyID = os.Getenv("AWS_ACCESS_KEY_ID")
+	c.SecretAccessKey = os.Getenv("AWS_SECRET_ACCESS_KEY")
+	c.SessionToken = os.Getenv("AWS_SESSION_TOKEN")
+	c.Expiration = os.Getenv("AWSKEY_EXPIRATION")
 }
 
-func envCredsValid(account *Account, minutesTimeWindow uint) bool {
-	// if no env var AWSKEY_ACCOUNT or they dont match
-	// generate new creds
+func (c *AWSCredentials) ValidUntil(account Account, dur time.Duration) bool {
 	currentAccount, ok := os.LookupEnv("AWSKEY_ACCOUNT")
-	if !ok || currentAccount != fmt.Sprint(account.ID) {
+	if !ok || currentAccount != account.ID {
 		return false
 	}
 
-	// if no env var AWSKEY_EXPIRATION
-	// generate new creds
 	currentExpiration, ok := os.LookupEnv("AWSKEY_EXPIRATION")
 	if !ok {
 		return false
 	}
 
-	// if expiration cant be parsed
-	// generate new creds
 	expiration, err := time.Parse(time.RFC3339, currentExpiration)
 	if err != nil {
 		return false
 	}
 
-	// use creds if they havent expired or generate new one is they have
-	// also take into account a time window in which the creds must still be valid
-	// example: the creds must still be valid in now + 5m
-	return expiration.After(time.Now().Add(time.Minute * time.Duration(minutesTimeWindow)))
+	return expiration.After(time.Now().Add(dur))
 }
 
 /*
@@ -77,9 +67,8 @@ func getShellType() string {
 	return normalizedName
 }
 
-// PrintCredsForEnv detects the users shell and outputs the credentials for use
-//  as environment variables for said shell
-func (c AWSCredentials) PrintCredsForEnv() {
+// Write detects the users shell and outputs the credentials for use  as environment variables for said shell
+func (c AWSCredentials) String() string {
 	exportStatement := ""
 	switch getShellType() {
 	case "powershell":
@@ -118,5 +107,12 @@ export AWSKEY_EXPIRATION=%v
 export AWSKEY_ACCOUNT=%v
 `
 	}
-	fmt.Printf(exportStatement, c.AccessKeyID, c.SecretAccessKey, c.SessionToken, c.SessionToken, c.Expiration, c.AccountID)
+
+	return fmt.Sprintf(exportStatement, c.AccessKeyID, c.SecretAccessKey, c.SessionToken, c.SessionToken, c.Expiration, c.AccountID)
+}
+
+// Write detects the users shell and outputs the credentials for use  as environment variables for said shell
+func (c AWSCredentials) Write(w io.Writer) error {
+	_, err := fmt.Fprintln(w, c.String())
+	return err
 }

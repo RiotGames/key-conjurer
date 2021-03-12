@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
@@ -80,7 +81,7 @@ This command will fail if you do not have active AWS credentials.
 			Expiration:      resp.Credentials.Expiration.Format(time.RFC3339),
 		}
 
-		creds.PrintCredsForEnv()
+		fmt.Fprintln(os.Stdout, creds)
 		return nil
 	},
 }
