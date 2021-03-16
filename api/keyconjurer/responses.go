@@ -57,7 +57,7 @@ func (r *Response) GetPayload(dest interface{}) error {
 // GetError is similar to GetPayload but for error responses.
 //
 // The same general constraints apply: you must check the Success flag, and this may only be used if you have unmarshalled the record.
-func (r *Response) GetError(dest *error) error {
+func (r *Response) GetError(dest *ErrorData) error {
 	raw, ok := r.Data.(json.RawMessage)
 	if !ok {
 		return errors.New("you should not use GetError() unless you have unmarshalled this structure from JSON")
@@ -67,13 +67,7 @@ func (r *Response) GetError(dest *error) error {
 		return errors.New("cannot use GetError() on a response that was successful")
 	}
 
-	var ed ErrorData
-	if err := json.Unmarshal(raw, &ed); err != nil {
-		return err
-	}
-
-	*dest = fmt.Errorf("%s (code: %s)", ed.Message, ed.Code)
-	return nil
+	return json.Unmarshal(raw, dest)
 }
 
 // DataResponse returns a response that wraps the data in the correct format.
@@ -112,6 +106,12 @@ type ErrorData struct {
 	Code    ErrorCode
 	Message string
 }
+
+func (e ErrorData) Error() string {
+	return fmt.Sprintf("%s (code: %s)", e.Message, e.Code)
+}
+
+var _ error = ErrorData{}
 
 // ErrorResponse creates a standardized error response with an error message from the server.
 // It also always returns a nil error, simply to make returning from a Lambda less cumbersome.

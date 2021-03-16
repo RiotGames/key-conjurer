@@ -90,9 +90,8 @@ func (c *Client) do(ctx context.Context, url string, r io.Reader, responseStruct
 	}
 
 	if !response.Success {
-		var responseError error
-		err := response.GetError(&responseError)
-		if err != nil {
+		var responseError keyconjurer.ErrorData
+		if err := response.GetError(&responseError); err != nil {
 			return err
 		}
 
