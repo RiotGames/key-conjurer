@@ -78,7 +78,7 @@ func getRole(roleName string, response *saml.Response) (string, string, error) {
 	for _, p := range pairs {
 		idx := strings.Index(p.RoleARN, "role/")
 		parts := strings.Split(p.RoleARN[idx:], "/")
-		if parts[1] == roleName {
+		if strings.ToLower(parts[1]) == strings.ToLower(roleName) {
 			pair = p
 		}
 	}
