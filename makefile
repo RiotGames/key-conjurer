@@ -43,4 +43,4 @@ deploy_aws:
 
 plan_aws:
 	cd terraform/aws \
-	&& $(MAKE) -f makefile 
+	&& $(MAKE) -f makefile plan_deploy
