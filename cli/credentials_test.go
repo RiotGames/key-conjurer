@@ -101,8 +101,9 @@ func TestGetValidEnvCreds(t *testing.T) {
 	defer resetEnv(t, os.Environ())
 	account := setEnv(t, true)
 
-	assert.Equal(t, true, envCredsValid(account, 0), "credentials should be valid")
-
+	var creds AWSCredentials
+	creds.LoadFromEnv()
+	assert.True(t, creds.ValidUntil(*account, 0), "credentials should be valid")
 }
 
 func TestGetInvalidEnvCreds(t *testing.T) {
@@ -111,18 +112,22 @@ func TestGetInvalidEnvCreds(t *testing.T) {
 
 	// test incorrect time first
 	t.Log("testing expired timestamp for key")
-	assert.Equal(t, false, envCredsValid(account, 0), "credentials should be invalid due to timestamp")
+	var creds AWSCredentials
+	creds.LoadFromEnv()
+	assert.False(t, creds.ValidUntil(*account, 0), "credentials should be invalid due to timestamp")
 
 	account = setEnv(t, true)
 	account.ID = ""
-	assert.Equal(t, false, envCredsValid(account, 0), "credentials should be invalid due to non-matching id")
+	creds.LoadFromEnv()
+	assert.False(t, creds.ValidUntil(*account, 0), "credentials should be invalid due to non-matching id")
 
 	account = setEnv(t, true)
+	creds.LoadFromEnv()
 	if err := os.Setenv("AWSKEY_EXPIRATION", "definitely not a timestamp"); err != nil {
 		t.Fatal("unable to reset timestamp to be unparsable")
 	}
 
-	assert.Equal(t, false, envCredsValid(account, 0), "credentials should be invalid due to non-parsable timestamp")
+	assert.False(t, creds.ValidUntil(*account, 0), "credentials should be invalid due to non-parsable timestamp")
 }
 
 func TestTimeWindowEnvCreds(t *testing.T) {
@@ -130,12 +135,14 @@ func TestTimeWindowEnvCreds(t *testing.T) {
 	account := setEnv(t, true)
 
 	t.Log("testing minutes window still within 1hr period for test creds")
-	assert.Equal(t, true, envCredsValid(account, 0), "credentials should be valid")
-	assert.Equal(t, true, envCredsValid(account, 5), "credentials should be valid")
-	assert.Equal(t, true, envCredsValid(account, 30), "credentials should be valid")
-	assert.Equal(t, true, envCredsValid(account, 58), "credentials should be valid")
+	var creds AWSCredentials
+	creds.LoadFromEnv()
+	assert.True(t, creds.ValidUntil(*account, 0), "credentials should be valid")
+	assert.True(t, creds.ValidUntil(*account, 5), "credentials should be valid")
+	assert.True(t, creds.ValidUntil(*account, 30), "credentials should be valid")
+	assert.True(t, creds.ValidUntil(*account, 58), "credentials should be valid")
 
 	t.Log("testing minutes window is outside 1hr period for test creds")
-	assert.Equal(t, false, envCredsValid(account, 60), "credentials should be valid")
-	assert.Equal(t, false, envCredsValid(account, 61), "credentials should be valid")
+	assert.False(t, creds.ValidUntil(*account, 60*time.Minute), "credentials should be valid")
+	assert.False(t, creds.ValidUntil(*account, 61*time.Minute), "credentials should be valid")
 }
