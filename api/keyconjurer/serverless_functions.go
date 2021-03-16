@@ -155,7 +155,7 @@ type GetTemporaryCredentialsPayload struct {
 func (h *Handler) GetTemporaryCredentialEventHandler(ctx context.Context, event GetTemporaryCredentialEvent) (Response, error) {
 	log := h.log
 	if err := event.Validate(); err != nil {
-		log.Info("bad request: %s", err.Error())
+		log.Infof("bad request: %s", err.Error())
 		return ErrorResponse(ErrBadRequest, err.Error())
 	}
 

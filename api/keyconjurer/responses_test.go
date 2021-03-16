@@ -22,14 +22,12 @@ func TestResponseGetPayload(t *testing.T) {
 	payload := `{"Success":true,"Message":"","Data":{"foo": "bar", "qux": "baz"}}`
 	var response Response
 	var data map[string]string
-	var err error
+	var err ErrorData
 	require.Error(t, response.GetPayload(&data))
 	require.Error(t, response.GetError(&err))
-	require.Nil(t, err)
 	require.NoError(t, json.Unmarshal([]byte(payload), &response))
 	require.NoError(t, response.GetPayload(&data))
 	require.Error(t, response.GetError(&err))
-	require.Nil(t, err)
 	require.Equal(t, "bar", data["foo"])
 	require.Equal(t, "baz", data["qux"])
 }
@@ -38,7 +36,7 @@ func TestResponseGetError(t *testing.T) {
 	payload := `{"Success":false,"Data":{"Code": "unspecified", "Message": "Something broke"}}`
 	var response Response
 	var data map[string]string
-	var err error
+	var err ErrorData
 	require.Error(t, response.GetPayload(&data))
 	require.NoError(t, json.Unmarshal([]byte(payload), &response))
 	require.Error(t, response.GetPayload(&data))
