@@ -16,6 +16,8 @@ import (
 	"github.com/aws/aws-sdk-go/service/sts"
 )
 
+var ErrNoEntitlements = errors.New("user is not entitled to any roles")
+
 type ErrRoleNotFound struct{ Name string }
 
 func (e ErrRoleNotFound) Error() string {
@@ -66,6 +68,10 @@ func getRole(roleName string, response *saml.Response) (string, string, error) {
 	for _, v := range response.GetAttributeValues("https://aws.amazon.com/SAML/Attributes/Role") {
 		parts := strings.Split(v, ",")
 		pairs = append(pairs, roleProviderPair{RoleARN: parts[1], ProviderARN: parts[0]})
+	}
+
+	if len(pairs) == 0 {
+		return "", "", ErrNoEntitlements
 	}
 
 	var pair roleProviderPair
