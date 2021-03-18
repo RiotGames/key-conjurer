@@ -33,16 +33,18 @@ func (i *maybeLegacyID) UnmarshalJSON(buf []byte) error {
 
 // Account is used to store information related to the AWS OneLogin App/AWS Account
 type Account struct {
-	ID    string `json:"id"`
-	Name  string `json:"name"`
-	Alias string `json:"alias"`
+	ID             string `json:"id"`
+	Name           string `json:"name"`
+	Alias          string `json:"alias"`
+	MostRecentRole string `json:"most_recent_role"`
 }
 
 func (a *Account) UnmarshalJSON(buf []byte) error {
 	var onDiskRepresentation struct {
-		ID    maybeLegacyID `json:"id"`
-		Name  string        `json:"name"`
-		Alias string        `json:"alias"`
+		ID             maybeLegacyID `json:"id"`
+		Name           string        `json:"name"`
+		Alias          string        `json:"alias"`
+		MostRecentRole string        `json:"most_recent_role"`
 	}
 
 	if err := json.Unmarshal(buf, &onDiskRepresentation); err != nil {
@@ -52,6 +54,7 @@ func (a *Account) UnmarshalJSON(buf []byte) error {
 	a.ID = string(onDiskRepresentation.ID)
 	a.Name = onDiskRepresentation.Name
 	a.Alias = onDiskRepresentation.Alias
+	a.MostRecentRole = onDiskRepresentation.MostRecentRole
 	return nil
 }
 
@@ -144,10 +147,7 @@ func (a *accountSet) MarshalJSON() ([]byte, error) {
 }
 
 func (a *accountSet) UnmarshalJSON(buf []byte) error {
-	var m map[string]struct {
-		Name  string
-		Alias string
-	}
+	var m map[string]Account
 
 	if err := json.Unmarshal(buf, &m); err != nil {
 		return err
@@ -155,7 +155,7 @@ func (a *accountSet) UnmarshalJSON(buf []byte) error {
 
 	// Now we just need to copy each entry into the set itself
 	for id, val := range m {
-		a.Add(id, Account{ID: id, Name: val.Name, Alias: val.Alias})
+		a.Add(id, val)
 	}
 
 	return nil
@@ -266,17 +266,17 @@ func (c *Config) Unalias(name string) {
 	acc.Alias = ""
 }
 
-func (c *Config) FindAccount(name string) (Account, bool) {
+func (c *Config) FindAccount(name string) (*Account, bool) {
 	if c.Accounts == nil {
-		return Account{}, false
+		return nil, false
 	}
 
 	val, ok := c.Accounts.Resolve(name)
 	if ok {
-		return *val, true
+		return val, true
 	}
 
-	return Account{}, false
+	return nil, false
 }
 
 func (c *Config) UpdateAccounts(entries []Account) {
