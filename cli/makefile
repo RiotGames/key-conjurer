@@ -16,15 +16,15 @@ all: linux darwin windows
 
 linux: dir
 	export os=linux \
-	&& GOOS=linux go build -ldflags "-X main.Version=$(version)-$(TF_WORKSPACE) -X main.ClientName=keyconjurer-linux -X main.defaultHost=$(API_URL) -X main.DownloadURL=$(FRONTEND_URL)" -o ../builds/$(TF_WORKSPACE)/cli/main-linux
+	&& GOOS=linux go build -ldflags "-X main.Version=$(version)-$(TF_WORKSPACE) -X main.ClientName=keyconjurer-linux -X main.defaultHost=$(API_URL) -X main.DownloadURL=$(FRONTEND_URL)" -o ../builds/$(TF_WORKSPACE)/cli/keyconjurer-linux
 
 darwin:
 	export os=darwin \
-	&& GOOS=darwin go build -ldflags "-X main.Version=$(version)-$(TF_WORKSPACE) -X main.ClientName=keyconjurer-darwin -X main.defaultHost=$(API_URL) -X main.DownloadURL=$(FRONTEND_URL)" -o ../builds/$(TF_WORKSPACE)/cli/main-darwin
+	&& GOOS=darwin go build -ldflags "-X main.Version=$(version)-$(TF_WORKSPACE) -X main.ClientName=keyconjurer-darwin -X main.defaultHost=$(API_URL) -X main.DownloadURL=$(FRONTEND_URL)" -o ../builds/$(TF_WORKSPACE)/cli/keyconjurer-darwin
 
 windows:
 	export os=windows \
-	&& GOOS=windows go build -ldflags "-X main.Version=$(version)-$(TF_WORKSPACE) -X main.ClientName=keyconjurer-windows -X main.defaultHost=$(API_URL) -X main.DownloadURL=$(FRONTEND_URL)" -o ../builds/$(TF_WORKSPACE)/cli/main-windows.exe
+	&& GOOS=windows go build -ldflags "-X main.Version=$(version)-$(TF_WORKSPACE) -X main.ClientName=keyconjurer-windows -X main.defaultHost=$(API_URL) -X main.DownloadURL=$(FRONTEND_URL)" -o ../builds/$(TF_WORKSPACE)/cli/keyconjurer-windows.exe
 
 dir:
 	mkdir -p ../builds/$(TF_WORKSPACE)/cli
