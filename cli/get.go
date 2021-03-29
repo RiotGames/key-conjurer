@@ -84,6 +84,10 @@ A role must be specified when using this command through the --role flag. You ma
 			roleName = account.MostRecentRole
 		}
 
+		if config.TimeRemaining != 0 && timeRemaining == DefaultTimeRemaining {
+			timeRemaining = config.TimeRemaining
+		}
+
 		var credentials AWSCredentials
 		credentials.LoadFromEnv()
 		if credentials.ValidUntil(*account, time.Duration(timeRemaining)*time.Minute) {
@@ -93,6 +97,10 @@ A role must be specified when using this command through the --role flag. You ma
 
 		if !quiet {
 			fmt.Fprintf(os.Stderr, "sending authentication request for account %q - you may be asked to authenticate with Duo\n", label)
+		}
+
+		if ttl == 1 && config.TTL != 0 {
+			ttl = config.TTL
 		}
 
 		credentials, err = client.GetCredentials(ctx, &GetCredentialsOptions{
