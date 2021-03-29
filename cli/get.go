@@ -76,11 +76,17 @@ A role must be specified when using this command through the --role flag. You ma
 		if ok {
 			applicationID = account.ID
 			label = account.Name
+		} else {
+			account = &Account{}
+		}
+
+		if account.MostRecentRole != "" && roleName == "" {
+			roleName = account.MostRecentRole
 		}
 
 		var credentials AWSCredentials
 		credentials.LoadFromEnv()
-		if credentials.ValidUntil(account, time.Duration(timeRemaining)*time.Minute) {
+		if credentials.ValidUntil(*account, time.Duration(timeRemaining)*time.Minute) {
 			fmt.Fprintln(os.Stdout, credentials)
 			return nil
 		}
@@ -100,6 +106,8 @@ A role must be specified when using this command through the --role flag. You ma
 		if err != nil {
 			return err
 		}
+
+		account.MostRecentRole = roleName
 
 		switch outputType {
 		case outputTypeEnvironmentVariable:
