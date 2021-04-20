@@ -166,9 +166,7 @@ class KeyRequestForm extends Component {
                   options={timeoutOptions}
                 />
               </Form.Group>
-              {this.props.idp === "okta" && (
-                <RoleInput value={role} onChange={this.handleChange("role")} />
-              )}
+              <RoleInput value={role} onChange={this.handleChange("role")} />
               <Form.Button fluid primary type="submit">
                 Request Keys
               </Form.Button>
