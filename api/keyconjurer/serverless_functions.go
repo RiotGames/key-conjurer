@@ -8,7 +8,6 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/riotgames/key-conjurer/api/authenticators/duo"
 	"github.com/riotgames/key-conjurer/api/authenticators/okta"
-	onelogin "github.com/riotgames/key-conjurer/api/authenticators/onelogin_duo"
 	"github.com/riotgames/key-conjurer/api/aws"
 	"github.com/riotgames/key-conjurer/api/consts"
 	"github.com/riotgames/key-conjurer/api/core"
@@ -48,8 +47,7 @@ func NewHandler(cfg *settings.Settings) Handler {
 		cfg: cfg,
 		aws: client,
 		authenticationProviders: providerMap{
-			AuthenticationProviderOkta:     okta.Must(cfg.OktaHost, cfg.OktaToken, mfa),
-			AuthenticationProviderOneLogin: onelogin.New(cfg, mfa),
+			AuthenticationProviderOkta: okta.Must(cfg.OktaHost, cfg.OktaToken, mfa),
 		},
 	}
 }

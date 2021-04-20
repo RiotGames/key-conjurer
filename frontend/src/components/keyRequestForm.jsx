@@ -3,6 +3,7 @@ import { Message, Ref, Form, Card } from "semantic-ui-react";
 import * as PropTypes from "prop-types";
 import { requestKeys } from "./../actions";
 import { subscribe } from "./../stores";
+import { documentationURL } from "../consts";
 
 const timeouts = [1, 2, 3, 4, 5, 6, 7, 8];
 
@@ -25,7 +26,7 @@ const RoleInput = ({ onChange, value }) => {
         The suggestions provided are there for convenience, but may not
         necessarily match up to the roles you have access to. You can find out
         what roles you have access to by checking out{" "}
-        <a href="#">this confluence page</a>.
+        <a href={documentationURL}>this confluence page</a>.
       </Message>
     </>
   );
@@ -166,9 +167,7 @@ class KeyRequestForm extends Component {
                   options={timeoutOptions}
                 />
               </Form.Group>
-              {this.props.idp === "okta" && (
-                <RoleInput value={role} onChange={this.handleChange("role")} />
-              )}
+              <RoleInput value={role} onChange={this.handleChange("role")} />
               <Form.Button fluid primary type="submit">
                 Request Keys
               </Form.Button>

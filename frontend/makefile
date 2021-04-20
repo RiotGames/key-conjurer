@@ -30,13 +30,15 @@ reset_consts_file:
 	echo "export const keyConjurerDomain = '';" > ./src/consts.js \
 	&& echo "export const keyConjurerApiUrl = '';" >> ./src/consts.js \
 	&& echo "export const binaryName = '${BINARY_NAME}';" >> ./src/consts.js \
-	&& echo "export const client = 'webUI';" >> ./src/consts.js
+	&& echo "export const client = 'webUI';" >> ./src/consts.js \
+	&& echo "export const documentationURL = '#';" >> ./src/consts.js
 
 create_consts_file:
 	echo "export const keyConjurerDomain = '${FRONTEND_URL}';" > ./src/consts.js \
 	&& echo "export const keyConjurerApiUrl = '${API_URL}';" >> ./src/consts.js \
 	&& echo "export const binaryName = '${BINARY_NAME}';" >> ./src/consts.js \
-	&& echo "export const client = 'webUI';" >> ./src/consts.js
+	&& echo "export const client = 'webUI';" >> ./src/consts.js \
+	&& echo "export const documentationURL = '${DOCUMENTATION_URL}';" >> ./src/consts.js
 
 version:
 	echo "export const version = '$$(git rev-parse --short HEAD)-$(TF_WORKSPACE)';"  > ./src/version.js
