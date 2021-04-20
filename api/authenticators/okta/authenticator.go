@@ -94,6 +94,10 @@ func extractRole(group *okta.Group) (extractedRole, bool) {
 // GenerateSAMLAssertion should generate a SAML assertion that the user may exchange with the target application in order to gain access to it.
 // This will initiate a multi-factor request with Duo.
 func (a *Authenticator) GenerateSAMLAssertion(ctx context.Context, creds core.Credentials, appID string) (*core.SAMLResponse, error) {
+	if appID == "" {
+		return nil, errors.New("appID cannot be an empty string")
+	}
+
 	app, _, err := a.client.Application.GetApplication(ctx, appID, &okta.Application{}, query.NewQueryParams())
 	if err != nil {
 		return nil, err
