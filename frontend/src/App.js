@@ -28,8 +28,8 @@ const App = () => {
             <History />
           </Grid.Column>
           <Grid.Column width={8}>
-            <LoginForm idp="onelogin" />
-            <KeyRequestForm idp="onelogin" />
+            <LoginForm idp="okta" />
+            <KeyRequestForm idp="okta" />
             <KeyCard />
             <TroubleshootingCard />
           </Grid.Column>
