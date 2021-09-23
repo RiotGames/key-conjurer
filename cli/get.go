@@ -15,6 +15,7 @@ var (
 	outputType    string
 	awsCliPath    string
 	roleName      string
+	shell         string = shellTypeInfer
 )
 
 var (
@@ -22,14 +23,15 @@ var (
 	outputTypeEnvironmentVariable = "env"
 	// outputTypeAWSCredentialsFile indicates that keyconjurer will dump the credentials into the ~/.aws/credentials file.
 	outputTypeAWSCredentialsFile = "awscli"
+	permittedOutputTypes         = []string{outputTypeAWSCredentialsFile, outputTypeEnvironmentVariable}
+	permittedShellTypes          = []string{shellTypePowershell, shellTypeBash, shellTypeBasic, shellTypeInfer}
 )
-
-var permittedOutputTypes = []string{outputTypeAWSCredentialsFile, outputTypeEnvironmentVariable}
 
 func init() {
 	getCmd.Flags().UintVar(&ttl, "ttl", 1, "The key timeout in hours from 1 to 8.")
 	getCmd.Flags().UintVarP(&timeRemaining, "time-remaining", "t", DefaultTimeRemaining, "Request new keys if there are no keys in the environment or the current keys expire within <time-remaining> minutes. Defaults to 60.")
 	getCmd.Flags().StringVarP(&outputType, "out", "o", outputTypeEnvironmentVariable, "Format to save new credentials in. Supported outputs: env, awscli")
+	getCmd.Flags().StringVarP(&shell, "shell", "", shellTypeInfer, "If output type is env, determines which format to output credentials in - by default, the format is inferred based on the execution environment. WSL users may wish to overwrite this to `bash`")
 	getCmd.Flags().StringVarP(&awsCliPath, "awscli", "", "~/.aws/", "Path for directory used by the aws-cli tool. Default is \"~/.aws\".")
 	getCmd.Flags().StringVar(&roleName, "role", "", "The name of the role to assume.")
 	getCmd.Flags().StringVar(&identityProvider, "identity-provider", defaultIdentityProvider, "The identity provider to use. Refer to `keyconjurer identity-providers` for more info.")
@@ -50,11 +52,6 @@ A role must be specified when using this command through the --role flag. You ma
 			return err
 		}
 
-		creds, err := config.GetCredentials()
-		if err != nil {
-			return err
-		}
-
 		valid := false
 		for _, permitted := range permittedOutputTypes {
 			if outputType == permitted {
@@ -64,6 +61,21 @@ A role must be specified when using this command through the --role flag. You ma
 
 		if !valid {
 			return invalidValueError(outputType, permittedOutputTypes)
+		}
+
+		for _, permitted := range permittedShellTypes {
+			if shell == permitted {
+				valid = true
+			}
+		}
+
+		if !valid {
+			return invalidValueError(shell, permittedShellTypes)
+		}
+
+		creds, err := config.GetCredentials()
+		if err != nil {
+			return err
 		}
 
 		// make sure we enforce limit
@@ -119,7 +131,7 @@ A role must be specified when using this command through the --role flag. You ma
 
 		switch outputType {
 		case outputTypeEnvironmentVariable:
-			fmt.Fprintln(os.Stdout, credentials)
+			credentials.WriteFormat(os.Stdout, shell)
 			return nil
 		case outputTypeAWSCredentialsFile:
 			acc := Account{ID: args[0], Name: args[0]}
