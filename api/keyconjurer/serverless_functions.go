@@ -169,6 +169,11 @@ func (h *Handler) GetTemporaryCredentialEventHandler(ctx context.Context, event 
 		return ErrorResponse(ErrCodeInvalidProvider, "invalid provider")
 	}
 
+	if _, err := provider.Authenticate(ctx, event.Credentials); err != nil {
+		log.Errorf("failed to authenticate user: %s", err)
+		return ErrorResponse(ErrCodeInvalidCredentials, "credentials are incorrect")
+	}
+
 	response, err := provider.GenerateSAMLAssertion(ctx, event.Credentials, event.AppID)
 	if err != nil {
 		msg := fmt.Sprintf("unable to generate SAML assertion: %s", err)
