@@ -47,7 +47,7 @@ type Client struct {
 func NewClient(hostname string) (Client, error) {
 	certs, err := rootcerts.LoadSystemCAs()
 	if err != nil {
-		return Client{}, fmt.Errorf("Could not load System root CA files. Reason: %v", err)
+		return Client{}, fmt.Errorf("could not load System root CA files. Reason: %v", err)
 	}
 
 	httpClient := &http.Client{
@@ -77,9 +77,12 @@ func (c *Client) do(ctx context.Context, url string, r io.Reader, responseStruct
 		return fmt.Errorf("error sending http request: %w", err)
 	}
 
-	// With our AWS Lambda setup, the server will always return HTTP 200 unless there was an internal error on the server's end.
-	if res.StatusCode >= 500 {
-		return errUnspecifiedServerError
+	if res.Header.Get("content-type") != "application/json" {
+		if res.StatusCode >= 500 {
+			return errUnspecifiedServerError
+		} else {
+			return errInvalidJSONResponse
+		}
 	}
 
 	dec := json.NewDecoder(res.Body)
