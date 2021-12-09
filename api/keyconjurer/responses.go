@@ -4,6 +4,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
+
+	"github.com/aws/aws-lambda-go/events"
 )
 
 // Response is the generic structure of the lambda responses.
@@ -70,11 +73,17 @@ func (r *Response) GetError(dest *ErrorData) error {
 	return json.Unmarshal(raw, dest)
 }
 
-// DataResponse returns a response that wraps the data in the correct format.
+// DataResponse returns a response that wraps the data in an APIGatewayProxyResponse in the correct format.
 // Error is always nil to make returning from a Lambda less cumbersome.
-func DataResponse(data interface{}) (Response, error) {
+func DataResponse(data interface{}) (*events.APIGatewayProxyResponse, error) {
 	// Message must be "success" for legacy clients to correctly interpret it
-	return Response{Success: true, Message: "success", Data: data}, nil
+	response := Response{Success: true, Message: "success", Data: data}
+	body, err := json.Marshal(response)
+	if err != nil {
+		return GetAPIGatewayProxyResponse(ErrCodeInternalServerError, []byte("JSON encoding failed"))
+	}
+
+	return GetAPIGatewayProxyResponse(Success, body)
 }
 
 var (
@@ -86,19 +95,42 @@ var (
 	ErrCodeUnspecified ErrorCode = "unspecified"
 	// ErrCodeUnableToDecrypt indicates the server was unable to decrypt the credentials the client provided.
 	ErrCodeUnableToDecrypt ErrorCode = "decryption_failure"
-	// ErrCodeInvalidCredentials indicates that the users credentials were incorrect
+	// ErrCodeInvalidCredentials indicates that the users credentials were incorrect.
 	ErrCodeInvalidCredentials ErrorCode = "invalid_credentials"
 	// ErrCodeInternalServerError indicates that a server occurred within the server and the server could not continue.
 	// The user cannot fix this issue. They MAY retry again.
 	ErrCodeInternalServerError ErrorCode = "internal_server_error"
 	// ErrCodeUnableToEncrypt indicates that the server was unable to encrypt the users credentials.
 	ErrCodeUnableToEncrypt ErrorCode = "encryption_failure"
-	// ErrBadRequest indicates that the user supplied data that was invalid
+	// ErrBadRequest indicates that the user supplied data that was invalid.
 	ErrBadRequest ErrorCode = "bad_request"
+	// Success indicates that everything went well.
+	Success ErrorCode = "successful"
 )
 
 // ErrorCode contains all of the recognised error codes in the KeyConjurer API.
 type ErrorCode string
+
+// GetHttpStatus translates an error code to an HTTP status code.
+func (e ErrorCode) GetHttpStatus() int {
+	switch e {
+	case Success:
+		return http.StatusOK
+	case ErrBadRequest:
+		return http.StatusBadRequest
+	case ErrCodeInvalidProvider:
+		return http.StatusBadRequest
+	case ErrCodeUnspecified:
+		return http.StatusBadRequest
+	case ErrCodeUnableToDecrypt:
+		return http.StatusBadRequest
+	case ErrCodeUnableToEncrypt:
+		return http.StatusBadRequest
+	case ErrCodeInvalidCredentials:
+		return http.StatusForbidden
+	}
+	return http.StatusInternalServerError
+}
 
 // ErrorData encapsulates error information relating to an AWS Lambda call.
 // Lambda does not make it trivial to return HTTP status codes, so instead the application should interrogate the Code value in this struct.
@@ -113,8 +145,27 @@ func (e ErrorData) Error() string {
 
 var _ error = ErrorData{}
 
-// ErrorResponse creates a standardized error response with an error message from the server.
+// ErrorResponse creates a standardized error response with an error message from the server
+// and wraps it in an APIGatewayProxyResponse that the AWS API gateway understands.
 // It also always returns a nil error, simply to make returning from a Lambda less cumbersome.
-func ErrorResponse(code ErrorCode, message string) (Response, error) {
-	return Response{Success: false, Message: message, Data: ErrorData{Code: code, Message: message}}, nil
+func ErrorResponse(code ErrorCode, message string) (*events.APIGatewayProxyResponse, error) {
+	response := Response{Success: false, Message: message, Data: ErrorData{Code: code, Message: message}}
+	body, err := json.Marshal(response)
+	if err != nil {
+		return GetAPIGatewayProxyResponse(ErrCodeInternalServerError, []byte("JSON encoding failed"))
+	}
+
+	return GetAPIGatewayProxyResponse(code, body)
+}
+
+// GetAPIGatewayProxyResponse creates a response that wraps data in an APIGatewayProxyResponse that the AWS API Gateway understands.
+// It also sets an HTTP status code based on a specified error code.
+func GetAPIGatewayProxyResponse(code ErrorCode, data []byte) (*events.APIGatewayProxyResponse, error) {
+	return &events.APIGatewayProxyResponse{
+		StatusCode:        code.GetHttpStatus(),
+		Headers:           map[string]string{"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"},
+		MultiValueHeaders: make(map[string][]string),
+		Body:              string(data),
+		IsBase64Encoded:   false,
+	}, nil
 }

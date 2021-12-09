@@ -17,12 +17,12 @@ resource "aws_api_gateway_method_response" "endpoint_method_responses" {
 }
 
 
-resource "aws_api_gateway_integration" "endpoint_integrations" {
+resource "aws_api_gateway_integration" "endpoint_proxy_integrations" {
   rest_api_id             = var.rest_api_id
   resource_id             = var.resource_id
   http_method             = aws_api_gateway_method.endpoint_method.http_method
   integration_http_method = aws_api_gateway_method.endpoint_method.http_method
-  type                    = "AWS"
+  type                    = "AWS_PROXY"
   uri                     = var.uri_arn
   depends_on              = [aws_api_gateway_method.endpoint_method]
 }
@@ -35,7 +35,7 @@ resource "aws_api_gateway_integration_response" "endpoint_integration_responses"
   response_parameters = {
     "method.response.header.Access-Control-Allow-Origin" = "'*'"
   }
-  depends_on = [aws_api_gateway_integration.endpoint_integrations, aws_api_gateway_method_response.endpoint_method_responses]
+  depends_on = [aws_api_gateway_integration.endpoint_proxy_integrations, aws_api_gateway_method_response.endpoint_method_responses]
 }
 
 resource "aws_lambda_permission" "lambda_permissions" {
