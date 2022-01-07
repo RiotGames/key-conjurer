@@ -7,6 +7,8 @@ package core
 
 import (
 	"context"
+	"errors"
+	"fmt"
 )
 
 // Credentials is a struct which contains the username and password for a user.
@@ -52,4 +54,37 @@ type AuthenticationProvider interface {
 	ListApplications(ctx context.Context, user User) ([]Application, error)
 	// GenerateSAMLAssertion should generate a SAML assertion that the user may exchange with the target application in order to gain access to it.
 	GenerateSAMLAssertion(ctx context.Context, credentials Credentials, appID string) (*SAMLResponse, error)
+}
+
+// ProviderError is an error returned by an authentication provider.
+type ProviderError error
+
+// A list of standard errors that can be returned by an authentication provider.
+var (
+	ErrBadRequest                    ProviderError = errors.New("bad request")
+	ErrApplicationNotFound           ProviderError = errors.New("application not found")
+	ErrAuthenticationFailed          ProviderError = errors.New("unauthorized")
+	ErrAccessDenied                  ProviderError = errors.New("access denied")
+	ErrFactorVerificationFailed      ProviderError = errors.New("factor verification failed")
+	ErrCouldNotSendMfaPush           ProviderError = errors.New("could not send MFA push")
+	ErrSubmitChallengeResponseFailed ProviderError = errors.New("submit challenge response failed")
+	ErrCouldNotCreateSession         ProviderError = errors.New("could not create a session")
+	ErrSAMLError                     ProviderError = errors.New("failed to process SAML")
+	ErrInternalError                 ProviderError = errors.New("internal error")
+	ErrUnspecified                   ProviderError = errors.New("unspecified")
+)
+
+// NewBadRequestError creates a ErrBadRequest error with a specified message.
+func NewBadRequestError(message string) error {
+	return fmt.Errorf("%w: %s", ErrBadRequest, message)
+}
+
+// NewInternalError creates a ErrInternalError error with a specified message.
+func NewInternalError(message string) error {
+	return fmt.Errorf("%w: %s", ErrInternalError, message)
+}
+
+// NewAuthenticationProviderError wraps an error into a standard authentication provider error.
+func NewAuthenticationProviderError(standardErr ProviderError, nestedErr error) error {
+	return fmt.Errorf("%w: %s", standardErr, nestedErr.Error())
 }

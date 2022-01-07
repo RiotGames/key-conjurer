@@ -74,7 +74,7 @@ func (h *Handler) GetUserDataEventHandler(ctx context.Context, req *events.APIGa
 	var event GetUserDataEvent
 	if err := json.Unmarshal([]byte(req.Body), &event); err != nil {
 		log.Errorf("unable to parse incoming JSON: %s", err)
-		return ErrorResponse(ErrBadRequest, "unable to parse incoming JSON")
+		return ErrorResponse(ErrCodeBadRequest, "unable to parse incoming JSON")
 	}
 
 	if err := h.crypt.Decrypt(ctx, &event.Credentials); err != nil {
@@ -165,12 +165,12 @@ func (h *Handler) GetTemporaryCredentialEventHandler(ctx context.Context, req *e
 	var event GetTemporaryCredentialEvent
 	if err := json.Unmarshal([]byte(req.Body), &event); err != nil {
 		log.Errorf("unable to parse incoming JSON: %s", err)
-		return ErrorResponse(ErrBadRequest, "unable to parse incoming JSON")
+		return ErrorResponse(ErrCodeBadRequest, "unable to parse incoming JSON")
 	}
 
 	if err := event.Validate(); err != nil {
 		log.Infof("bad request: %s", err.Error())
-		return ErrorResponse(ErrBadRequest, err.Error())
+		return ErrorResponse(ErrCodeBadRequest, err.Error())
 	}
 
 	if err := h.crypt.Decrypt(ctx, &event.Credentials); err != nil {
@@ -194,7 +194,7 @@ func (h *Handler) GetTemporaryCredentialEventHandler(ctx context.Context, req *e
 	if err != nil {
 		msg := fmt.Sprintf("unable to generate SAML assertion: %s", err)
 		log.Errorf(msg)
-		return ErrorResponse(ErrCodeInternalServerError, msg)
+		return ErrorResponse(GetErrorCode(err), msg)
 	}
 
 	sts, err := h.aws.GetTemporaryCredentialsForUser(ctx, event.RoleName, response, int(event.TimeoutInHours))
@@ -202,7 +202,7 @@ func (h *Handler) GetTemporaryCredentialEventHandler(ctx context.Context, req *e
 		var errRoleNotFound aws.ErrRoleNotFound
 		if errors.As(err, &errRoleNotFound) {
 			log.Infof("role %q either does not exist or the user is not entitled to it", event.RoleName)
-			return ErrorResponse(ErrBadRequest, errRoleNotFound.Error())
+			return ErrorResponse(ErrCodeBadRequest, errRoleNotFound.Error())
 		}
 
 		log.Errorf("failed to generate temporary session credentials: %s", err.Error())
@@ -242,4 +242,20 @@ func (h *Handler) ListProvidersHandler(ctx context.Context) (*events.APIGatewayP
 	}
 
 	return DataResponse(ListProvidersPayload{Providers: p})
+}
+
+// GetErrorCode translates an error to an ErrorCode.
+func GetErrorCode(err error) ErrorCode {
+	switch {
+	case errors.Is(err, core.ErrInternalError):
+		return ErrCodeInternalServerError
+	case errors.Is(err, core.ErrBadRequest):
+		return ErrCodeBadRequest
+	case errors.Is(err, core.ErrAuthenticationFailed):
+		return ErrCodeInvalidCredentials
+	case errors.Is(err, core.ErrAccessDenied):
+		return ErrCodeInvalidCredentials
+	default:
+		return ErrCodeUnspecified
+	}
 }

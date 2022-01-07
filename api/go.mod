@@ -9,7 +9,6 @@ require (
 	github.com/kr/text v0.2.0 // indirect
 	github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e // indirect
 	github.com/nu7hatch/gouuid v0.0.0-20131221200532-179d4d0c4d8d // indirect
-	github.com/okta/okta-sdk-golang v1.1.0
 	github.com/okta/okta-sdk-golang/v2 v2.2.1
 	github.com/riotgames/vault-go-client v0.0.3
 	github.com/rnikoopour/onelogin v1.0.1

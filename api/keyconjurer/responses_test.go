@@ -43,7 +43,7 @@ func TestErrorResponse(t *testing.T) {
 }
 
 func TestErrorResponseStatusCodes(t *testing.T) {
-	proxyResponse, err := ErrorResponse(ErrBadRequest, "bad request")
+	proxyResponse, err := ErrorResponse(ErrCodeBadRequest, "bad request")
 	require.NoError(t, err)
 	require.NotNil(t, proxyResponse)
 	require.Equal(t, 400, proxyResponse.StatusCode, "unexpected status code")
@@ -70,7 +70,7 @@ func TestResponseMarshalJSON(t *testing.T) {
 func TestErrorResponseMarshalJSON(t *testing.T) {
 	message := "this is a error message"
 
-	response, err := ErrorResponse(ErrBadRequest, message)
+	response, err := ErrorResponse(ErrCodeBadRequest, message)
 	require.NoError(t, err)
 	require.NotNil(t, response)
 

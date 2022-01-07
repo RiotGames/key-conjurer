@@ -95,19 +95,19 @@ func extractRole(group *okta.Group) (extractedRole, bool) {
 // This will initiate a multi-factor request with Duo.
 func (a *Authenticator) GenerateSAMLAssertion(ctx context.Context, creds core.Credentials, appID string) (*core.SAMLResponse, error) {
 	if appID == "" {
-		return nil, errors.New("appID cannot be an empty string")
+		return nil, core.NewBadRequestError("appID cannot be an empty string")
 	}
 
 	app, _, err := a.client.Application.GetApplication(ctx, appID, &okta.Application{}, query.NewQueryParams())
 	if err != nil {
-		return nil, err
+		return nil, core.NewAuthenticationProviderError(core.ErrApplicationNotFound, err)
 	}
 
 	appl := app.(*okta.Application)
 
 	st, err := a.oktaAuthClient.Authn(ctx, authnRequest{Username: creds.Username, Password: creds.Password})
 	if err != nil {
-		return nil, err
+		return nil, WrapOktaError(err, core.ErrAuthenticationFailed)
 	}
 
 	var f *okta.UserFactor
@@ -119,29 +119,34 @@ func (a *Authenticator) GenerateSAMLAssertion(ctx context.Context, creds core.Cr
 	}
 
 	if f == nil {
-		return nil, errors.New("no Duo web factor found")
+		return nil, core.NewInternalError("no Duo web factor found")
 	}
 
 	vf, err := a.oktaAuthClient.VerifyFactor(ctx, st.StateToken, *f)
 	if err != nil {
-		return nil, err
+		return nil, WrapOktaError(err, core.ErrFactorVerificationFailed)
 	}
 
 	tok, err := a.mfa.SendPush(vf.AuthSignature, vf.StateToken.String(), vf.CallbackURL, vf.Host)
 	if err != nil {
-		return nil, err
+		return nil, core.NewAuthenticationProviderError(core.ErrCouldNotSendMfaPush, err)
 	}
 
-	if err = a.oktaAuthClient.SubmitVerifyFactorResponse(ctx, vf, tok); err != nil {
-		return nil, err
+	if err = a.oktaAuthClient.SubmitChallengeResponse(ctx, vf, tok); err != nil {
+		return nil, WrapOktaError(err, core.ErrSubmitChallengeResponseFailed)
 	}
 
 	session, err := a.oktaAuthClient.CreateSession(ctx, vf)
 	if err != nil {
-		return nil, err
+		return nil, WrapOktaError(err, core.ErrCouldNotCreateSession)
 	}
 
-	return a.oktaAuthClient.GetSAMLResponse(ctx, *appl, session)
+	samlResponse, err := a.oktaAuthClient.GetSAMLResponse(ctx, *appl, session)
+	if err != nil {
+		return nil, WrapOktaError(err, core.ErrSAMLError)
+	}
+
+	return samlResponse, nil
 }
 
 var _ core.AuthenticationProvider = &Authenticator{}
@@ -167,4 +172,29 @@ func Must(host, token string, mfa duo.Duo) *Authenticator {
 	}
 
 	return auth
+}
+
+// TranslateOktaError converts an error from Okta to one of the standard provider's errors.
+// If the function can't translate the error, it returns a specified default error.
+func TranslateOktaError(err error, defaultErr core.ProviderError) core.ProviderError {
+	if err == nil {
+		return nil
+	}
+	switch {
+	case errors.Is(err, ErrOktaBadRequest):
+		return core.ErrBadRequest
+	case errors.Is(err, ErrOktaUnauthorized):
+		return core.ErrAuthenticationFailed
+	case errors.Is(err, ErrOktaForbidden):
+		return core.ErrAccessDenied
+	case errors.Is(err, ErrOktaInternalServerError):
+		return core.ErrInternalError
+	default:
+		return defaultErr
+	}
+}
+
+// WrapOktaError wraps an error from Okta into a standard authentication provider error.
+func WrapOktaError(err error, defaultCoreErr core.ProviderError) error {
+	return core.NewAuthenticationProviderError(TranslateOktaError(err, defaultCoreErr), err)
 }
