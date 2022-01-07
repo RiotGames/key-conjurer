@@ -83,14 +83,14 @@ func (o *oktaAuthClient) do(ctx context.Context, method, path string, data, resu
 
 	b, err := json.Marshal(data)
 	if err != nil {
-		return
+		return nil, WrapError(err, ErrOktaBadRequest)
 	}
 
 	uri := o.url
 	uri.Path = path
 	req, err := http.NewRequestWithContext(ctx, method, uri.String(), bytes.NewReader(b))
 	if err != nil {
-		return
+		return nil, WrapError(err, ErrOktaBadRequest)
 	}
 
 	req.Header.Set("content-type", "application/json")
@@ -124,7 +124,7 @@ func (o *oktaAuthClient) do(ctx context.Context, method, path string, data, resu
 func (o *oktaAuthClient) Authn(ctx context.Context, payload authnRequest) (authnResponse, error) {
 	var res authnResponse
 	httpResponse, err := o.do(ctx, "POST", "/api/v1/authn", payload, &res)
-	return res, WrapErrorIfNecessary(httpResponse, err)
+	return res, TranslateError(httpResponse, err)
 }
 
 type verifyFactorResponse struct {
@@ -174,16 +174,16 @@ func (o *oktaAuthClient) VerifyFactor(ctx context.Context, token stateToken, fac
 	path := fmt.Sprintf("/api/v1/authn/factors/%s/verify", factor.Id)
 	httpResponse, err := o.do(ctx, "POST", path, t{StateToken: token.String()}, &r)
 	if err != nil {
-		return data, WrapErrorIfNecessary(httpResponse, err)
+		return data, TranslateError(httpResponse, err)
 	}
 
-	return data, WrapErrorIfNecessary(nil, data.ParseJSON(r, p))
+	return data, TranslateError(nil, data.ParseJSON(r, p))
 }
 
 func (o *oktaAuthClient) SubmitChallengeResponse(ctx context.Context, vf verifyFactorResponse, token string) error {
 	uri, err := url.Parse(vf.CallbackURL)
 	if err != nil {
-		return fmt.Errorf("unable to parse Callback URL: %s", err)
+		return WrapError(fmt.Errorf("unable to parse Callback URL: %s", err), ErrOktaBadRequest)
 	}
 
 	v := url.Values{}
@@ -231,11 +231,11 @@ func (o *oktaAuthClient) CreateSession(ctx context.Context, vf verifyFactorRespo
 	path := fmt.Sprintf("/api/v1/authn/factors/%s/verify", vf.DeviceID)
 	httpResponse, err := o.do(ctx, "POST", path, t{StateToken: vf.StateToken.String()}, &s)
 	if err != nil {
-		return s, WrapErrorIfNecessary(httpResponse, err)
+		return s, TranslateError(httpResponse, err)
 	}
 
 	if s.Status != "SUCCESS" {
-		return s, fmt.Errorf("%w: could not create session - okta indicates %s", core.ErrCouldNotCreateSession, s.Status)
+		return s, WrapError(fmt.Errorf("could not create session - okta indicates %s", s.Status), ErrOktaCouldNotCreateSession)
 	}
 
 	return s, nil
@@ -258,12 +258,12 @@ func getHrefLink(app okta.Application) (string, bool) {
 func (o *oktaAuthClient) GetSAMLResponse(ctx context.Context, application okta.Application, session session) (*core.SAMLResponse, error) {
 	endpoint, ok := getHrefLink(application)
 	if !ok {
-		return nil, NewSAMLError(errors.New("no endpoint found - this usually indicates an error in the Okta API or Okta SDK"))
+		return nil, WrapError(errors.New("no endpoint found - this usually indicates an error in the Okta API or Okta SDK"), ErrOktaSAMLError)
 	}
 
 	uri, err := url.Parse(endpoint)
 	if err != nil {
-		return nil, NewSAMLError(err)
+		return nil, WrapError(err, ErrOktaSAMLError)
 	}
 
 	uri.RawQuery = url.Values{"sessionToken": []string{session.SessionToken.String()}}.Encode()
@@ -280,16 +280,16 @@ func (o *oktaAuthClient) GetSAMLResponse(ctx context.Context, application okta.A
 	// This request will give us a session cookie that we can use.
 	resp, err := client.Get(uri.String())
 	if err != nil {
-		return nil, WrapErrorIfNecessary(resp, err)
+		return nil, TranslateError(resp, err)
 	}
 
 	if resp.StatusCode != http.StatusFound {
-		return nil, NewSAMLError(fmt.Errorf("okta returned a status code of %d for endpoint %s instead of %d", resp.StatusCode, uri.Path, http.StatusFound))
+		return nil, WrapError(fmt.Errorf("okta returned a status code of %d for endpoint %s instead of %d", resp.StatusCode, uri.Path, http.StatusFound), ErrOktaSAMLError)
 	}
 
 	req, err := http.NewRequest("GET", resp.Header.Get("Location"), nil)
 	if err != nil {
-		return nil, NewSAMLError(err)
+		return nil, WrapError(err, ErrOktaSAMLError)
 	}
 
 	var sid *http.Cookie
@@ -304,40 +304,27 @@ func (o *oktaAuthClient) GetSAMLResponse(ctx context.Context, application okta.A
 	// This response will redirect us to the SAML Endpoint
 	resp, err = client.Do(req)
 	if err != nil {
-		return nil, WrapErrorIfNecessary(resp, err)
+		return nil, TranslateError(resp, err)
 	}
 
 	// Now we have the SAML URL, we can send a request to that URL with our cookie to get the SAML response
 	req, err = http.NewRequest("GET", resp.Header.Get("Location"), nil)
 	if err != nil {
-		return nil, NewSAMLError(err)
+		return nil, WrapError(err, ErrOktaSAMLError)
 	}
 
 	req.AddCookie(sid)
 	resp, err = client.Do(req)
 	if err != nil {
-		return nil, WrapErrorIfNecessary(resp, err)
+		return nil, TranslateError(resp, err)
 	}
 
 	samlResponse, err := extractSAMLResponse(resp.Body)
 	if err != nil {
-		return samlResponse, NewSAMLError(err)
+		return samlResponse, WrapError(err, ErrOktaSAMLError)
 	}
 
 	return samlResponse, nil
-}
-
-// NewSAMLError converts a specified error to ErrOktaSamlError but keeping the original error message.
-func NewSAMLError(err error) error {
-	return fmt.Errorf("%w: %s", ErrOktaSAMLError, err)
-}
-
-// TODO: don't rely on HTTP status codes, instead, check Okta error codes if available, otherwise return a default error proivided by the caller
-func WrapErrorIfNecessary(httpResponse *http.Response, err error) error {
-	if err == nil {
-		return nil
-	}
-	return fmt.Errorf("%w: %s", GetError(httpResponse), GetMessage(err))
 }
 
 // OktaError is an error from Okta.
@@ -354,22 +341,9 @@ var (
 	ErrOktaUnspecified           OktaError = errors.New("unspecified")
 )
 
-// GetError translate an HTTP response from Okta to an Okta error.
-func GetError(httpResponse *http.Response) OktaError {
-	switch {
-	case httpResponse == nil:
-		return ErrOktaInternalServerError
-	case httpResponse.StatusCode >= 500:
-		return ErrOktaInternalServerError
-	case httpResponse.StatusCode == 400:
-		return ErrOktaBadRequest
-	case httpResponse.StatusCode == 401:
-		return ErrOktaUnauthorized
-	case httpResponse.StatusCode == 403:
-		return ErrOktaForbidden
-	default:
-		return ErrOktaUnspecified
-	}
+// WrapError wraps an error into a standard Okta client error.
+func WrapError(err error, oktaErr OktaError) error {
+	return fmt.Errorf("%w: %s", oktaErr, err.Error())
 }
 
 // GetMessage extracts a message from an error.
@@ -381,4 +355,31 @@ func GetMessage(err error) string {
 		return oktaErr.ErrorSummary
 	}
 	return err.Error()
+}
+
+// TranslateError converts a specified error to one of the standard Okta client errors.
+// The function does not use error codes from Okta API.
+// Instead, it may use a specified HTTP response to determine the best standard error.
+func TranslateError(httpResponse *http.Response, err error) error {
+	if err == nil {
+		return nil
+	}
+
+	var standardErr OktaError
+	switch {
+	case httpResponse == nil:
+		standardErr = ErrOktaInternalServerError
+	case httpResponse.StatusCode >= 500:
+		standardErr = ErrOktaInternalServerError
+	case httpResponse.StatusCode == 400:
+		standardErr = ErrOktaBadRequest
+	case httpResponse.StatusCode == 401:
+		standardErr = ErrOktaUnauthorized
+	case httpResponse.StatusCode == 403:
+		standardErr = ErrOktaForbidden
+	default:
+		standardErr = ErrOktaUnspecified
+	}
+
+	return fmt.Errorf("%w: %s", standardErr, GetMessage(err))
 }
