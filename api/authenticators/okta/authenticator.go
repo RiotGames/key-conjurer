@@ -107,7 +107,7 @@ func (a *Authenticator) GenerateSAMLAssertion(ctx context.Context, creds core.Cr
 
 	st, err := a.oktaAuthClient.Authn(ctx, authnRequest{Username: creds.Username, Password: creds.Password})
 	if err != nil {
-		return nil, WrapOktaError(err, core.ErrAuthenticationFailed)
+		return nil, wrapOktaError(err, core.ErrAuthenticationFailed)
 	}
 
 	var f *okta.UserFactor
@@ -124,7 +124,7 @@ func (a *Authenticator) GenerateSAMLAssertion(ctx context.Context, creds core.Cr
 
 	vf, err := a.oktaAuthClient.VerifyFactor(ctx, st.StateToken, *f)
 	if err != nil {
-		return nil, WrapOktaError(err, core.ErrFactorVerificationFailed)
+		return nil, wrapOktaError(err, core.ErrFactorVerificationFailed)
 	}
 
 	tok, err := a.mfa.SendPush(vf.AuthSignature, vf.StateToken.String(), vf.CallbackURL, vf.Host)
@@ -133,17 +133,17 @@ func (a *Authenticator) GenerateSAMLAssertion(ctx context.Context, creds core.Cr
 	}
 
 	if err = a.oktaAuthClient.SubmitChallengeResponse(ctx, vf, tok); err != nil {
-		return nil, WrapOktaError(err, core.ErrSubmitChallengeResponseFailed)
+		return nil, wrapOktaError(err, core.ErrSubmitChallengeResponseFailed)
 	}
 
 	session, err := a.oktaAuthClient.CreateSession(ctx, vf)
 	if err != nil {
-		return nil, WrapOktaError(err, core.ErrCouldNotCreateSession)
+		return nil, wrapOktaError(err, core.ErrCouldNotCreateSession)
 	}
 
 	samlResponse, err := a.oktaAuthClient.GetSAMLResponse(ctx, *appl, session)
 	if err != nil {
-		return nil, WrapOktaError(err, core.ErrSAMLError)
+		return nil, wrapOktaError(err, core.ErrSAMLError)
 	}
 
 	return samlResponse, nil
@@ -174,9 +174,9 @@ func Must(host, token string, mfa duo.Duo) *Authenticator {
 	return auth
 }
 
-// TranslateOktaError converts an error from Okta to one of the standard provider's errors.
+// translateOktaError converts an error from Okta to one of the standard provider's errors.
 // If the function can't translate the error, it returns a specified default error.
-func TranslateOktaError(err error, defaultErr core.ProviderError) core.ProviderError {
+func translateOktaError(err error, defaultErr core.ProviderError) core.ProviderError {
 	if err == nil {
 		return nil
 	}
@@ -194,7 +194,7 @@ func TranslateOktaError(err error, defaultErr core.ProviderError) core.ProviderE
 	}
 }
 
-// WrapOktaError wraps an error from Okta into a standard authentication provider error.
-func WrapOktaError(err error, defaultCoreErr core.ProviderError) error {
-	return core.NewAuthenticationProviderError(TranslateOktaError(err, defaultCoreErr), err)
+// wrapOktaError wraps an error from Okta into a standard authentication provider error.
+func wrapOktaError(err error, defaultCoreErr core.ProviderError) error {
+	return core.NewAuthenticationProviderError(translateOktaError(err, defaultCoreErr), err)
 }

@@ -194,7 +194,7 @@ func (h *Handler) GetTemporaryCredentialEventHandler(ctx context.Context, req *e
 	if err != nil {
 		msg := fmt.Sprintf("unable to generate SAML assertion: %s", err)
 		log.Errorf(msg)
-		return ErrorResponse(GetErrorCode(err), msg)
+		return ErrorResponse(getErrorCode(err), msg)
 	}
 
 	sts, err := h.aws.GetTemporaryCredentialsForUser(ctx, event.RoleName, response, int(event.TimeoutInHours))
@@ -244,8 +244,8 @@ func (h *Handler) ListProvidersHandler(ctx context.Context) (*events.APIGatewayP
 	return DataResponse(ListProvidersPayload{Providers: p})
 }
 
-// GetErrorCode translates an error to an ErrorCode.
-func GetErrorCode(err error) ErrorCode {
+// getErrorCode translates an error to an ErrorCode.
+func getErrorCode(err error) ErrorCode {
 	switch {
 	case errors.Is(err, core.ErrInternalError):
 		return ErrCodeInternalServerError
