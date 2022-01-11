@@ -24,7 +24,7 @@ type Authenticator struct {
 // Authenticate retrieves a list of applications for user with the given username and password.
 //
 // This will first attempt to validate if the user has the appropriate credentials before returning applications for that user.
-func (a *Authenticator) Authenticate(ctx context.Context, creds core.Credentials) (core.User, error) {
+func (a *Authenticator) Authenticate(ctx context.Context, creds core.Credentials) (core.User, core.AuthenticationProviderError) {
 	req := authnRequest{Username: creds.Username, Password: creds.Password}
 	res, err := a.oktaAuthClient.Authn(ctx, req)
 	// We don't need to acknowledge this error because we're using zero values all the way down
@@ -32,7 +32,7 @@ func (a *Authenticator) Authenticate(ctx context.Context, creds core.Credentials
 }
 
 // ListApplications should list all the applications the given user is entitled to access.
-func (a *Authenticator) ListApplications(ctx context.Context, user core.User) ([]core.Application, error) {
+func (a *Authenticator) ListApplications(ctx context.Context, user core.User) ([]core.Application, core.AuthenticationProviderError) {
 	// TODO: It seems like a bad idea to put this filtering here as it inherently makes it an AWS-okta provider, rather than just an Okta one.
 	// We use the app links endpoint because it's the easiest way to find the applications a user may access.
 	links, resp, err := a.client.User.ListAppLinks(ctx, user.ID)
@@ -93,7 +93,7 @@ func extractRole(group *okta.Group) (extractedRole, bool) {
 
 // GenerateSAMLAssertion should generate a SAML assertion that the user may exchange with the target application in order to gain access to it.
 // This will initiate a multi-factor request with Duo.
-func (a *Authenticator) GenerateSAMLAssertion(ctx context.Context, creds core.Credentials, appID string) (*core.SAMLResponse, error) {
+func (a *Authenticator) GenerateSAMLAssertion(ctx context.Context, creds core.Credentials, appID string) (*core.SAMLResponse, core.AuthenticationProviderError) {
 	if appID == "" {
 		return nil, core.NewBadRequestError("appID cannot be an empty string")
 	}
@@ -176,7 +176,7 @@ func Must(host, token string, mfa duo.Duo) *Authenticator {
 
 // translateOktaError converts an error from Okta to one of the standard provider's errors.
 // If the function can't translate the error, it returns a specified default error.
-func translateOktaError(err error, defaultErr core.ProviderError) core.ProviderError {
+func translateOktaError(err error, defaultErr core.AuthenticationProviderError) core.AuthenticationProviderError {
 	if err == nil {
 		return nil
 	}
@@ -195,6 +195,6 @@ func translateOktaError(err error, defaultErr core.ProviderError) core.ProviderE
 }
 
 // wrapOktaError wraps an error from Okta into a standard authentication provider error.
-func wrapOktaError(err error, defaultCoreErr core.ProviderError) error {
+func wrapOktaError(err error, defaultCoreErr core.AuthenticationProviderError) error {
 	return core.NewAuthenticationProviderError(translateOktaError(err, defaultCoreErr), err)
 }
