@@ -3,6 +3,7 @@ package okta
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/url"
 	"strings"
 
@@ -95,12 +96,12 @@ func extractRole(group *okta.Group) (extractedRole, bool) {
 // This will initiate a multi-factor request with Duo.
 func (a *Authenticator) GenerateSAMLAssertion(ctx context.Context, creds core.Credentials, appID string) (*core.SAMLResponse, core.AuthenticationProviderError) {
 	if appID == "" {
-		return nil, core.NewBadRequestError("appID cannot be an empty string")
+		return nil, fmt.Errorf("%w: appID cannot be an empty string", core.ErrBadRequest)
 	}
 
 	app, _, err := a.client.Application.GetApplication(ctx, appID, &okta.Application{}, query.NewQueryParams())
 	if err != nil {
-		return nil, core.NewAuthenticationProviderError(core.ErrApplicationNotFound, err)
+		return nil, core.WrapError(core.ErrApplicationNotFound, err)
 	}
 
 	appl := app.(*okta.Application)
@@ -119,7 +120,7 @@ func (a *Authenticator) GenerateSAMLAssertion(ctx context.Context, creds core.Cr
 	}
 
 	if f == nil {
-		return nil, core.NewInternalError("no Duo web factor found")
+		return nil, fmt.Errorf("%w: no Duo web factor found", core.ErrInternalError)
 	}
 
 	vf, err := a.oktaAuthClient.VerifyFactor(ctx, st.StateToken, *f)
@@ -129,7 +130,7 @@ func (a *Authenticator) GenerateSAMLAssertion(ctx context.Context, creds core.Cr
 
 	tok, err := a.mfa.SendPush(vf.AuthSignature, vf.StateToken.String(), vf.CallbackURL, vf.Host)
 	if err != nil {
-		return nil, core.NewAuthenticationProviderError(core.ErrCouldNotSendMfaPush, err)
+		return nil, core.WrapError(core.ErrCouldNotSendMfaPush, err)
 	}
 
 	if err = a.oktaAuthClient.SubmitChallengeResponse(ctx, vf, tok); err != nil {
@@ -196,5 +197,5 @@ func translateOktaError(err error, defaultErr core.AuthenticationProviderError) 
 
 // wrapOktaError wraps an error from Okta into a standard authentication provider error.
 func wrapOktaError(err error, defaultCoreErr core.AuthenticationProviderError) error {
-	return core.NewAuthenticationProviderError(translateOktaError(err, defaultCoreErr), err)
+	return core.WrapError(translateOktaError(err, defaultCoreErr), err)
 }

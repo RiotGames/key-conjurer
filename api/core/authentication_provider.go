@@ -74,17 +74,7 @@ var (
 	ErrUnspecified                   AuthenticationProviderError = errors.New("unspecified")
 )
 
-// NewBadRequestError creates a ErrBadRequest error with a specified message.
-func NewBadRequestError(message string) error {
-	return fmt.Errorf("%w: %s", ErrBadRequest, message)
-}
-
-// NewInternalError creates a ErrInternalError error with a specified message.
-func NewInternalError(message string) error {
-	return fmt.Errorf("%w: %s", ErrInternalError, message)
-}
-
-// NewAuthenticationProviderError wraps an error into a standard authentication provider error.
-func NewAuthenticationProviderError(standardErr AuthenticationProviderError, nestedErr error) error {
+// WrapError wraps an error into a standard authentication provider error.
+func WrapError(standardErr AuthenticationProviderError, nestedErr error) error {
 	return fmt.Errorf("%w: %s", standardErr, nestedErr.Error())
 }
