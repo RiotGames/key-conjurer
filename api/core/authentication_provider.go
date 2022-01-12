@@ -7,6 +7,8 @@ package core
 
 import (
 	"context"
+	"errors"
+	"fmt"
 )
 
 // Credentials is a struct which contains the username and password for a user.
@@ -47,9 +49,32 @@ type Role struct {
 // An AuthenticationProvider is a component which will verify user credentials, list the applications a user is entitled to, the roles the user may assume within that application and generate SAML assertions for federation.
 type AuthenticationProvider interface {
 	// Authenticate should validate that the provided credentials are correct for a user.
-	Authenticate(ctx context.Context, credentials Credentials) (User, error)
+	Authenticate(ctx context.Context, credentials Credentials) (User, AuthenticationProviderError)
 	// ListApplications should list all the applications the given user is entitled to access.
-	ListApplications(ctx context.Context, user User) ([]Application, error)
+	ListApplications(ctx context.Context, user User) ([]Application, AuthenticationProviderError)
 	// GenerateSAMLAssertion should generate a SAML assertion that the user may exchange with the target application in order to gain access to it.
-	GenerateSAMLAssertion(ctx context.Context, credentials Credentials, appID string) (*SAMLResponse, error)
+	GenerateSAMLAssertion(ctx context.Context, credentials Credentials, appID string) (*SAMLResponse, AuthenticationProviderError)
+}
+
+// AuthenticationProviderError is an error returned by an authentication provider.
+type AuthenticationProviderError error
+
+// A list of standard errors that can be returned by an authentication provider.
+var (
+	ErrBadRequest                    AuthenticationProviderError = errors.New("bad request")
+	ErrApplicationNotFound           AuthenticationProviderError = errors.New("application not found")
+	ErrAuthenticationFailed          AuthenticationProviderError = errors.New("unauthorized")
+	ErrAccessDenied                  AuthenticationProviderError = errors.New("access denied")
+	ErrFactorVerificationFailed      AuthenticationProviderError = errors.New("factor verification failed")
+	ErrCouldNotSendMfaPush           AuthenticationProviderError = errors.New("could not send MFA push")
+	ErrSubmitChallengeResponseFailed AuthenticationProviderError = errors.New("submit challenge response failed")
+	ErrCouldNotCreateSession         AuthenticationProviderError = errors.New("could not create a session")
+	ErrSAMLError                     AuthenticationProviderError = errors.New("failed to process SAML")
+	ErrInternalError                 AuthenticationProviderError = errors.New("internal error")
+	ErrUnspecified                   AuthenticationProviderError = errors.New("unspecified")
+)
+
+// WrapError wraps an error into a standard authentication provider error.
+func WrapError(standardErr AuthenticationProviderError, nestedErr error) error {
+	return fmt.Errorf("%w: %s", standardErr, nestedErr.Error())
 }

@@ -27,7 +27,7 @@ func New(settings *settings.Settings, mfa duo.Duo) *Authenticator {
 	}
 }
 
-func (a *Authenticator) Authenticate(ctx context.Context, creds core.Credentials) (core.User, error) {
+func (a *Authenticator) Authenticate(ctx context.Context, creds core.Credentials) (core.User, core.AuthenticationProviderError) {
 	o := newOneLogin(a.settings)
 	user, err := o.SamlClient.Oauth.Authenticate(ctx, creds.Username, creds.Password)
 	if err != nil {
@@ -37,7 +37,7 @@ func (a *Authenticator) Authenticate(ctx context.Context, creds core.Credentials
 	return core.User{ID: strconv.FormatInt(user.ID, 10)}, nil
 }
 
-func (a *Authenticator) ListApplications(ctx context.Context, user core.User) ([]core.Application, error) {
+func (a *Authenticator) ListApplications(ctx context.Context, user core.User) ([]core.Application, core.AuthenticationProviderError) {
 	o := newOneLogin(a.settings)
 	id, err := strconv.ParseInt(user.ID, 10, 64)
 	if err != nil {
@@ -63,7 +63,7 @@ func (a *Authenticator) ListApplications(ctx context.Context, user core.User) ([
 	return applications, nil
 }
 
-func (ola *Authenticator) GenerateSAMLAssertion(ctx context.Context, creds core.Credentials, appID string) (*core.SAMLResponse, error) {
+func (ola *Authenticator) GenerateSAMLAssertion(ctx context.Context, creds core.Credentials, appID string) (*core.SAMLResponse, core.AuthenticationProviderError) {
 	o := newOneLogin(ola.settings)
 	stateTokenResponse, err := o.SamlClient.SAML.SamlAssertion(ctx, creds.Username, creds.Password, appID)
 	if err != nil {

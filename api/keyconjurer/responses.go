@@ -102,8 +102,8 @@ var (
 	ErrCodeInternalServerError ErrorCode = "internal_server_error"
 	// ErrCodeUnableToEncrypt indicates that the server was unable to encrypt the users credentials.
 	ErrCodeUnableToEncrypt ErrorCode = "encryption_failure"
-	// ErrBadRequest indicates that the user supplied data that was invalid.
-	ErrBadRequest ErrorCode = "bad_request"
+	// ErrCodeBadRequest indicates that the user supplied data that was invalid.
+	ErrCodeBadRequest ErrorCode = "bad_request"
 	// Success indicates that everything went well.
 	Success ErrorCode = "successful"
 )
@@ -116,7 +116,7 @@ func (e ErrorCode) GetHttpStatus() int {
 	switch e {
 	case Success:
 		return http.StatusOK
-	case ErrBadRequest:
+	case ErrCodeBadRequest:
 		return http.StatusBadRequest
 	case ErrCodeInvalidProvider:
 		return http.StatusBadRequest
