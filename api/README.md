@@ -2,7 +2,7 @@
 Key Conjurer provides temporary AWS API credentials! Key Conjurer uses OneLogin and Duo to retrieve STS tokens.
 
 ## Requirements
-Go 1.12.4+
+Go 1.13.4+
 
 # Deployment
 

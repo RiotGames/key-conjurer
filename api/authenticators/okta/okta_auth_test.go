@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"net/url"
 	"strings"
@@ -54,7 +55,7 @@ var testOktaUrl url.URL = url.URL{}
 
 // MakeBody wraps a string into an io.ReadCloser.
 func MakeBody(s string) io.ReadCloser {
-	return io.NopCloser(strings.NewReader(s))
+	return ioutil.NopCloser(strings.NewReader(s))
 }
 
 func TestAuthnWithOktaErrors(t *testing.T) {
