@@ -51,7 +51,7 @@ aws s3api create-bucket --bucket <terraform state bucket> --region us-west-2 --c
 
 ## Setup Build Environment
 
-- go 1.12.4+
+- go 1.13.4+
 - npm 6.4.1+
 - node 10.10.0+
 - tfswitch
