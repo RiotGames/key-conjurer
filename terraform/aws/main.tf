@@ -3,7 +3,13 @@ provider "aws" {
 }
 
 terraform {
-  required_version = ">= 0.12.20"
+  required_version = ">= 0.13.1"
+  required_providers {
+    aws = {
+      source = "hashicorp/aws"
+      version = "~> 3.0"
+    }
+  }
 
   backend "s3" {
     // The bucket needs to be the same as S3_TF_BUCKET_NAME in the .env file
