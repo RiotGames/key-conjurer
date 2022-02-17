@@ -18,6 +18,9 @@ var roleSessionName string
 
 func init() {
 	switchCmd.Flags().StringVar(&roleSessionName, "role-session-name", "KeyConjurer-AssumeRole", "the name of the role session name that will show up in CloudTrail logs")
+	switchCmd.Flags().StringVarP(&outputType, "out", "o", outputTypeEnvironmentVariable, "Format to save new credentials in. Supported outputs: env, awscli")
+	switchCmd.Flags().StringVarP(&shell, "shell", "", shellTypeInfer, "If output type is env, determines which format to output credentials in - by default, the format is inferred based on the execution environment. WSL users may wish to overwrite this to `bash`")
+	switchCmd.Flags().StringVarP(&awsCliPath, "awscli", "", "~/.aws/", "Path for directory used by the aws-cli tool. Default is \"~/.aws\".")
 }
 
 var switchCmd = cobra.Command{
@@ -33,6 +36,27 @@ This command will fail if you do not have active AWS credentials.
 	Args:    cobra.ExactArgs(1),
 	Aliases: []string{"switch-account"},
 	RunE: func(comm *cobra.Command, args []string) error {
+		valid := false
+		for _, permitted := range permittedOutputTypes {
+			if outputType == permitted {
+				valid = true
+			}
+		}
+
+		if !valid {
+			return invalidValueError(outputType, permittedOutputTypes)
+		}
+
+		for _, permitted := range permittedShellTypes {
+			if shell == permitted {
+				valid = true
+			}
+		}
+
+		if !valid {
+			return invalidValueError(shell, permittedShellTypes)
+		}
+
 		// We could read the environment variable for the assumed role ARN, but it might be expired which isn't very useful to the user.
 		ctx := context.Background()
 		sess, err := session.NewSession(aws.NewConfig())
@@ -81,7 +105,16 @@ This command will fail if you do not have active AWS credentials.
 			Expiration:      resp.Credentials.Expiration.Format(time.RFC3339),
 		}
 
-		fmt.Fprintln(os.Stdout, creds)
-		return nil
+		switch outputType {
+		case outputTypeEnvironmentVariable:
+			creds.WriteFormat(os.Stdout, shell)
+			return nil
+		case outputTypeAWSCredentialsFile:
+			acc := Account{ID: args[0], Name: args[0]}
+			newCliEntry := NewAWSCliEntry(&creds, &acc)
+			return SaveAWSCredentialInCLI(awsCliPath, newCliEntry)
+		default:
+			return fmt.Errorf("%s is an invalid output type", outputType)
+		}
 	},
 }
