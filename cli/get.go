@@ -63,6 +63,7 @@ A role must be specified when using this command through the --role flag. You ma
 			return invalidValueError(outputType, permittedOutputTypes)
 		}
 
+		valid = false
 		for _, permitted := range permittedShellTypes {
 			if shell == permitted {
 				valid = true
@@ -103,8 +104,7 @@ A role must be specified when using this command through the --role flag. You ma
 		var credentials AWSCredentials
 		credentials.LoadFromEnv()
 		if credentials.ValidUntil(*account, time.Duration(timeRemaining)*time.Minute) {
-			fmt.Fprintln(os.Stdout, credentials)
-			return nil
+			return echoCredentials(args[0], args[0], credentials, outputType)
 		}
 
 		if !quiet {
@@ -128,16 +128,19 @@ A role must be specified when using this command through the --role flag. You ma
 		}
 
 		account.MostRecentRole = roleName
-
-		switch outputType {
-		case outputTypeEnvironmentVariable:
-			credentials.WriteFormat(os.Stdout, shell)
-			return nil
-		case outputTypeAWSCredentialsFile:
-			acc := Account{ID: args[0], Name: args[0]}
-			newCliEntry := NewAWSCliEntry(&credentials, &acc)
-			return SaveAWSCredentialInCLI(awsCliPath, newCliEntry)
-		default:
-			return fmt.Errorf("%s is an invalid output type", outputType)
-		}
+		return echoCredentials(args[0], args[0], credentials, outputType)
 	}}
+
+func echoCredentials(id, name string, credentials AWSCredentials, outputType string) error {
+	switch outputType {
+	case outputTypeEnvironmentVariable:
+		credentials.WriteFormat(os.Stdout, shell)
+		return nil
+	case outputTypeAWSCredentialsFile:
+		acc := Account{ID: id, Name: name}
+		newCliEntry := NewAWSCliEntry(&credentials, &acc)
+		return SaveAWSCredentialInCLI(awsCliPath, newCliEntry)
+	default:
+		return fmt.Errorf("%s is an invalid output type", outputType)
+	}
+}
