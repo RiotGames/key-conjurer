@@ -1,4 +1,4 @@
-Key Conjurer CLI
+# Key Conjurer CLI
 ======
 Go-based CLI interface for Key Conjurer API. This tool
 enables you to retrieve temporary AWS API credentials. It can be used in automation.
@@ -162,7 +162,7 @@ $ keyconjurer get <accountName/alias> --time-remaining <N>
 # or
 $ keyconjurer get <accountName/alias> -t <N> 
 ```
-By default `N=60` so that any call will always request new keys. 
+By default `N=5` so that any call will always request new keys if there is less than 5 minutes left. 
 
 keyconjurer checks to see if the account you are requesting keys for is not the account 
 you currently have keys for. If the accounts differ, new API keys are requested and a 
