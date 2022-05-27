@@ -8,14 +8,14 @@ import (
 )
 
 func init() {
-	accountsCmd.Flags().StringVar(&identityProvider, "identity-provider", defaultIdentityProvider, "The identity provider to use. Refer to `keyconjurer identity-providers` for more info.")
+	accountsCmd.Flags().StringVar(&identityProvider, "identity-provider", defaultIdentityProvider, "The identity provider to use. Refer to `"+appname+" identity-providers` for more info.")
 }
 
 var accountsCmd = &cobra.Command{
-	Use:     "accounts",
-	Short:   "Prints the list of accounts you have access to.",
-	Long:    "Prints the list of accounts you have access to.",
-	Example: "keyconjurer accounts",
+	Use:   "accounts",
+	Short: "Prints the list of accounts you have access to.",
+	Long:  "Prints the list of accounts you have access to.",
+	// Example: appname + " accounts",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		ctx := context.Background()
 		client, err := newClient()

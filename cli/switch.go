@@ -32,7 +32,7 @@ This is used when a "bastion" account exists which users initially authenticate 
 
 This command will fail if you do not have active AWS credentials.
 `,
-	Example: `keyconjurer switch 123456798`,
+	Example: "  " + appname + ` switch 123456798`,
 	Args:    cobra.ExactArgs(1),
 	Aliases: []string{"switch-account"},
 	RunE: func(comm *cobra.Command, args []string) error {

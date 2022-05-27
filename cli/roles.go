@@ -13,7 +13,7 @@ func init() {
 
 var rolesCmd = cobra.Command{
 	Use:   "roles",
-	Short: "List all the roles that you can assume when using `keyconjurer get`.",
+	Short: "List all the roles that you can assume when using `" + appname + " get`.",
 	RunE: func(*cobra.Command, []string) error {
 		switch identityProvider {
 		case keyconjurer.AuthenticationProviderOneLogin:
