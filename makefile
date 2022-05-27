@@ -6,6 +6,10 @@ ifndef CLOUD_PROVIDER
 $(error CLOUD_PROVIDER is not set)
 endif
 
+.DEFAULT_GOAL = build
+
+.PHONY: build api_build frontend_build cli_build frontend_file_reset reset_files deploy deploy_aws plan_aws
+
 build:
 	make cli_build \
 	&& make api_build \
@@ -21,7 +25,7 @@ frontend_build:
 	cd frontend \
 	&& $(MAKE) -f makefile build
 
-cli_build:
+cli_build: go_tidy
 	mkdir -p builds/$(TF_WORKSPACE)/cli
 	cd cli \
 	&& $(MAKE) -f makefile all
@@ -37,10 +41,21 @@ ifeq ($(CLOUD_PROVIDER),aws)
 	make deploy_aws
 endif
 
-deploy_aws: 
+deploy_aws:
 	cd terraform/aws \
 	&& $(MAKE) -f makefile deploy
 
 plan_aws:
 	cd terraform/aws \
 	&& $(MAKE) -f makefile plan_deploy
+
+
+.PHONY: go_tidy test
+
+go_tidy:
+	go mod tidy
+
+cli_test: go_tidy
+	mkdir -p builds/$(TF_WORKSPACE)/cli
+	cd cli \
+	&& $(MAKE) -f makefile test
