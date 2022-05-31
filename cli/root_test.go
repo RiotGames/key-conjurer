@@ -54,6 +54,7 @@ func stringOmits(t *testing.T, testTarget, shouldNotBeHere string) {
 }
 
 func stringChecks(t *testing.T, testTarget string, shouldBeHere, shouldNotBeHere []string) {
+	t.Helper()
 	expectedTermsMissing := []string{}
 	notExpectedTermsFound := []string{}
 

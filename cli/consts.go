@@ -8,7 +8,7 @@ import (
 
 // Vars for build time
 var Version string = "TBD"
-var ClientName string = "go runtime"
+var ClientName string = appname
 
 var BuildDate string = "date not set"
 var BuildTime string = "time not set"
