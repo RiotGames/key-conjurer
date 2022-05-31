@@ -34,7 +34,7 @@ func init() {
 	getCmd.Flags().StringVarP(&shell, "shell", "", shellTypeInfer, "If output type is env, determines which format to output credentials in - by default, the format is inferred based on the execution environment. WSL users may wish to overwrite this to `bash`")
 	getCmd.Flags().StringVarP(&awsCliPath, "awscli", "", "~/.aws/", "Path for directory used by the aws-cli tool. Default is \"~/.aws\".")
 	getCmd.Flags().StringVar(&roleName, "role", "", "The name of the role to assume.")
-	getCmd.Flags().StringVar(&identityProvider, "identity-provider", defaultIdentityProvider, "The identity provider to use. Refer to `keyconjurer identity-providers` for more info.")
+	getCmd.Flags().StringVar(&identityProvider, "identity-provider", defaultIdentityProvider, "The identity provider to use. Refer to `"+appname+" identity-providers` for more info.")
 }
 
 var getCmd = &cobra.Command{
@@ -43,8 +43,8 @@ var getCmd = &cobra.Command{
 	Long: `Retrieves temporary AWS API credentials for the specified account.  It sends a push request to the first Duo device it finds associated with your account.
 
 A role must be specified when using this command through the --role flag. You may list the roles you can assume through the roles command.`,
-	Example: "keyconjurer get <accountName/alias>",
-	Args:    cobra.ExactArgs(1),
+	// Example: appname + " get <accountName/alias>",
+	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		ctx := context.Background()
 		client, err := newClient()

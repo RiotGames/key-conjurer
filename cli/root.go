@@ -23,6 +23,11 @@ var (
 	// config is a cache-like datastore for this application. It is loaded at app start-up.
 	config Config
 	quiet  bool
+
+	build_timestamp string = BuildDate + " " + BuildTime + " " + BuildTimeZone
+
+	cmdShortVersionFlag   bool = false
+	cmdOneLineVersionFlag bool = false
 )
 
 func init() {
@@ -40,26 +45,38 @@ func init() {
 	rootCmd.AddCommand(&aliasCmd)
 	rootCmd.AddCommand(&unaliasCmd)
 	rootCmd.AddCommand(&rolesCmd)
+
+	rootCmd.Flags().BoolVarP(&cmdShortVersionFlag, "short-version", "s", false, "version for "+appname+" (short format)")
+	rootCmd.Flags().BoolVarP(&cmdOneLineVersionFlag, "oneline-version", "1", false, "version for "+appname+" (single line format)")
 }
 
-const versionString string = `
-	Version: 		%s
-	Client: 		%s
-	Default Hostname:	%s
-	Upgrade URL:		%s
-`
+// hack to remove the leading blank line in the --version output
+const versionString string = "" +
+	"	Version: 		%s\n" +
+	"	Build Timestamp:	%s\n" +
+	"	Client: 		%s\n" +
+	"	Default Hostname:	%s\n" +
+	"	Upgrade URL:		%s\n"
+
+func alternateVersions(cmd *cobra.Command, short, oneline bool) {
+	if oneline {
+		cmd.Printf("%s %s (Build Timestamp:%s - Client:%s)\n", appname, Version, build_timestamp, ClientName)
+	} else {
+		cmd.Printf("%s %s\n", appname, Version)
+	}
+}
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
-	Use:     "keyconjurer",
-	Version: fmt.Sprintf(versionString, Version, ClientName, defaultHost, DownloadURL),
+	Use:     appname,
+	Version: fmt.Sprintf(versionString, Version, build_timestamp, ClientName, defaultHost, DownloadURL),
 	Short:   "Retrieve temporary AWS API credentials.",
 	Long: `Key Conjurer retrieves temporary credentials from the Key Conjurer API.
 
 To get started run the following commands:
-keyconjurer login # You will get prompted for your AD credentials
-keyconjurer accounts
-keyconjurer get <accountName>
+  ` + appname + ` login # You will get prompted for your AD credentials
+  ` + appname + ` accounts
+  ` + appname + ` get <accountName>
 `,
 	SilenceUsage:  true,
 	SilenceErrors: true,
@@ -87,6 +104,13 @@ keyconjurer get <accountName>
 		}
 
 		return config.Read(file)
+	},
+	Run: func(cmd *cobra.Command, args []string) {
+		if cmdShortVersionFlag || cmdOneLineVersionFlag {
+			alternateVersions(cmd, cmdShortVersionFlag, cmdOneLineVersionFlag)
+		} else {
+			cmd.Help()
+		}
 	},
 	PersistentPostRunE: func(*cobra.Command, []string) error {
 		var fp string

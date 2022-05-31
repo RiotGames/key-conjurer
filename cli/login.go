@@ -51,10 +51,10 @@ func init() {
 }
 
 var loginCmd = &cobra.Command{
-	Use:     "login",
-	Short:   "Authenticate with KeyConjurer.",
-	Long:    "Login using your AD creds. This stores encrypted credentials on the local system.",
-	Example: "keyconjurer login",
+	Use:   "login",
+	Short: "Authenticate with KeyConjurer.",
+	Long:  "Login using your AD creds. This stores encrypted credentials on the local system.",
+	// Example: appname + " login",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		ctx := context.Background()
 		client, err := newClient()
