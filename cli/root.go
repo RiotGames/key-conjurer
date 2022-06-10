@@ -17,7 +17,7 @@ var (
 	keyConjurerRcPath string
 	// host of the API server. Don't use this. You probably meant to use newClient() instead.
 	host string
-	// This var is set at build time in the Makefile in the 'build' target. Don't use this.
+	// This var is set at build time in the 'build' Makefile target. Don't use this.
 	defaultHost      string
 	identityProvider string
 	// config is a cache-like datastore for this application. It is loaded at app start-up.
