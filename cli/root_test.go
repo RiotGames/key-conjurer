@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"fmt"
 	"strings"
 	"testing"
 
@@ -12,8 +11,8 @@ import (
 // Required to reset Cobra state between Test runs.
 // If you add new tests that change state, you may need to
 // add code here to reset the side effects of other tests
-func resetCobra(cmd *cobra.Command) {
-
+func resetCobra(t *testing.T, cmd *cobra.Command) {
+	t.Helper()
 	cmdShortVersionFlag = false
 	cmdOneLineVersionFlag = false
 
@@ -28,7 +27,10 @@ func resetCobra(cmd *cobra.Command) {
 	}
 }
 
-func execute(cmd *cobra.Command, args ...string) (string, error) {
+func execute(t *testing.T, cmd *cobra.Command, args ...string) (string, error) {
+	t.Helper()
+
+	resetCobra(t, cmd)
 
 	cmd.SetArgs(args)
 
@@ -42,12 +44,14 @@ func execute(cmd *cobra.Command, args ...string) (string, error) {
 }
 
 func stringContains(t *testing.T, testTarget, shouldBeHere string) {
+	t.Helper()
 	if !strings.Contains(testTarget, shouldBeHere) {
 		t.Errorf("Missing Content:\n   [%v]\nShould have been in here:\n   %v\n", shouldBeHere, testTarget)
 	}
 }
 
 func stringOmits(t *testing.T, testTarget, shouldNotBeHere string) {
+	t.Helper()
 	if strings.Contains(testTarget, shouldNotBeHere) {
 		t.Errorf("Extra Content that should not be found here:\n   [%v]\nBut it was:\n   %v", shouldNotBeHere, testTarget)
 	}
@@ -55,39 +59,44 @@ func stringOmits(t *testing.T, testTarget, shouldNotBeHere string) {
 
 func stringChecks(t *testing.T, testTarget string, shouldBeHere, shouldNotBeHere []string) {
 	t.Helper()
-	expectedTermsMissing := []string{}
-	notExpectedTermsFound := []string{}
+
+	outputlogged := false
+	grouplogged := false
 
 	for _, v := range shouldBeHere {
 		if !strings.Contains(testTarget, v) {
-			expectedTermsMissing = append(expectedTermsMissing, v)
+			if !outputlogged {
+				outputlogged = true
+				t.Logf("String being checked:\n===========\n%v\n===========\n", testTarget)
+			}
+			if !grouplogged {
+				grouplogged = true
+				t.Logf("Content missing that was expected:\n")
+			}
+			t.Errorf("Should be (%v)\n", v)
 		}
 	}
+
+	grouplogged = false
+
 	for _, v := range shouldNotBeHere {
 		if strings.Contains(testTarget, v) {
-			notExpectedTermsFound = append(notExpectedTermsFound, v)
+			if !outputlogged {
+				outputlogged = true
+				t.Logf("String being checked:\n===========\n%v\n===========\n", testTarget)
+			}
+			if !grouplogged {
+				grouplogged = true
+				t.Logf("Content found that was not expected:\n")
+			}
+			t.Errorf("Should NOT be (%v)\n", v)
 		}
-	}
-
-	missing := ""
-	found := ""
-
-	if len(expectedTermsMissing) > 0 {
-		missing = fmt.Sprintf("Content missing that was expected:\n   %v\n", expectedTermsMissing)
-	}
-	if len(notExpectedTermsFound) > 0 {
-		found = fmt.Sprintf("Content found that was not expected:\n   %v\n", notExpectedTermsFound)
-	}
-	if len(notExpectedTermsFound) > 0 || len(expectedTermsMissing) > 0 {
-		t.Errorf("\n%v%vString being checked:\n---------------\n%v\n---------------\n", missing, found, testTarget)
 	}
 }
 
 func TestHelpCommand(t *testing.T) {
 
-	resetCobra(rootCmd)
-
-	output, err := execute(rootCmd, "help")
+	output, err := execute(t, rootCmd, "help")
 	if err != nil {
 		t.Errorf("Unexpected error: %v", err)
 	}
@@ -99,9 +108,7 @@ func TestHelpCommand(t *testing.T) {
 
 func TestHelpFlag(t *testing.T) {
 
-	resetCobra(rootCmd)
-
-	output, err := execute(rootCmd, "--help")
+	output, err := execute(t, rootCmd, "--help")
 	if err != nil {
 		t.Errorf("Unexpected error: %v", err)
 	}
@@ -113,9 +120,7 @@ func TestHelpFlag(t *testing.T) {
 
 func TestHelpShortFlag(t *testing.T) {
 
-	resetCobra(rootCmd)
-
-	output, err := execute(rootCmd, "-h")
+	output, err := execute(t, rootCmd, "-h")
 	if err != nil {
 		t.Errorf("Unexpected error: %v", err)
 	}
@@ -127,9 +132,7 @@ func TestHelpShortFlag(t *testing.T) {
 
 func TestHelpNoCommand(t *testing.T) {
 
-	resetCobra(rootCmd)
-
-	output, err := execute(rootCmd, "")
+	output, err := execute(t, rootCmd, "")
 	if err != nil {
 		t.Errorf("Unexpected error: %v", err)
 	}
@@ -141,9 +144,7 @@ func TestHelpNoCommand(t *testing.T) {
 
 func TestVersionFlag(t *testing.T) {
 
-	resetCobra(rootCmd)
-
-	output, err := execute(rootCmd, "--version")
+	output, err := execute(t, rootCmd, "--version")
 	if err != nil {
 		t.Errorf("Unexpected error: %v", err)
 	}
@@ -155,9 +156,7 @@ func TestVersionFlag(t *testing.T) {
 
 func TestVersionShortFlag(t *testing.T) {
 
-	resetCobra(rootCmd)
-
-	output, err := execute(rootCmd, "-v")
+	output, err := execute(t, rootCmd, "-v")
 	if err != nil {
 		t.Errorf("Unexpected error: %v", err)
 	}
@@ -169,9 +168,7 @@ func TestVersionShortFlag(t *testing.T) {
 
 func TestOneLineVersionFlag(t *testing.T) {
 
-	resetCobra(rootCmd)
-
-	output, err := execute(rootCmd, "--oneline-version")
+	output, err := execute(t, rootCmd, "--oneline-version")
 	if err != nil {
 		t.Errorf("Unexpected error: %v", err)
 	}
@@ -183,9 +180,7 @@ func TestOneLineVersionFlag(t *testing.T) {
 
 func TestOneLineVersionShortFlag(t *testing.T) {
 
-	resetCobra(rootCmd)
-
-	output, err := execute(rootCmd, "-1")
+	output, err := execute(t, rootCmd, "-1")
 	if err != nil {
 		t.Errorf("Unexpected error: %v", err)
 	}
@@ -197,9 +192,7 @@ func TestOneLineVersionShortFlag(t *testing.T) {
 
 func TestShortVersionFlag(t *testing.T) {
 
-	resetCobra(rootCmd)
-
-	output, err := execute(rootCmd, "--short-version")
+	output, err := execute(t, rootCmd, "--short-version")
 	if err != nil {
 		t.Errorf("Unexpected error: %v", err)
 	}
@@ -211,9 +204,7 @@ func TestShortVersionFlag(t *testing.T) {
 
 func TestShortVersionShortFlag(t *testing.T) {
 
-	resetCobra(rootCmd)
-
-	output, err := execute(rootCmd, "-s")
+	output, err := execute(t, rootCmd, "-s")
 	if err != nil {
 		t.Errorf("Unexpected error: %v", err)
 	}
@@ -225,9 +216,7 @@ func TestShortVersionShortFlag(t *testing.T) {
 
 func TestShortVersionLongInvalidArgs(t *testing.T) {
 
-	resetCobra(rootCmd)
-
-	output, err := execute(rootCmd, "--short-version", "get")
+	output, err := execute(t, rootCmd, "--short-version", "get")
 	if err != nil {
 		if err.Error() != "unknown flag: --short-version" {
 			t.Errorf("Unexpected error: %v", err)
@@ -239,9 +228,7 @@ func TestShortVersionLongInvalidArgs(t *testing.T) {
 
 func TestHelpLongInvalidArgs(t *testing.T) {
 
-	resetCobra(rootCmd)
-
-	output, err := execute(rootCmd, "get", "-s")
+	output, err := execute(t, rootCmd, "get", "-s")
 	if err != nil {
 		if err.Error() != "unknown shorthand flag: 's' in -s" {
 			t.Errorf("Unexpected error: %v", err)
@@ -253,9 +240,7 @@ func TestHelpLongInvalidArgs(t *testing.T) {
 
 func TestInvalidCommand(t *testing.T) {
 
-	resetCobra(rootCmd)
-
-	output, err := execute(rootCmd, "badcommand")
+	output, err := execute(t, rootCmd, "badcommand")
 	if err != nil {
 		if err.Error() != "unknown command \"badcommand\" for \""+appname+"\"" {
 			t.Errorf("Unexpected error: %v", err)
@@ -266,7 +251,7 @@ func TestInvalidCommand(t *testing.T) {
 }
 
 // Runs multiple tests that set flags & state and ensures the resetCobra() function
-// is properly re-initializing state so test run as expected
+// is properly re-initializing state so tests run as expected
 func TestResetCobra(t *testing.T) {
 
 	TestShortVersionShortFlag(t)

@@ -6,10 +6,9 @@ import (
 	"github.com/riotgames/key-conjurer/api/keyconjurer"
 )
 
-// Vars for build time
+// These 5 vars are set at build time in the Makefile in the 'build' target. You should not change these
 var Version string = "TBD"
 var ClientName string = appname
-
 var BuildDate string = "date not set"
 var BuildTime string = "time not set"
 var BuildTimeZone string = "zone not set"
@@ -23,7 +22,8 @@ const DefaultTTL uint = 1
 // DefaultTimeRemaining for new key requests in minutes
 const DefaultTimeRemaining uint = 5
 
-// available API  endpoints
+// available API endpoints
+// This var is set at build time in the Makefile in the 'build' target
 var DownloadURL string = "URL not set yet"
 
 // CLI binary names
