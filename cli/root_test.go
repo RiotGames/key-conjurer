@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/spf13/cobra"
+	"github.com/stretchr/testify/require"
 )
 
 // Required to reset Cobra state between Test runs.
@@ -27,10 +28,14 @@ func resetCobra(t *testing.T, cmd *cobra.Command) {
 	}
 }
 
-func execute(t *testing.T, cmd *cobra.Command, args ...string) (string, error) {
+func executeWithError(t *testing.T, cmd *cobra.Command, args ...string) (string, error) {
 	t.Helper()
 
 	resetCobra(t, cmd)
+
+	t.Cleanup(func() {
+		resetCobra(t, cmd)
+	})
 
 	cmd.SetArgs(args)
 
@@ -41,6 +46,34 @@ func execute(t *testing.T, cmd *cobra.Command, args ...string) (string, error) {
 	err := cmd.Execute()
 
 	return outputbuf.String(), err
+}
+
+func executeExpectingError(t *testing.T,
+	expectedErrString string,
+	cmd *cobra.Command, args ...string) {
+
+	t.Helper()
+
+	buf, err := executeWithError(t, cmd, args...)
+
+	if err != nil {
+		if err.Error() != expectedErrString {
+			t.Errorf("Unexpected error: %v", err)
+		}
+	} else {
+		t.Errorf("Unexpected non-error, output=: %v", buf)
+	}
+}
+
+func execute(t *testing.T, cmd *cobra.Command, args ...string) string {
+
+	t.Helper()
+
+	buf, err := executeWithError(t, cmd, args...)
+
+	require.NoError(t, err, "unexpected error: %s", err)
+
+	return buf
 }
 
 func stringContains(t *testing.T, testTarget, shouldBeHere string) {
@@ -73,7 +106,7 @@ func stringChecks(t *testing.T, testTarget string, shouldBeHere, shouldNotBeHere
 				grouplogged = true
 				t.Logf("Content missing that was expected:\n")
 			}
-			t.Errorf("Should be (%v)\n", v)
+			t.Errorf("Should have found (%v) in the output above\n", v)
 		}
 	}
 
@@ -89,165 +122,100 @@ func stringChecks(t *testing.T, testTarget string, shouldBeHere, shouldNotBeHere
 				grouplogged = true
 				t.Logf("Content found that was not expected:\n")
 			}
-			t.Errorf("Should NOT be (%v)\n", v)
+			t.Errorf("Should NOT have found (%v) in the output above\n", v)
 		}
 	}
 }
 
 func TestHelpCommand(t *testing.T) {
 
-	output, err := execute(t, rootCmd, "help")
-	if err != nil {
-		t.Errorf("Unexpected error: %v", err)
-	}
-
-	stringChecks(t, output,
-		[]string{rootCmd.Long, "-s, --short-version", "-1, --oneline-version"},
-		[]string{})
+	stringChecks(t, execute(t, rootCmd, "help"),
+		[]string{rootCmd.Long, "-s, --short-version", "-1, --oneline-version", "Francis", "Nickels"},
+		[]string{"host"})
 }
 
 func TestHelpFlag(t *testing.T) {
 
-	output, err := execute(t, rootCmd, "--help")
-	if err != nil {
-		t.Errorf("Unexpected error: %v", err)
-	}
-
-	stringChecks(t, output,
+	stringChecks(t, execute(t, rootCmd, "--help"),
 		[]string{rootCmd.Long, "-s, --short-version", "-1, --oneline-version"},
 		[]string{})
 }
 
 func TestHelpShortFlag(t *testing.T) {
 
-	output, err := execute(t, rootCmd, "-h")
-	if err != nil {
-		t.Errorf("Unexpected error: %v", err)
-	}
-
-	stringChecks(t, output,
+	stringChecks(t, execute(t, rootCmd, "-h"),
 		[]string{rootCmd.Long, "-s, --short-version", "-1, --oneline-version"},
 		[]string{})
 }
 
 func TestHelpNoCommand(t *testing.T) {
 
-	output, err := execute(t, rootCmd, "")
-	if err != nil {
-		t.Errorf("Unexpected error: %v", err)
-	}
-
-	stringChecks(t, output,
+	stringChecks(t, execute(t, rootCmd, ""),
 		[]string{rootCmd.Long, "-s, --short-version", "-1, --oneline-version"},
 		[]string{})
 }
 
 func TestVersionFlag(t *testing.T) {
 
-	output, err := execute(t, rootCmd, "--version")
-	if err != nil {
-		t.Errorf("Unexpected error: %v", err)
-	}
-
-	stringChecks(t, output,
+	stringChecks(t, execute(t, rootCmd, "--version"),
 		[]string{"Version:", "Build Timestamp:", "Client:", "Default Hostname:", "Upgrade URL:", appname, Version, DownloadURL},
 		[]string{})
 }
 
 func TestVersionShortFlag(t *testing.T) {
 
-	output, err := execute(t, rootCmd, "-v")
-	if err != nil {
-		t.Errorf("Unexpected error: %v", err)
-	}
-
-	stringChecks(t, output,
+	stringChecks(t, execute(t, rootCmd, "-v"),
 		[]string{"Version:", "Build Timestamp:", "Client:", "Default Hostname:", "Upgrade URL:", appname, Version, DownloadURL},
 		[]string{})
 }
 
 func TestOneLineVersionFlag(t *testing.T) {
 
-	output, err := execute(t, rootCmd, "--oneline-version")
-	if err != nil {
-		t.Errorf("Unexpected error: %v", err)
-	}
-
-	stringChecks(t, output,
+	stringChecks(t, execute(t, rootCmd, "--oneline-version"),
 		[]string{appname, Version, "Client:", "(Build Timestamp:"},
 		[]string{"Version:", "Default Hostname:", "Upgrade URL:", DownloadURL})
 }
 
 func TestOneLineVersionShortFlag(t *testing.T) {
 
-	output, err := execute(t, rootCmd, "-1")
-	if err != nil {
-		t.Errorf("Unexpected error: %v", err)
-	}
-
-	stringChecks(t, output,
+	stringChecks(t, execute(t, rootCmd, "-1"),
 		[]string{appname, Version, "Client:", "(Build Timestamp:"},
 		[]string{"Version:", "Default Hostname:", "Upgrade URL:", DownloadURL})
 }
 
 func TestShortVersionFlag(t *testing.T) {
 
-	output, err := execute(t, rootCmd, "--short-version")
-	if err != nil {
-		t.Errorf("Unexpected error: %v", err)
-	}
-
-	stringChecks(t, output,
+	stringChecks(t, execute(t, rootCmd, "--short-version"),
 		[]string{appname, Version},
 		[]string{"Version:", "Build Timestamp:", "Client:", "Default Hostname:", "Upgrade URL:", DownloadURL})
 }
 
 func TestShortVersionShortFlag(t *testing.T) {
 
-	output, err := execute(t, rootCmd, "-s")
-	if err != nil {
-		t.Errorf("Unexpected error: %v", err)
-	}
-
-	stringChecks(t, output,
+	stringChecks(t, execute(t, rootCmd, "-s"),
 		[]string{appname, Version},
 		[]string{"Version:", "Build Timestamp:", "Client:", "Default Hostname:", "Upgrade URL:", DownloadURL})
 }
 
 func TestShortVersionLongInvalidArgs(t *testing.T) {
 
-	output, err := execute(t, rootCmd, "--short-version", "get")
-	if err != nil {
-		if err.Error() != "unknown flag: --short-version" {
-			t.Errorf("Unexpected error: %v", err)
-		}
-	} else {
-		t.Errorf("Unexpected non-error, output=: %v", output)
-	}
+	executeExpectingError(t,
+		"unknown flag: --short-version",
+		rootCmd, "--short-version", "get")
 }
 
 func TestHelpLongInvalidArgs(t *testing.T) {
 
-	output, err := execute(t, rootCmd, "get", "-s")
-	if err != nil {
-		if err.Error() != "unknown shorthand flag: 's' in -s" {
-			t.Errorf("Unexpected error: %v", err)
-		}
-	} else {
-		t.Errorf("Unexpected non-error, output=: %v", output)
-	}
+	executeExpectingError(t,
+		"unknown shorthand flag: 's' in -s",
+		rootCmd, "get", "-s")
 }
 
 func TestInvalidCommand(t *testing.T) {
 
-	output, err := execute(t, rootCmd, "badcommand")
-	if err != nil {
-		if err.Error() != "unknown command \"badcommand\" for \""+appname+"\"" {
-			t.Errorf("Unexpected error: %v", err)
-		}
-	} else {
-		t.Errorf("Unexpected non-error, output=: %v", output)
-	}
+	executeExpectingError(t,
+		"unknown command \"badcommand\" for \""+appname+"\"",
+		rootCmd, "badcommand")
 }
 
 // Runs multiple tests that set flags & state and ensures the resetCobra() function
