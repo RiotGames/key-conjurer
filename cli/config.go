@@ -59,17 +59,23 @@ func (a *Account) UnmarshalJSON(buf []byte) error {
 }
 
 func (a *Account) NormalizeName() string {
-	return strings.Replace(a.Name, "AWS - ", "", -1)
+	magicPrefixes := []string{"AWS - ", "Tencent - "}
+	name := a.Name
+	for _, prefix := range magicPrefixes {
+		name = strings.TrimPrefix(name, prefix)
+	}
+
+	return name
 }
 
 func (a *Account) IsNameMatch(name string) bool {
 	// Purposefully not checking the lowercase version of app.Alias
 	//  as the user should match the alias provided
-	if strings.ToLower(a.Name) == strings.ToLower(name) {
+	if strings.EqualFold(a.Name, name) {
 		return true
 	}
 
-	if strings.ToLower(a.NormalizeName()) == strings.ToLower(name) {
+	if strings.EqualFold(a.NormalizeName(), name) {
 		return true
 	}
 
@@ -84,9 +90,14 @@ type accountSet struct {
 	accounts map[string]*Account
 }
 
+// need support Aws and Tencent
 func generateDefaultAlias(name string) string {
-	alias := strings.Replace(name, "AWS - ", "", -1)
-	alias = strings.Split(alias, " ")[0]
+	magicPrefixes := []string{"AWS - ", "Tencent -"}
+	for _, prefix := range magicPrefixes {
+		name = strings.TrimPrefix(name, prefix)
+	}
+
+	alias := strings.Split(name, " ")[0]
 	return strings.ToLower(alias)
 }
 

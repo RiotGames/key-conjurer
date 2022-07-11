@@ -38,9 +38,9 @@ func TestAccountFuncs(t *testing.T) {
 		Alias: "secondalias",
 	}
 
-	assert.Equal(t, test.IsNameMatch("Test Account"), true, "Should be able to name match with normalized name")
-	assert.Equalf(t, test.IsNameMatch("secondalias"), true, "Should be able to name match %s with alias %s", "secondalias", test.Alias)
-	assert.Equal(t, test.NormalizeName(), "Test Account", true, "Should match normalized name")
+	assert.True(t, test.IsNameMatch("Test Account"))
+	assert.Truef(t, test.IsNameMatch("secondalias"), "Should be able to name match %s with alias %s", "secondalias", test.Alias)
+	assert.Equal(t, test.NormalizeName(), "Test Account")
 }
 
 func TestUnmarshalJSON(t *testing.T) {

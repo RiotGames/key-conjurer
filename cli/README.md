@@ -15,7 +15,7 @@ devices. OTP codes are no longer accepted.
 * Once downloaded, place the binary in a directory that's in your path (e.g. `/usr/local/bin` on MAC/Linux)
 
 ## QuickStart
-Add `/usr/local/bin` to your path if it's not already. 
+Add `/usr/local/bin` to your path if it's not already.
 ```sh
 $ keyconjurer login
 username: <username>
@@ -115,7 +115,7 @@ keyconjurer login
 ```
 
 This will prompt you for your active directory credentials, which will be stored
-in an encrypted token in the file selected by `--keyconjurer-rc-path` which defaults to `~/.keyconjurerrc`. 
+in an encrypted token in the file selected by `--keyconjurer-rc-path` which defaults to `~/.keyconjurerrc`.
 
 #### Reasons to run this command
 * First time setup
@@ -128,14 +128,14 @@ To retrieve API keys for a given account run:
 ```sh
 $ keyconjurer get <accountName/alias>
 ```
-keyconjurer will automatically look for a Duo device to send a push request. 
+keyconjurer will automatically look for a Duo device to send a push request.
 
-If keyconjurer cannot find a Duo device, it will default to the first device it 
+If keyconjurer cannot find a Duo device, it will default to the first device it
 finds. To retrieve a API keys in this instance run:
 ```sh
 $ keyconjurer get <accountName/alias>
 ```
-Both the above commands will print the output directly to `stdout`. 
+Both the above commands will print the output directly to `stdout`.
 
 #### Easy Exports
 keyconjurer is unable to directly export variables into the calling shell. Children
@@ -155,17 +155,17 @@ $ keyconjurer get <accountName/alias> --ttl N
 ```
 
 #### -t, --time-remaining
-A common usecase in automation is requesting new keys only when the current set is 
+A common usecase in automation is requesting new keys only when the current set is
 expiring within `N` minutes. This can be achieved by running:
 ```sh
-$ keyconjurer get <accountName/alias> --time-remaining <N> 
+$ keyconjurer get <accountName/alias> --time-remaining <N>
 # or
-$ keyconjurer get <accountName/alias> -t <N> 
+$ keyconjurer get <accountName/alias> -t <N>
 ```
-By default `N=5` so that any call will always request new keys if there is less than 5 minutes left. 
+By default `N=5` so that any call will always request new keys if there is less than 5 minutes left.
 
-keyconjurer checks to see if the account you are requesting keys for is not the account 
-you currently have keys for. If the accounts differ, new API keys are requested and a 
+keyconjurer checks to see if the account you are requesting keys for is not the account
+you currently have keys for. If the accounts differ, new API keys are requested and a
 push request is sent.
 
 If the account you are requesting keys for is the account you currently have keys there
@@ -181,7 +181,7 @@ are typically four possible situations when making this call:
 Another usecase in automation is passing in credentials through `stdin`.  This can be
 achieved by running:
 ```sh
-$ keyconjurer get <accountName/alias> --creds-prompt 
+$ keyconjurer get <accountName/alias> --creds-prompt
 username: <username>
 password: <password>
 # or

@@ -121,7 +121,7 @@ func (c *Client) encodeJSON(data interface{}) (bytes.Buffer, error) {
 }
 
 // GetCredentials requests a set of temporary credentials for the requested AWS account and returns them.
-func (c *Client) GetCredentials(ctx context.Context, opts *GetCredentialsOptions) (AWSCredentials, error) {
+func (c *Client) GetCredentials(ctx context.Context, opts *GetCredentialsOptions) (CloudCredentials, error) {
 	request := keyconjurer.GetTemporaryCredentialEvent{
 		Credentials:            opts.Credentials,
 		AppID:                  opts.ApplicationID,
@@ -132,23 +132,21 @@ func (c *Client) GetCredentials(ctx context.Context, opts *GetCredentialsOptions
 
 	buf, err := c.encodeJSON(request)
 	if err != nil {
-		return AWSCredentials{}, err
+		return CloudCredentials{}, err
 	}
 
 	var response keyconjurer.GetTemporaryCredentialsPayload
 	if err := c.do(ctx, "/get_aws_creds", &buf, &response); err != nil {
-		return AWSCredentials{}, fmt.Errorf("failed to generate temporary session token: %s", err.Error())
+		return CloudCredentials{}, fmt.Errorf("failed to generate temporary session token: %s", err)
 	}
 
-	aws := AWSCredentials{
+	return CloudCredentials{
 		AccountID:       response.AccountID,
 		AccessKeyID:     response.AccessKeyID,
 		SecretAccessKey: response.SecretAccessKey,
 		SessionToken:    response.SessionToken,
 		Expiration:      response.Expiration,
-	}
-
-	return aws, nil
+	}, nil
 }
 
 type GetUserDataOptions struct {
