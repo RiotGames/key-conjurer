@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"mime"
 	"net/http"
 	"runtime"
 	"strings"
@@ -77,7 +78,8 @@ func (c *Client) do(ctx context.Context, url string, r io.Reader, responseStruct
 		return fmt.Errorf("error sending http request: %w", err)
 	}
 
-	if res.Header.Get("content-type") != "application/json" {
+	typ, _, _ := mime.ParseMediaType(res.Header.Get("Content-Type"))
+	if !strings.EqualFold(typ, "application/json") {
 		if res.StatusCode >= 500 {
 			return errUnspecifiedServerError
 		} else {

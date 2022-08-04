@@ -46,7 +46,7 @@ func retrieveFromVault() (*Settings, error) {
 	}
 
 	if _, err := client.KV2.Get(kvOpts); err != nil {
-		return nil, fmt.Errorf("Unable to get vault settings from %s", cfg.SecretMountPath+"/"+cfg.SecretPath)
+		return nil, fmt.Errorf("unable to get vault settings from %s/%s", cfg.SecretMountPath, cfg.SecretPath)
 	}
 
 	return settings, nil
