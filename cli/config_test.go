@@ -127,3 +127,16 @@ func TestAliasesPreservedAfterReplaceWith(t *testing.T) {
 	_, ok = cfg.FindAccount("riot-2")
 	assert.True(t, ok)
 }
+
+func TestGeneratesGoodAliases(t *testing.T) {
+	pairs := [][2]string{
+		{"Tencent Cloud - Foo Bar", "foo-bar"},
+		{"Tencent Cloud - Foobar", "foobar"},
+		{"AWS - Foo Bar", "foo-bar"},
+		{"AWS - Foobar", "foobar"},
+	}
+
+	for _, pair := range pairs {
+		assert.Equal(t, pair[1], generateDefaultAlias(pair[0]))
+	}
+}

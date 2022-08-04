@@ -92,13 +92,13 @@ type accountSet struct {
 
 // need support Aws and Tencent
 func generateDefaultAlias(name string) string {
-	magicPrefixes := []string{"AWS - ", "Tencent -"}
+	magicPrefixes := []string{"AWS -", "Tencent -", "Tencent Cloud -"}
 	for _, prefix := range magicPrefixes {
 		name = strings.TrimPrefix(name, prefix)
+		name = strings.TrimSpace(name)
 	}
 
-	alias := strings.Split(name, " ")[0]
-	return strings.ToLower(alias)
+	return strings.ToLower(strings.ReplaceAll(name, " ", "-"))
 }
 
 func (a *accountSet) ForEach(f func(id string, account Account, aliases []string)) {
