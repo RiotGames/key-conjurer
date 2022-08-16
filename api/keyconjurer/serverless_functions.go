@@ -10,7 +10,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/riotgames/key-conjurer/api/authenticators/duo"
 	"github.com/riotgames/key-conjurer/api/authenticators/okta"
-	"github.com/riotgames/key-conjurer/api/aws"
+	"github.com/riotgames/key-conjurer/api/cloud"
 	"github.com/riotgames/key-conjurer/api/consts"
 	"github.com/riotgames/key-conjurer/api/core"
 	"github.com/riotgames/key-conjurer/api/settings"
@@ -20,13 +20,13 @@ import (
 type Handler struct {
 	crypt                   core.Crypto
 	cfg                     *settings.Settings
-	aws                     *aws.Provider
+	cloud                   *cloud.Provider
 	log                     *logrus.Entry
 	authenticationProviders providerMap
 }
 
 func NewHandler(cfg *settings.Settings) Handler {
-	client, err := aws.NewProvider(cfg.AwsRegion)
+	client, err := cloud.NewProvider(cfg.AwsRegion, cfg.TencentRegion)
 	if err != nil {
 		panic(err)
 	}
@@ -46,8 +46,8 @@ func NewHandler(cfg *settings.Settings) Handler {
 			Level:            logrus.DebugLevel,
 			LogstashEndpoint: consts.LogstashEndpoint,
 		}),
-		cfg: cfg,
-		aws: client,
+		cfg:   cfg,
+		cloud: client,
 		authenticationProviders: providerMap{
 			AuthenticationProviderOkta: okta.Must(cfg.OktaHost, cfg.OktaToken, mfa),
 		},
@@ -154,6 +154,7 @@ type GetTemporaryCredentialsPayload struct {
 	SecretAccessKey string `json:"SecretAccessKey"`
 	SessionToken    string `json:"SessionToken"`
 	Expiration      string `json:"Expiration"`
+	Cloud           int    `json:"Cloud"` // 0:aws,1:tencent
 }
 
 // GetTemporaryCredentialEventHandler issues temporary credentials for the current user.
@@ -197,9 +198,9 @@ func (h *Handler) GetTemporaryCredentialEventHandler(ctx context.Context, req *e
 		return ErrorResponse(getErrorCode(err), msg)
 	}
 
-	sts, err := h.aws.GetTemporaryCredentialsForUser(ctx, event.RoleName, response, int(event.TimeoutInHours))
+	cloudFlag, sts, err := h.cloud.GetTemporaryCredentialsForUser(ctx, event.RoleName, response, int(event.TimeoutInHours))
 	if err != nil {
-		var errRoleNotFound aws.ErrRoleNotFound
+		var errRoleNotFound cloud.ErrRoleNotFound
 		if errors.As(err, &errRoleNotFound) {
 			log.Infof("role %q either does not exist or the user is not entitled to it", event.RoleName)
 			return ErrorResponse(ErrCodeBadRequest, errRoleNotFound.Error())
@@ -215,6 +216,7 @@ func (h *Handler) GetTemporaryCredentialEventHandler(ctx context.Context, req *e
 		SecretAccessKey: *sts.SecretAccessKey,
 		SessionToken:    *sts.SessionToken,
 		Expiration:      sts.Expiration,
+		Cloud:           cloudFlag,
 	})
 }
 

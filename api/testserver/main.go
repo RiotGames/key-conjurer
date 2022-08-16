@@ -1,8 +1,8 @@
 package main
 
 import (
-	"encoding/json"
 	"io/ioutil"
+	"mime"
 	"net/http"
 
 	"github.com/aws/aws-lambda-go/events"
@@ -12,6 +12,17 @@ import (
 
 type server struct {
 	h keyconjurer.Handler
+}
+
+// encodeGatewayResponse encodes the given APIGatewayProxyResponse to JSON
+//
+// In normal operation, AWS will extract our payload from this response.
+// We must manually do this in the test server because the client will not understand it.
+func encodeGatewayResponse(w http.ResponseWriter, response *events.APIGatewayProxyResponse) {
+	w.Header().Set("Content-Type", mime.FormatMediaType("application/json", map[string]string{"encoding": "utf8"}))
+
+	// Body is already JSON
+	w.Write([]byte(response.Body))
 }
 
 func (s *server) getAWSCreds(w http.ResponseWriter, r *http.Request) {
@@ -33,8 +44,7 @@ func (s *server) getAWSCreds(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	enc := json.NewEncoder(w)
-	enc.Encode(resp)
+	encodeGatewayResponse(w, resp)
 }
 
 func (s *server) getUserData(w http.ResponseWriter, r *http.Request) {
@@ -56,8 +66,7 @@ func (s *server) getUserData(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	enc := json.NewEncoder(w)
-	enc.Encode(resp)
+	encodeGatewayResponse(w, resp)
 }
 
 func (s *server) listAuthenticationProviders(w http.ResponseWriter, r *http.Request) {
@@ -72,11 +81,16 @@ func (s *server) listAuthenticationProviders(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	enc := json.NewEncoder(w)
-	enc.Encode(resp)
+	encodeGatewayResponse(w, resp)
 }
 
 func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
+	w.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization")
+	if r.Method == "OPTIONS" {
+		w.WriteHeader(http.StatusOK)
+	}
 	switch r.URL.Path {
 	case "/get_aws_creds":
 		s.getAWSCreds(w, r)

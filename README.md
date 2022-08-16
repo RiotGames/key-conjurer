@@ -51,7 +51,6 @@ aws s3api create-bucket --bucket <terraform state bucket> --region us-west-2 --c
 
 ## Setup Build Environment
 
-- make
 - go 1.13.4+
 - npm 6.4.1+
 - node 10.10.0+
@@ -144,10 +143,3 @@ Encryption was previously tied to the `Provider` interface listed above, but it 
 We'll happily accept a pull request making the use of encryption providers a choice at runtime.
 
 [cryptoprovider]: ./api/core/crypto.go
-
-# Unit Tests for cli client code
-
-```bash
-source prod.env
-make cli_test
-```

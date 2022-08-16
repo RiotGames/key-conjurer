@@ -9,19 +9,19 @@ import (
 	homedir "github.com/mitchellh/go-homedir"
 )
 
-type awsCli struct {
-	creds  *awsCliCredentialsFile
-	config *awsCliConfigFile
+type cloudCli struct {
+	creds  *cloudCliCredentialsFile
+	config *cloudCliConfigFile
 }
 
-type awsCliConfigFile struct {
+type cloudCliConfigFile struct {
 	*ini.File
 	Path string
 }
 
 // Intentionally missing the `ini` notation sections,keys, and values
 //  are being handled by the ini library
-type AWSCliEntry struct {
+type CloudCliEntry struct {
 	profileName string
 	keyId       string
 	key         string
@@ -30,13 +30,13 @@ type AWSCliEntry struct {
 	output      string
 }
 
-func NewAWSCliEntry(c *AWSCredentials, a *Account) *AWSCliEntry {
+func NewCloudCliEntry(c CloudCredentials, a *Account) *CloudCliEntry {
 	name := a.Name
 	if a.Alias != "" {
 		name = a.Alias
 	}
 
-	return &AWSCliEntry{
+	return &CloudCliEntry{
 		profileName: name,
 		keyId:       c.AccessKeyID,
 		key:         c.SecretAccessKey,
@@ -44,7 +44,7 @@ func NewAWSCliEntry(c *AWSCredentials, a *Account) *AWSCliEntry {
 	}
 }
 
-type awsCliCredentialsFile struct {
+type cloudCliCredentialsFile struct {
 	*ini.File
 	Path string
 }
@@ -53,7 +53,7 @@ func touchFile(path string) (*os.File, error) {
 	return os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0664)
 }
 
-func getAwsCliCredentialsFile(credsPath string) (*awsCliCredentialsFile, error) {
+func getCloudCliCredentialsFile(credsPath string) (*cloudCliCredentialsFile, error) {
 	path, err := homedir.Expand(credsPath)
 	if err != nil {
 		return nil, err
@@ -65,13 +65,13 @@ func getAwsCliCredentialsFile(credsPath string) (*awsCliCredentialsFile, error) 
 	}
 	defer f.Close()
 
-	var creds awsCliCredentialsFile
+	var creds cloudCliCredentialsFile
 	creds.File, err = ini.Load(f)
 	creds.Path = path
 	return &creds, err
 }
 
-func getAwsCliConfigFile(configPath string) (*awsCliConfigFile, error) {
+func getCloudCliConfigFile(configPath string) (*cloudCliConfigFile, error) {
 	path, err := homedir.Expand(configPath)
 	if err != nil {
 		return nil, err
@@ -83,13 +83,13 @@ func getAwsCliConfigFile(configPath string) (*awsCliConfigFile, error) {
 	}
 	defer f.Close()
 
-	var cfg awsCliConfigFile
+	var cfg cloudCliConfigFile
 	cfg.File, err = ini.Load(f)
 	cfg.Path = path
 	return &cfg, err
 }
 
-func getAwsCliByPath(path string) (*awsCli, error) {
+func getCloudCliByPath(path string) (*cloudCli, error) {
 	fullPath, err := homedir.Expand(path)
 	if err != nil {
 		return nil, err
@@ -105,24 +105,24 @@ func getAwsCliByPath(path string) (*awsCli, error) {
 		credsPath = fmt.Sprintf("%s/%s", fullPath, "credentials")
 	}
 
-	creds, err := getAwsCliCredentialsFile(credsPath)
+	creds, err := getCloudCliCredentialsFile(credsPath)
 	if err != nil {
 		return nil, err
 	}
 
-	cfg, err := getAwsCliConfigFile(configPath)
+	cfg, err := getCloudCliConfigFile(configPath)
 	if err != nil {
 		return nil, err
 	}
 
-	return &awsCli{creds: creds, config: cfg}, nil
+	return &cloudCli{creds: creds, config: cfg}, nil
 }
 
 // stub for use if we end up managing config file at some point
 // func StubThatDoesNothing(){}
 // func saveConfigEntry(alias, region, output string) {}
 
-func (a *awsCli) saveCredentialEntry(entry *AWSCliEntry) error {
+func (a *cloudCli) saveCredentialEntry(entry *CloudCliEntry) error {
 	var section *ini.Section
 	var err error
 	if section, err = a.creds.GetSection(entry.profileName); err != nil {
@@ -130,15 +130,20 @@ func (a *awsCli) saveCredentialEntry(entry *AWSCliEntry) error {
 			return err
 		}
 	}
-
-	section.Key("aws_access_key_id").SetValue(entry.keyId)
-	section.Key("aws_secret_access_key").SetValue(entry.key)
-	section.Key("aws_session_token").SetValue(entry.token)
+	if strings.Contains(strings.ToLower(a.creds.Path), cloudAws) {
+		section.Key("aws_access_key_id").SetValue(entry.keyId)
+		section.Key("aws_secret_access_key").SetValue(entry.key)
+		section.Key("aws_session_token").SetValue(entry.token)
+	} else if strings.Contains(strings.ToLower(a.creds.Path), cloudTencent) {
+		section.Key("tencent_access_key_id").SetValue(entry.keyId)
+		section.Key("tencent_secret_access_key").SetValue(entry.key)
+		section.Key("tencent_session_token").SetValue(entry.token)
+	}
 	return nil
 }
 
-func SaveAWSCredentialInCLI(awscliPath string, entries ...*AWSCliEntry) error {
-	cli, err := getAwsCliByPath(awscliPath)
+func SaveCloudCredentialInCLI(cloudCliPath string, entries ...*CloudCliEntry) error {
+	cli, err := getCloudCliByPath(cloudCliPath)
 	if err != nil {
 		return err
 	}
