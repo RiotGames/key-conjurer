@@ -11,7 +11,7 @@ import (
 )
 
 func main() {
-	fmt.Printf(`Starting GetCloudCreds Lambda
+	fmt.Printf(`Starting GetAWSCreds Lambda
 	Version: %v
 	`, consts.Version)
 	cfg, err := settings.NewSettings()

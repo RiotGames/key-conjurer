@@ -14,7 +14,6 @@ import (
 )
 
 var (
-	//  Config json storage location
 	keyConjurerRcPath string
 	// host of the API server. Don't use this. You probably meant to use newClient() instead.
 	host string
@@ -22,13 +21,13 @@ var (
 	defaultHost      string
 	identityProvider string
 	// config is a cache-like datastore for this application. It is loaded at app start-up.
-	config                Config
-	quiet                 bool
-	buildTimestamp        string = BuildDate + " " + BuildTime + " " + BuildTimeZone
-	cmdShortVersionFlag   bool   = false
-	cmdOneLineVersionFlag bool   = false
-	cloudAws                     = "aws"
-	cloudTencent                 = "tencent"
+	config Config
+	quiet  bool
+
+	build_timestamp string = BuildDate + " " + BuildTime + " " + BuildTimeZone
+
+	cmdShortVersionFlag   bool = false
+	cmdOneLineVersionFlag bool = false
 )
 
 func init() {
@@ -46,6 +45,7 @@ func init() {
 	rootCmd.AddCommand(&aliasCmd)
 	rootCmd.AddCommand(&unaliasCmd)
 	rootCmd.AddCommand(&rolesCmd)
+
 	rootCmd.Flags().BoolVarP(&cmdShortVersionFlag, "short-version", "s", false, "version for "+appname+" (short format)")
 	rootCmd.Flags().BoolVarP(&cmdOneLineVersionFlag, "oneline-version", "1", false, "version for "+appname+" (single line format)")
 }
@@ -60,7 +60,7 @@ const versionString string = "" +
 
 func alternateVersions(cmd *cobra.Command, short, oneline bool) {
 	if oneline {
-		cmd.Printf("%s %s (Build Timestamp:%s - Client:%s)\n", appname, Version, buildTimestamp, ClientName)
+		cmd.Printf("%s %s (Build Timestamp:%s - Client:%s)\n", appname, Version, build_timestamp, ClientName)
 	} else {
 		cmd.Printf("%s %s\n", appname, Version)
 	}
@@ -69,8 +69,8 @@ func alternateVersions(cmd *cobra.Command, short, oneline bool) {
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:     appname,
-	Version: fmt.Sprintf(versionString, Version, buildTimestamp, ClientName, defaultHost, DownloadURL),
-	Short:   "Retrieve temporary cloud credentials.",
+	Version: fmt.Sprintf(versionString, Version, build_timestamp, ClientName, defaultHost, DownloadURL),
+	Short:   "Retrieve temporary AWS API credentials.",
 	Long: `Key Conjurer retrieves temporary credentials from the Key Conjurer API.
 
 To get started run the following commands:

@@ -50,20 +50,46 @@ func (a *Authenticator) ListApplications(ctx context.Context, user core.User) ([
 		links = append(links, next...)
 	}
 
-	var cloudAccounts []core.Application
+	var awsAccounts []core.Application
 	for _, app := range links {
-		if app.AppName != "amazon_aws" && !strings.Contains(app.AppName, "tencent") {
+		if app.AppName != "amazon_aws" {
 			continue
 		}
 
-		cloudAccounts = append(cloudAccounts, core.Application{
+		awsAccounts = append(awsAccounts, core.Application{
 			LegacyID: 0,
 			ID:       app.AppInstanceId,
 			Name:     app.Label,
 		})
 	}
 
-	return cloudAccounts, nil
+	return awsAccounts, nil
+}
+
+type extractedRole struct {
+	AWSAccountName string
+	AWSAccountID   string
+	AWSRoleName    string
+	OktaGroupID    string
+}
+
+// extractAWSAccountName attempts to extract the account name and ID from the given Okta group.
+func extractRole(group *okta.Group) (extractedRole, bool) {
+	// TODO: Filtering the format this way in this location seems like a bad idea.
+	// It's certainly not trivial for other people to use.
+	var r extractedRole
+
+	// RG-AWS.account_name.role_name.account_id
+	split := strings.Split(group.Profile.Name, ".")
+	if split[0] != "RG-AWS" || len(split) != 4 {
+		return r, false
+	}
+
+	r.AWSAccountName = split[1]
+	r.AWSRoleName = split[2]
+	r.AWSAccountID = split[3]
+	r.OktaGroupID = group.Id
+	return r, true
 }
 
 // GenerateSAMLAssertion should generate a SAML assertion that the user may exchange with the target application in order to gain access to it.

@@ -8,7 +8,7 @@ import (
 )
 
 func TestAwsCliCredsFile(t *testing.T) {
-	credsFile, err := getCloudCliCredentialsFile("~/.aws/credentials")
+	credsFile, err := getAwsCliCredentialsFile("~/.aws/credentials")
 	require.NoError(t, err)
 
 	for _, section := range credsFile.Sections() {
@@ -17,7 +17,7 @@ func TestAwsCliCredsFile(t *testing.T) {
 }
 
 func TestAwsCliConfigFile(t *testing.T) {
-	configFile, err := getCloudCliConfigFile("~/.aws/config")
+	configFile, err := getAwsCliConfigFile("~/.aws/config")
 	require.NoError(t, err)
 
 	for _, section := range configFile.Sections() {
@@ -26,7 +26,7 @@ func TestAwsCliConfigFile(t *testing.T) {
 }
 
 func TestAwsCliFileNoSlash(t *testing.T) {
-	awscli, err := getCloudCliByPath("~/.aws/")
+	awscli, err := getAwsCliByPath("~/.aws/")
 	require.NoError(t, err)
 
 	for _, section := range awscli.creds.Sections() {
@@ -39,7 +39,7 @@ func TestAwsCliFileNoSlash(t *testing.T) {
 }
 
 func TestAwsCliFileWithSlash(t *testing.T) {
-	awscli, err := getCloudCliByPath("~/.aws/")
+	awscli, err := getAwsCliByPath("~/.aws/")
 	require.NoError(t, err)
 
 	for _, section := range awscli.creds.Sections() {
@@ -52,10 +52,10 @@ func TestAwsCliFileWithSlash(t *testing.T) {
 }
 
 func TestAddAWSCliEntry(t *testing.T) {
-	awscli, err := getCloudCliByPath("~/.aws/")
+	awscli, err := getAwsCliByPath("~/.aws/")
 	require.NoError(t, err)
 
-	entry := &CloudCliEntry{
+	entry := &AWSCliEntry{
 		profileName: "test-profile",
 		keyId:       "notanid",
 		key:         "notakey",
@@ -79,7 +79,7 @@ func TestAddAWSCliEntry(t *testing.T) {
 	require.NoError(t, awscli.creds.SaveTo(awscli.creds.Path))
 
 	// retest by reloading into file
-	awscli, err = getCloudCliByPath("~/.aws/")
+	awscli, err = getAwsCliByPath("~/.aws/")
 	require.NoError(t, err)
 
 	assert.True(t, awscli.creds.Section("test-profile") != nil, "section should have been added above")

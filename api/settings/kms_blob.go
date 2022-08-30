@@ -15,9 +15,8 @@ import (
 //  variable EncryptedSettings then returns a new Settings struct.
 func NewSettingsFromKMSBlob() (*Settings, error) {
 	awsRegion := os.Getenv("AWSRegion")
-	tencentRegion := os.Getenv("TencentRegion")
 	encryptedSettings := os.Getenv("EncryptedSettings")
-	settings := &Settings{AwsRegion: awsRegion, TencentRegion: tencentRegion}
+	settings := &Settings{AwsRegion: awsRegion}
 	config, err := session.NewSession(&aws.Config{Region: aws.String(settings.AwsRegion)})
 	if err != nil {
 		return nil, err
@@ -25,14 +24,10 @@ func NewSettingsFromKMSBlob() (*Settings, error) {
 
 	kmsClient := kms.New(config)
 	blob, err := base64.StdEncoding.DecodeString(encryptedSettings)
-	if err != nil {
-		return nil, err
-	}
-
 	input := kms.DecryptInput{CiphertextBlob: blob}
 	result, err := kmsClient.Decrypt(&input)
 	if err != nil {
-		return nil, fmt.Errorf("cloud client failed to decrypt: %w", err)
+		return nil, fmt.Errorf("aws client failed to decrypt: %w", err)
 	}
 
 	if err := json.Unmarshal(result.Plaintext, &settings); err != nil {

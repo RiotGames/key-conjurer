@@ -10,7 +10,6 @@ import (
 type Settings struct {
 	AwsRegion              string
 	AwsKMSKeyID            string `json:"awsKmsKeyId"`
-	TencentRegion          string
 	OneLoginReadUserID     string `json:"oneLoginReadUserId"`
 	OneLoginReadUserSecret string `json:"oneLoginReadUserSecret"`
 	OneLoginSamlID         string `json:"oneLoginSamlId"`
@@ -50,7 +49,6 @@ func registerRetriever(name string, fn retrieverFunc) {
 func retrieveFromEnv() (*Settings, error) {
 	s := Settings{
 		AwsRegion:              os.Getenv("AWS_REGION"),
-		TencentRegion:          os.Getenv("TENCENT_REGION"),
 		AwsKMSKeyID:            os.Getenv("AWS_KMS_KEY_ID"),
 		OneLoginReadUserID:     os.Getenv("ONELOGIN_READ_USER_ID"),
 		OneLoginReadUserSecret: os.Getenv("ONELOGIN_READ_USER_SECRET"),

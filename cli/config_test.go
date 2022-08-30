@@ -38,9 +38,9 @@ func TestAccountFuncs(t *testing.T) {
 		Alias: "secondalias",
 	}
 
-	assert.True(t, test.IsNameMatch("Test Account"))
-	assert.Truef(t, test.IsNameMatch("secondalias"), "Should be able to name match %s with alias %s", "secondalias", test.Alias)
-	assert.Equal(t, test.NormalizeName(), "Test Account")
+	assert.Equal(t, test.IsNameMatch("Test Account"), true, "Should be able to name match with normalized name")
+	assert.Equalf(t, test.IsNameMatch("secondalias"), true, "Should be able to name match %s with alias %s", "secondalias", test.Alias)
+	assert.Equal(t, test.NormalizeName(), "Test Account", true, "Should match normalized name")
 }
 
 func TestUnmarshalJSON(t *testing.T) {
@@ -126,17 +126,4 @@ func TestAliasesPreservedAfterReplaceWith(t *testing.T) {
 	assert.False(t, ok)
 	_, ok = cfg.FindAccount("riot-2")
 	assert.True(t, ok)
-}
-
-func TestGeneratesGoodAliases(t *testing.T) {
-	pairs := [][2]string{
-		{"Tencent Cloud - Foo Bar", "foo-bar"},
-		{"Tencent Cloud - Foobar", "foobar"},
-		{"AWS - Foo Bar", "foo-bar"},
-		{"AWS - Foobar", "foobar"},
-	}
-
-	for _, pair := range pairs {
-		assert.Equal(t, pair[1], generateDefaultAlias(pair[0]))
-	}
 }
