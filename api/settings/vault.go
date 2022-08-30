@@ -16,6 +16,7 @@ type vaultConfig struct {
 
 func retrieveFromVault() (*Settings, error) {
 	awsRegion := os.Getenv("AWSRegion")
+	tencentRegion := os.Getenv("TencentRegion")
 	cfg := vaultConfig{
 		RoleName:        os.Getenv("VAULT_ROLE_NAME"),
 		SecretMountPath: os.Getenv("VAULT_SECRET_MOUNT_PATH"),
@@ -23,7 +24,7 @@ func retrieveFromVault() (*Settings, error) {
 		AWSAuthPath:     os.Getenv("VAULT_AWS_AUTH_PATH"),
 	}
 
-	settings := &Settings{AwsRegion: awsRegion}
+	settings := &Settings{AwsRegion: awsRegion, TencentRegion: tencentRegion}
 	client, err := vault.NewClient(vault.DefaultConfig())
 	if err != nil {
 		return nil, fmt.Errorf("unable to get Vault client")
@@ -45,7 +46,7 @@ func retrieveFromVault() (*Settings, error) {
 	}
 
 	if _, err := client.KV2.Get(kvOpts); err != nil {
-		return nil, fmt.Errorf("Unable to get vault settings from %s", cfg.SecretMountPath+"/"+cfg.SecretPath)
+		return nil, fmt.Errorf("unable to get vault settings from %s/%s", cfg.SecretMountPath, cfg.SecretPath)
 	}
 
 	return settings, nil

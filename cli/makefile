@@ -48,14 +48,13 @@ build: dir
 		-o ../builds/$(TF_WORKSPACE)/cli/$(BUILD_TARGET)
 
 test: dir
-	mkdir -p ~/.aws 
-	touch ~/.aws/config 
-	touch ~/.aws/credentials 
-	touch ~/.keyconjurerrc 
+	mkdir -p ~/.aws
+	touch ~/.aws/config
+	touch ~/.aws/credentials
+	touch ~/.keyconjurerrc
 	go test -v ./...
 
 build_requirements:
 	go version
 	gcc --version
 	make --version
-

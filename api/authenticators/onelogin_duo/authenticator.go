@@ -51,7 +51,7 @@ func (a *Authenticator) ListApplications(ctx context.Context, user core.User) ([
 
 	applications := []core.Application{}
 	for _, app := range *apps {
-		if strings.HasPrefix(app.Name, "AWS") {
+		if strings.HasPrefix(app.Name, "AWS") || strings.HasPrefix(app.Name, "Tencent") {
 			applications = append(applications, core.Application{
 				LegacyID: uint(app.ID),
 				ID:       strconv.FormatInt(app.ID, 10),

@@ -4,18 +4,21 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
 )
 
 var (
-	ttl           uint
-	timeRemaining uint
-	outputType    string
-	awsCliPath    string
-	roleName      string
-	shell         string = shellTypeInfer
+	ttl            uint
+	timeRemaining  uint
+	outputType     string
+	awsCliPath     string
+	tencentCliPath string
+	roleName       string
+	cloudFlag      string
+	shell          string = shellTypeInfer
 )
 
 var (
@@ -23,26 +26,30 @@ var (
 	outputTypeEnvironmentVariable = "env"
 	// outputTypeAWSCredentialsFile indicates that keyconjurer will dump the credentials into the ~/.aws/credentials file.
 	outputTypeAWSCredentialsFile = "awscli"
-	permittedOutputTypes         = []string{outputTypeAWSCredentialsFile, outputTypeEnvironmentVariable}
-	permittedShellTypes          = []string{shellTypePowershell, shellTypeBash, shellTypeBasic, shellTypeInfer}
+	// outputTypeTencentCredentialsFile indicates that keyconjurer will dump the credentials into the ~/.tencent/credentials file.
+	outputTypeTencentCredentialsFile = "tencentcli"
+	permittedOutputTypes             = []string{outputTypeAWSCredentialsFile, outputTypeEnvironmentVariable, outputTypeTencentCredentialsFile}
+	permittedShellTypes              = []string{shellTypePowershell, shellTypeBash, shellTypeBasic, shellTypeInfer}
 )
 
 func init() {
 	getCmd.Flags().UintVar(&ttl, "ttl", 1, "The key timeout in hours from 1 to 8.")
 	getCmd.Flags().UintVarP(&timeRemaining, "time-remaining", "t", DefaultTimeRemaining, "Request new keys if there are no keys in the environment or the current keys expire within <time-remaining> minutes. Defaults to 60.")
-	getCmd.Flags().StringVarP(&outputType, "out", "o", outputTypeEnvironmentVariable, "Format to save new credentials in. Supported outputs: env, awscli")
+	getCmd.Flags().StringVarP(&outputType, "out", "o", outputTypeEnvironmentVariable, "Format to save new credentials in. Supported outputs: env, awscli,tencentcli")
 	getCmd.Flags().StringVarP(&shell, "shell", "", shellTypeInfer, "If output type is env, determines which format to output credentials in - by default, the format is inferred based on the execution environment. WSL users may wish to overwrite this to `bash`")
 	getCmd.Flags().StringVarP(&awsCliPath, "awscli", "", "~/.aws/", "Path for directory used by the aws-cli tool. Default is \"~/.aws\".")
+	getCmd.Flags().StringVarP(&tencentCliPath, "tencentcli", "", "~/.tencent/", "Path for directory used by the tencent-cli tool. Default is \"~/.tencent\".")
 	getCmd.Flags().StringVar(&roleName, "role", "", "The name of the role to assume.")
+	getCmd.Flags().StringVarP(&cloudFlag, "cloud", "", "aws", "Choose a cloud vendor. Default is aws. Can choose aws or tencent")
 	getCmd.Flags().StringVar(&identityProvider, "identity-provider", defaultIdentityProvider, "The identity provider to use. Refer to `"+appname+" identity-providers` for more info.")
 }
 
 var getCmd = &cobra.Command{
 	Use:   "get <accountName/alias>",
-	Short: "Retrieves temporary AWS API credentials.",
-	Long: `Retrieves temporary AWS API credentials for the specified account.  It sends a push request to the first Duo device it finds associated with your account.
+	Short: "Retrieves temporary Cloud(AWS|Tencent) API credentials.",
+	Long: `Retrieves temporary Cloud(AWS|Tencent) API credentials for the specified account.  It sends a push request to the first Duo device it finds associated with your account.
 
-A role must be specified when using this command through the --role flag. You may list the roles you can assume through the roles command.`,
+	A role must be specified when using this command through the --role flag. You may list the roles you can assume through the roles command.`,
 	// Example: appname + " get <accountName/alias>",
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
@@ -101,10 +108,17 @@ A role must be specified when using this command through the --role flag. You ma
 			timeRemaining = config.TimeRemaining
 		}
 
-		var credentials AWSCredentials
-		credentials.LoadFromEnv()
-		if credentials.ValidUntil(*account, time.Duration(timeRemaining)*time.Minute) {
-			return echoCredentials(args[0], args[0], credentials, outputType)
+		if cloudFlag == "" {
+			cloudFlag = cloudAws
+			if strings.Contains(account.Name, "Tencent") {
+				cloudFlag = cloudTencent
+			}
+		}
+
+		var credentials CloudCredentials
+		credentials.LoadFromEnv(cloudFlag)
+		if credentials.ValidUntil(*account, cloudFlag, time.Duration(timeRemaining)*time.Minute) {
+			return echoCredentials(args[0], args[0], credentials, outputType, cloudFlag)
 		}
 
 		if !quiet {
@@ -128,18 +142,22 @@ A role must be specified when using this command through the --role flag. You ma
 		}
 
 		account.MostRecentRole = roleName
-		return echoCredentials(args[0], args[0], credentials, outputType)
+		return echoCredentials(args[0], args[0], credentials, outputType, cloudFlag)
 	}}
 
-func echoCredentials(id, name string, credentials AWSCredentials, outputType string) error {
+func echoCredentials(id, name string, credentials CloudCredentials, outputType, cloudFlag string) error {
 	switch outputType {
 	case outputTypeEnvironmentVariable:
-		credentials.WriteFormat(os.Stdout, shell)
+		credentials.WriteFormat(os.Stdout, shell, cloudFlag)
 		return nil
-	case outputTypeAWSCredentialsFile:
+	case outputTypeAWSCredentialsFile, outputTypeTencentCredentialsFile:
 		acc := Account{ID: id, Name: name}
-		newCliEntry := NewAWSCliEntry(&credentials, &acc)
-		return SaveAWSCredentialInCLI(awsCliPath, newCliEntry)
+		newCliEntry := NewCloudCliEntry(credentials, &acc)
+		cliPath := awsCliPath
+		if outputType == outputTypeTencentCredentialsFile {
+			cliPath = tencentCliPath
+		}
+		return SaveCloudCredentialInCLI(cliPath, newCliEntry)
 	default:
 		return fmt.Errorf("%s is an invalid output type", outputType)
 	}

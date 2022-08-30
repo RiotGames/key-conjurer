@@ -41,11 +41,11 @@ frontend_upload:
 	&& aws s3 cp . s3://$(S3_FRONTEND_BUCKET_NAME)-$(TF_WORKSPACE) --include "*" --recursive
 
 api_upload: api_zip
-	cd ../../builds/$(TF_WORKSPACE)/aws \
+	cd ../../builds/$(TF_WORKSPACE)/cloud \
 	&& aws s3 cp . s3://$(S3_TF_BUCKET_NAME)/$(TF_WORKSPACE) --exclude "*" --include "*.zip" --recursive
 
 api_zip:
-	cd ../../builds/$(TF_WORKSPACE)/aws && \
+	cd ../../builds/$(TF_WORKSPACE)/cloud && \
 	zip get_user_data.zip get_user_data \
 	&& zip get_cloud_creds.zip get_cloud_creds \
 	&& zip list_providers.zip list_providers
