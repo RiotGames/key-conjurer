@@ -24,8 +24,8 @@ require (
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/stretchr/testify v1.6.1
 	github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/cam v1.0.392
-	github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/common v1.0.479
-	github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/sts v1.0.479
+	github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/common v1.0.392
+	github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/sts v1.0.389
 	github.com/valyala/fastjson v1.6.3
 	golang.org/x/crypto v0.0.0-20201016220609-9e8e0b390897
 	golang.org/x/net v0.0.0-20200904194848-62affa334b73
