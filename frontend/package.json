@@ -9,14 +9,14 @@
     "react": "^16.12.0",
     "react-copy-to-clipboard": "^5.0.2",
     "react-dom": "^16.12.0",
-    "react-scripts": "^3.4.3",
+    "react-scripts": "^5.0.1",
     "semantic-ui-css": "^2.4.1",
-    "semantic-ui-react": "^0.87.3"
+    "semantic-ui-react": "^2.1.3"
   },
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",
-    "test": "react-scripts test --env=jsdom",
+    "test": "react-scripts test",
     "eject": "react-scripts eject"
   },
   "browserslist": {
@@ -32,6 +32,7 @@
     ]
   },
   "devDependencies": {
-    "@testing-library/react": "^12.1.5"
+    "@testing-library/react": "^12.1.5",
+    "@testing-library/user-event": "^14.4.3"
   }
 }
