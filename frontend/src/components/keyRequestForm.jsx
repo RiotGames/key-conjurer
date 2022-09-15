@@ -173,7 +173,7 @@ class KeyRequestForm extends Component {
 
                 <Form.Field>
                   <label htmlFor="timeout">TTL (hours)</label>
-                  <select className='ui field dropdown selection' id="timeout" onChange={this.handleChange("timeout")} defaultValue={timeout}>
+                  <select className='ui field dropdown selection' id="timeout" onChange={this.handleChange("timeout")} value={timeout}>
                     {timeouts.map((timeout) =>
                       <option key={timeout} value={timeout}>{timeout}</option>
                     )}
