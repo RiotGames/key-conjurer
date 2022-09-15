@@ -27,6 +27,7 @@ const defaultStores = {
   },
 };
 
+
 const stores = _.cloneDeep(defaultStores);
 
 export function save(key, value) {
@@ -35,6 +36,10 @@ export function save(key, value) {
 
 export function resetStores(stores) {
   stores.map((store) => resetStore(store));
+}
+
+export function resetAllStores() {
+  resetStores(Object.keys(stores));
 }
 
 export function update(store, value) {
