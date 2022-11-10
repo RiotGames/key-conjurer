@@ -5,17 +5,13 @@ import (
 	"fmt"
 	"net"
 	"net/url"
-	"os"
-	"path/filepath"
 	"strings"
 
-	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
 )
 
 var (
 	//  Config json storage location
-	keyConjurerRcPath string
 	// host of the API server. Don't use this. You probably meant to use newClient() instead.
 	host string
 	// This is set by the Makefile during build of the CLI. Don't use this.
@@ -32,7 +28,6 @@ var (
 )
 
 func init() {
-	rootCmd.PersistentFlags().StringVar(&keyConjurerRcPath, "keyconjurer-rc-path", "~/.keyconjurerrc", "path to .keyconjurerrc file")
 	rootCmd.PersistentFlags().StringVar(&host, "host", defaultHost, "The host of the KeyConjurer API")
 	rootCmd.PersistentFlags().BoolVar(&quiet, "quiet", false, "tells the CLI to be quiet; stdout will not contain human-readable informational messages")
 	rootCmd.SetVersionTemplate(`{{printf "%s" .Version}}`)
@@ -87,23 +82,7 @@ To get started run the following commands:
 			return fmt.Errorf("invalid hostname: %w", err)
 		}
 
-		fp := keyConjurerRcPath
-		if expanded, err := homedir.Expand(fp); err == nil {
-			fp = expanded
-		}
-
-		if err := os.MkdirAll(filepath.Dir(fp), os.ModeDir|os.FileMode(0755)); err != nil {
-			return err
-		}
-
-		file, err := os.OpenFile(fp, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
-		if os.IsNotExist(err) {
-			return nil
-		} else if err != nil {
-			return err
-		}
-
-		return config.Read(file)
+		return nil
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 		if cmdShortVersionFlag || cmdOneLineVersionFlag {
@@ -111,25 +90,6 @@ To get started run the following commands:
 		} else {
 			cmd.Help()
 		}
-	},
-	PersistentPostRunE: func(*cobra.Command, []string) error {
-		var fp string
-		if expanded, err := homedir.Expand(keyConjurerRcPath); err == nil {
-			fp = expanded
-		}
-
-		dir := filepath.Dir(fp)
-		if err := os.MkdirAll(dir, os.ModeDir|os.FileMode(0755)); err != nil {
-			return err
-		}
-
-		file, err := os.Create(fp)
-		if err != nil {
-			return fmt.Errorf("unable to create %s reason: %w", fp, err)
-		}
-
-		defer file.Close()
-		return config.Write(file)
 	},
 }
 
