@@ -8,29 +8,28 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 )
 
 var (
 	//  Config json storage location
 	// host of the API server. Don't use this. You probably meant to use newClient() instead.
-	host string
+	host  string
+	quiet bool
 	// This is set by the Makefile during build of the CLI. Don't use this.
 	defaultHost      string
 	identityProvider string
 	// config is a cache-like datastore for this application. It is loaded at app start-up.
-	config                Config
-	quiet                 bool
-	buildTimestamp        string = BuildDate + " " + BuildTime + " " + BuildTimeZone
-	cmdShortVersionFlag   bool   = false
-	cmdOneLineVersionFlag bool   = false
-	cloudAws                     = "aws"
-	cloudTencent                 = "tencent"
+	config         Config
+	buildTimestamp string = strings.Join([]string{BuildDate, BuildTime, BuildTimeZone}, " ")
+	cloudAws              = "aws"
+	cloudTencent          = "tencent"
 )
 
 func init() {
-	rootCmd.PersistentFlags().StringVar(&host, "host", defaultHost, "The host of the KeyConjurer API")
-	rootCmd.PersistentFlags().BoolVar(&quiet, "quiet", false, "tells the CLI to be quiet; stdout will not contain human-readable informational messages")
-	rootCmd.SetVersionTemplate(`{{printf "%s" .Version}}`)
+	pflag.StringVar(&host, "host", defaultHost, "The host of the KeyConjurer API")
+	pflag.BoolVar(&quiet, "quiet", false, "tells the CLI to be quiet; stdout will not contain human-readable informational messages")
+	rootCmd.SetVersionTemplate(`{{printf "%s\n" .Version}}`)
 	rootCmd.AddCommand(loginCmd)
 	rootCmd.AddCommand(accountsCmd)
 	rootCmd.AddCommand(getCmd)
@@ -41,30 +40,12 @@ func init() {
 	rootCmd.AddCommand(&aliasCmd)
 	rootCmd.AddCommand(&unaliasCmd)
 	rootCmd.AddCommand(&rolesCmd)
-	rootCmd.Flags().BoolVarP(&cmdShortVersionFlag, "short-version", "s", false, "version for "+appname+" (short format)")
-	rootCmd.Flags().BoolVarP(&cmdOneLineVersionFlag, "oneline-version", "1", false, "version for "+appname+" (single line format)")
-}
-
-// hack to remove the leading blank line in the --version output
-const versionString string = "" +
-	"	Version: 		%s\n" +
-	"	Build Timestamp:	%s\n" +
-	"	Client: 		%s\n" +
-	"	Default Hostname:	%s\n" +
-	"	Upgrade URL:		%s\n"
-
-func alternateVersions(cmd *cobra.Command, short, oneline bool) {
-	if oneline {
-		cmd.Printf("%s %s (Build Timestamp:%s - Client:%s)\n", appname, Version, buildTimestamp, ClientName)
-	} else {
-		cmd.Printf("%s %s\n", appname, Version)
-	}
 }
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:     appname,
-	Version: fmt.Sprintf(versionString, Version, buildTimestamp, ClientName, defaultHost, DownloadURL),
+	Version: fmt.Sprintf("%s %s (Build Timestamp: %s - Client: %s)", appname, Version, buildTimestamp, ClientName),
 	Short:   "Retrieve temporary cloud credentials.",
 	Long: `Key Conjurer retrieves temporary credentials from the Key Conjurer API.
 
@@ -83,13 +64,6 @@ To get started run the following commands:
 		}
 
 		return nil
-	},
-	Run: func(cmd *cobra.Command, args []string) {
-		if cmdShortVersionFlag || cmdOneLineVersionFlag {
-			alternateVersions(cmd, cmdShortVersionFlag, cmdOneLineVersionFlag)
-		} else {
-			cmd.Help()
-		}
 	},
 }
 
