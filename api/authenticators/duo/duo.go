@@ -58,6 +58,26 @@ func New() Duo {
 	return Duo{httpClient: duoHTTPClient}
 }
 
+func (d Duo) SendMFACode(txSignature, stateToken, callbackURL, apiHostName, code string) (string, error) {
+	sid, err := d.getSid(txSignature, stateToken, callbackURL, apiHostName)
+	if err != nil {
+		return "", err
+	}
+
+	d.prepareForPush(sid, txSignature, callbackURL, apiHostName)
+	dpr, err := d.sendMfaCode(sid, txSignature, callbackURL, apiHostName, code)
+	if err != nil {
+		return "", err
+	}
+
+	dpr2, err := d.checkMfaStatus(sid, dpr.Response.TxID, apiHostName)
+	if err != nil || dpr2.Response.StatusCode == "deny" {
+		return "", ErrorDuoMfaNotAllow
+	}
+
+	return dpr2.Response.Cookie, nil
+}
+
 // SendPush emulates the workflow of the Duo WebAPI and sends the
 //
 //	requesting user a push to the device set as "phone1"
@@ -124,12 +144,11 @@ func (d *Duo) prepareForPush(sid, txSignature, callbackURL, apiHostName string) 
 		"sid":       []string{sid},
 		"certs_url": []string{certsURL}}.Encode()))
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
-	resp, err := d.httpClient.Do(req)
+	_, err := d.httpClient.Do(req)
 	if err != nil {
 		return ErrorDuoCommunication
 	}
 
-	defer resp.Body.Close()
 	return nil
 }
 
@@ -169,6 +188,42 @@ func (d *Duo) sendMfaPush(sid, txSignature, callbackURL, apiHostName string) (st
 	}
 
 	return duoPromptResponse.Response.TxID, nil
+}
+
+func (d *Duo) sendMfaCode(sid, txSignature, callbackURL, apiHostName, code string) (duoPromptResponse, error) {
+	reqURL := fmt.Sprintf("https://%v/frame/prompt?%v",
+		apiHostName,
+		url.Values{
+			"parent": {callbackURL},
+			"tx":     {txSignature}}.Encode())
+
+	values := url.Values{
+		"sid":      []string{sid},
+		"device":   []string{"phone1"},
+		"factor":   []string{"Passcode"},
+		"passcode": []string{code},
+	}
+
+	req, _ := http.NewRequest("POST", reqURL, strings.NewReader(values.Encode()))
+	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+	resp, err := d.httpClient.Do(req)
+	if err != nil {
+		return duoPromptResponse{}, ErrorDuoCommunication
+	}
+
+	dec := json.NewDecoder(resp.Body)
+	defer resp.Body.Close()
+
+	var dpr duoPromptResponse
+	if err := dec.Decode(&dpr); err != nil {
+		return duoPromptResponse{}, ErrorJSONMarshalError
+	}
+
+	if dpr.Stat != "OK" {
+		return duoPromptResponse{}, fmt.Errorf("POST /frame/prompt response body did not have OK stat - Stat=%s", dpr.Stat)
+	}
+
+	return dpr, nil
 }
 
 func (d *Duo) checkMfaStatus(sid, txid, apiHostName string) (*duoPushResponse, error) {

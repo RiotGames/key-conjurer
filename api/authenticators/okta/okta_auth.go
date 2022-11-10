@@ -80,7 +80,6 @@ func newOktaAuthClient(hostname string) oktaAuthClient {
 }
 
 func (o *oktaAuthClient) do(ctx context.Context, method, path string, data, result interface{}) (response *http.Response, err error) {
-
 	b, err := json.Marshal(data)
 	if err != nil {
 		err = wrapError(err, ErrOktaBadRequest)
@@ -97,6 +96,10 @@ func (o *oktaAuthClient) do(ctx context.Context, method, path string, data, resu
 
 	req.Header.Set("content-type", "application/json")
 	req.Header.Set("accept", "application/json")
+
+	if o.rt == nil {
+		o.rt = http.DefaultTransport
+	}
 
 	response, err = o.rt.RoundTrip(req)
 	if err != nil {
@@ -201,8 +204,9 @@ func (o *oktaAuthClient) SubmitChallengeResponse(ctx context.Context, vf verifyF
 	req.AddCookie(&http.Cookie{Name: "oktaStateToken", Value: vf.StateToken.String()})
 	resp, err := o.rt.RoundTrip(req)
 	if err != nil {
-		return err
+		return fmt.Errorf("sending the request had the following error: %w", err)
 	}
+
 	defer resp.Body.Close()
 	dec := json.NewDecoder(resp.Body)
 	switch resp.StatusCode {
