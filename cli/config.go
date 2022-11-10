@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"errors"
 	"io"
 	"strconv"
 
@@ -10,6 +9,7 @@ import (
 
 	"github.com/olekukonko/tablewriter"
 	"github.com/riotgames/key-conjurer/api/core"
+	"github.com/spf13/viper"
 )
 
 type maybeLegacyID string
@@ -88,6 +88,10 @@ func (a *Account) IsNameMatch(name string) bool {
 
 type accountSet struct {
 	accounts map[string]*Account
+}
+
+func NewAccountSet() *accountSet {
+	return &accountSet{accounts: make(map[string]*Account)}
 }
 
 // need support Aws and Tencent
@@ -210,10 +214,10 @@ func (s accountSet) WriteTable(w io.Writer) {
 
 // Config stores all information related to the user
 type Config struct {
-	Accounts      *accountSet `json:"accounts"`
-	Creds         string      `json:"creds"`
-	TTL           uint        `json:"ttl"`
-	TimeRemaining uint        `json:"time_remaining"`
+	Accounts      *accountSet `mapstructure:"accounts"`
+	Creds         string      `mapstructure:"creds"`
+	TTL           uint        `mapstructure:"ttl"`
+	TimeRemaining uint        `mapstructure:"time_remaining"`
 }
 
 func (c *Config) GetCredentials() (core.Credentials, error) {
@@ -225,35 +229,9 @@ func (c *Config) GetCredentials() (core.Credentials, error) {
 	return core.Credentials{Username: "encrypted", Password: c.Creds}, nil
 }
 
-// Write writes the config to the file provided overwriting the file if it exists
-func (c *Config) Write(w io.Writer) error {
-	enc := json.NewEncoder(w)
-	return enc.Encode(c)
-}
-
-// Reader populates all member values of config using default values where needed
-func (c *Config) Read(reader io.Reader) error {
-	dec := json.NewDecoder(reader)
-	// If we encounter an end of file, use the default values and don't treat it as an error
-	// This also conveniently allows someone to use /dev/null for the config file.
-	if err := dec.Decode(c); err != nil && !errors.Is(err, io.EOF) {
-		return err
-	}
-
-	if c.Accounts == nil {
-		c.Accounts = &accountSet{}
-	}
-
-	if c.TTL < 1 {
-		c.TTL = DefaultTTL
-	}
-
-	return nil
-}
-
 func (c *Config) AddAccount(id string, account Account) {
 	if c.Accounts == nil {
-		c.Accounts = &accountSet{accounts: make(map[string]*Account)}
+		c.Accounts = NewAccountSet()
 	}
 
 	c.Accounts.Add(id, account)
@@ -296,4 +274,16 @@ func (c *Config) UpdateAccounts(entries []Account) {
 
 func (c *Config) DumpAccounts(w io.Writer) {
 	c.Accounts.WriteTable(w)
+}
+
+func (c Config) UpdateViper(v *viper.Viper) {
+	if c.Accounts == nil {
+		// This ensures that a nil value is not logged.
+		c.Accounts = NewAccountSet()
+	}
+
+	v.Set("accounts", c.Accounts)
+	v.Set("creds", c.Creds)
+	v.Set("ttl", c.TTL)
+	v.Set("time_remaining", c.TimeRemaining)
 }
