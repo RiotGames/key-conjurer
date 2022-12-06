@@ -73,12 +73,11 @@ func (a *Authenticator) GenerateSAMLAssertion(ctx context.Context, creds core.Cr
 		return nil, fmt.Errorf("%w: appID cannot be an empty string", core.ErrBadRequest)
 	}
 
-	app, _, err := a.client.Application.GetApplication(ctx, appID, &okta.Application{}, query.NewQueryParams())
+	var appl okta.Application
+	_, _, err := a.client.Application.GetApplication(ctx, appID, &appl, query.NewQueryParams())
 	if err != nil {
 		return nil, core.WrapError(core.ErrApplicationNotFound, err)
 	}
-
-	appl := app.(*okta.Application)
 
 	st, err := a.oktaAuthClient.Authn(ctx, authnRequest{Username: creds.Username, Password: creds.Password})
 	if err != nil {
@@ -116,7 +115,7 @@ func (a *Authenticator) GenerateSAMLAssertion(ctx context.Context, creds core.Cr
 		return nil, wrapOktaError(err, core.ErrCouldNotCreateSession)
 	}
 
-	samlResponse, err := a.oktaAuthClient.GetSAMLResponse(ctx, *appl, session)
+	samlResponse, err := a.oktaAuthClient.GetSAMLResponse(ctx, appl, session)
 	if err != nil {
 		return nil, wrapOktaError(err, core.ErrSAMLError)
 	}
