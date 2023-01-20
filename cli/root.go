@@ -22,16 +22,18 @@ var (
 	defaultHost      string
 	identityProvider string
 	// config is a cache-like datastore for this application. It is loaded at app start-up.
-	config                Config
-	quiet                 bool
-	buildTimestamp        string = BuildDate + " " + BuildTime + " " + BuildTimeZone
-	cmdShortVersionFlag   bool   = false
-	cmdOneLineVersionFlag bool   = false
-	cloudAws                     = "aws"
-	cloudTencent                 = "tencent"
+	config                   Config
+	quiet                    bool
+	buildTimestamp           string = BuildDate + " " + BuildTime + " " + BuildTimeZone
+	cmdShortVersionFlag      bool   = false
+	cmdOneLineVersionFlag    bool   = false
+	cloudAws                        = "aws"
+	cloudTencent                    = "tencent"
+	clientHttpTimeoutSeconds int    = 120
 )
 
 func init() {
+	rootCmd.PersistentFlags().IntVar(&clientHttpTimeoutSeconds, "http-timeout", 120, "the amount of time in seconds to wait for keyconjurer to respond")
 	rootCmd.PersistentFlags().StringVar(&keyConjurerRcPath, "keyconjurer-rc-path", "~/.keyconjurerrc", "path to .keyconjurerrc file")
 	rootCmd.PersistentFlags().StringVar(&host, "host", defaultHost, "The host of the KeyConjurer API")
 	rootCmd.PersistentFlags().BoolVar(&quiet, "quiet", false, "tells the CLI to be quiet; stdout will not contain human-readable informational messages")

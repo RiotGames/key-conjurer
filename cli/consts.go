@@ -1,8 +1,6 @@
 package main
 
 import (
-	"time"
-
 	"github.com/riotgames/key-conjurer/api/keyconjurer"
 )
 
@@ -32,8 +30,5 @@ const WindowsBinaryName string = "keyconjurer-windows.exe"
 const DarwinBinaryName string = "keyconjurer-darwin"
 
 const appname string = "keyconjurer"
-
-// CLI HTTP Timeouts
-var ClientHttpTimeoutInSeconds time.Duration = 30
 
 const defaultIdentityProvider = keyconjurer.AuthenticationProviderOkta
