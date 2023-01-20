@@ -66,6 +66,61 @@ func (a *Authenticator) ListApplications(ctx context.Context, user core.User) ([
 	return cloudAccounts, nil
 }
 
+func (a *Authenticator) GenerateSAMLAssertionWithMFACode(ctx context.Context, creds core.Credentials, appID string, mfaCode string) (*core.SAMLResponse, core.AuthenticationProviderError) {
+	if appID == "" {
+		return nil, fmt.Errorf("%w: appID cannot be an empty string", core.ErrBadRequest)
+	}
+
+	var appl okta.Application
+	_, _, err := a.client.Application.GetApplication(ctx, appID, &appl, query.NewQueryParams())
+	if err != nil {
+		return nil, core.WrapError(core.ErrApplicationNotFound, err)
+	}
+
+	st, err := a.oktaAuthClient.Authn(ctx, authnRequest{Username: creds.Username, Password: creds.Password})
+	if err != nil {
+		return nil, wrapOktaError(err, core.ErrAuthenticationFailed)
+	}
+
+	var f *okta.UserFactor
+	for _, factor := range st.Factors() {
+		if factor.Provider == "DUO" && factor.FactorType == "web" {
+			f = &factor
+			break
+		}
+	}
+
+	if f == nil {
+		return nil, fmt.Errorf("%w: no Duo web factor found", core.ErrInternalError)
+	}
+
+	vf, err := a.oktaAuthClient.VerifyFactor(ctx, st.StateToken, *f)
+	if err != nil {
+		return nil, wrapOktaError(err, core.ErrFactorVerificationFailed)
+	}
+
+	tok, err := a.mfa.SendMFACode(vf.AuthSignature, vf.StateToken.String(), vf.CallbackURL, vf.Host, mfaCode)
+	if err != nil {
+		return nil, err
+	}
+
+	if err = a.oktaAuthClient.SubmitChallengeResponse(ctx, vf, tok); err != nil {
+		return nil, wrapOktaError(err, core.ErrSubmitChallengeResponseFailed)
+	}
+
+	session, err := a.oktaAuthClient.CreateSession(ctx, vf)
+	if err != nil {
+		return nil, wrapOktaError(err, core.ErrCouldNotCreateSession)
+	}
+
+	samlResponse, err := a.oktaAuthClient.GetSAMLResponse(ctx, appl, session)
+	if err != nil {
+		return nil, wrapOktaError(err, core.ErrSAMLError)
+	}
+
+	return samlResponse, nil
+}
+
 // GenerateSAMLAssertion should generate a SAML assertion that the user may exchange with the target application in order to gain access to it.
 // This will initiate a multi-factor request with Duo.
 func (a *Authenticator) GenerateSAMLAssertion(ctx context.Context, creds core.Credentials, appID string) (*core.SAMLResponse, core.AuthenticationProviderError) {

@@ -56,6 +56,10 @@ type AuthenticationProvider interface {
 	GenerateSAMLAssertion(ctx context.Context, credentials Credentials, appID string) (*SAMLResponse, AuthenticationProviderError)
 }
 
+type MfaEnabledAuthenticationProvider interface {
+	GenerateSAMLAssertionWithMFACode(ctx context.Context, credentials Credentials, appID, mfaCode string) (*SAMLResponse, AuthenticationProviderError)
+}
+
 // AuthenticationProviderError is an error returned by an authentication provider.
 type AuthenticationProviderError error
 

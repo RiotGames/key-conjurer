@@ -122,11 +122,15 @@ type GetTemporaryCredentialEvent struct {
 	// AuthenticationProvider is the authentication provider that should be used when logging in.
 	// This will be blank for old versions of KeyConjurer; if it is blank, you must default to OneLogin
 	AuthenticationProvider AuthenticationProviderName `json:"authentication_provider"`
+	// MFACode is an optional parameter that allows a user to submit an MFA code instead of receiving a push.
+	// If this is a non-empty string, it will be used in lieu of a push event.
+	MFACode string `json:"mfa_code"`
 }
 
 var (
-	errTimeoutBadSize = errors.New("ttl must be at least 1 hour and less than 8 hours")
-	errNoRoleProvided = errors.New("a role must be specified when using this identity provider")
+	errTimeoutBadSize                     = errors.New("ttl must be at least 1 hour and less than 8 hours")
+	errNoRoleProvided                     = errors.New("a role must be specified when using this identity provider")
+	errAuthProviderDoesNotSupportMFACodes = errors.New("the authentication provider does not support providing multifactor codes ahead-of-time")
 )
 
 // Validate validates that the event has appropriate parameters
@@ -155,6 +159,19 @@ type GetTemporaryCredentialsPayload struct {
 	SessionToken    string `json:"SessionToken"`
 	Expiration      string `json:"Expiration"`
 	Cloud           int    `json:"Cloud"` // 0:aws,1:tencent
+}
+
+func generateSAMLResponse(ctx context.Context, event GetTemporaryCredentialEvent, provider core.AuthenticationProvider) (*core.SAMLResponse, error) {
+	if event.MFACode == "" {
+		return provider.GenerateSAMLAssertion(ctx, event.Credentials, event.AppID)
+	}
+
+	mfaProvider, ok := provider.(core.MfaEnabledAuthenticationProvider)
+	if !ok {
+		return nil, errAuthProviderDoesNotSupportMFACodes
+	}
+
+	return mfaProvider.GenerateSAMLAssertionWithMFACode(ctx, event.Credentials, event.AppID, event.MFACode)
 }
 
 // GetTemporaryCredentialEventHandler issues temporary credentials for the current user.
@@ -191,7 +208,7 @@ func (h *Handler) GetTemporaryCredentialEventHandler(ctx context.Context, req *e
 		return ErrorResponse(ErrCodeInvalidCredentials, "credentials are incorrect")
 	}
 
-	response, err := provider.GenerateSAMLAssertion(ctx, event.Credentials, event.AppID)
+	response, err := generateSAMLResponse(ctx, event, provider)
 	if err != nil {
 		msg := fmt.Sprintf("unable to generate SAML assertion: %s", err)
 		log.Errorf(msg)
