@@ -54,13 +54,14 @@ type duoPushResponse struct {
 // New returns a new Duo client that uses the provided logger
 func New() Duo {
 	duoHTTPClient := &http.Client{
-		Timeout: time.Second * consts.HttpTimeoutInSeconds,
+		Timeout: time.Second * consts.HttpTimeout,
 	}
 	return Duo{httpClient: duoHTTPClient}
 }
 
 // SendPush emulates the workflow of the Duo WebAPI and sends the
-//  requesting user a push to the device set as "phone1"
+//
+//	requesting user a push to the device set as "phone1"
 func (d *Duo) SendPush(txSignature, stateToken, callbackURL, apiHostName string) (string, error) {
 	sid, err := d.getSid(txSignature, stateToken, callbackURL, apiHostName)
 	if err != nil {

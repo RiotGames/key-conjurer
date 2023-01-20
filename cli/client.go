@@ -57,7 +57,7 @@ func NewClient(hostname string) (Client, error) {
 				RootCAs: certs,
 			},
 		},
-		Timeout: time.Second * ClientHttpTimeoutInSeconds,
+		Timeout: time.Second * time.Duration(clientHttpTimeoutSeconds),
 	}
 
 	return Client{http: httpClient, hostname: hostname}, nil

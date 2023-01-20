@@ -85,7 +85,7 @@ type logStashHook struct {
 
 func newLogStashHook(endpoint string) *logStashHook {
 	timeoutDialer := &net.Dialer{
-		Timeout: time.Second * consts.HttpTimeoutInSeconds,
+		Timeout: time.Second * consts.HttpTimeout,
 	}
 
 	conn, err := timeoutDialer.Dial("tcp", endpoint)
