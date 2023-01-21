@@ -26,7 +26,7 @@ build: $(SERVERLESS_BUILDS)
 
 $(SERVERLESS_BUILDS): build_dir
 	$(info building ${@})
-	GOOS=linux go build -ldflags $(ldflags) -o ../builds/$(TF_WORKSPACE)/$(subst serverless_functions/,,$@) $@/*.go;
+	GOOS=linux GOARCH=amd64 go build -ldflags $(ldflags) -o ../builds/$(TF_WORKSPACE)/$(subst serverless_functions/,,$@) $@/*.go;
 
 build_dir:
 	mkdir -p builds
