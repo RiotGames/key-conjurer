@@ -78,6 +78,12 @@ func (c *Client) do(ctx context.Context, url string, r io.Reader, responseStruct
 		return fmt.Errorf("error sending http request: %w", err)
 	}
 
+	if res.StatusCode == http.StatusGatewayTimeout {
+		// This indicates that our Lambda function took too long and our API Gateway gave up.
+		// The user cannot do anything about this.
+		return errors.New("API Gateway Timeout")
+	}
+
 	typ, _, _ := mime.ParseMediaType(res.Header.Get("Content-Type"))
 	if !strings.EqualFold(typ, "application/json") {
 		if res.StatusCode >= 500 {
@@ -87,10 +93,9 @@ func (c *Client) do(ctx context.Context, url string, r io.Reader, responseStruct
 		}
 	}
 
-	dec := json.NewDecoder(res.Body)
 	defer res.Body.Close()
 	var response keyconjurer.Response
-	if err := dec.Decode(&response); err != nil {
+	if err := json.NewDecoder(res.Body).Decode(&response); err != nil {
 		return errInvalidJSONResponse
 	}
 

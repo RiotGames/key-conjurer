@@ -5,7 +5,7 @@ import (
 )
 
 var (
-	HttpTimeout      time.Duration = 120
+	HttpTimeout      time.Duration = 120 * time.Second
 	Version                        = "go run"
 	LogstashEndpoint               = ""
 )
