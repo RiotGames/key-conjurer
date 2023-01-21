@@ -5,6 +5,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+<<<<<<< HEAD
+=======
+	"io"
+	"log"
+	"net/http"
+	"strings"
+>>>>>>> 7cf402f (Correctly format the response to the client)
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-sdk-go/aws/session"
