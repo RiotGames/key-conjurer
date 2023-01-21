@@ -16,28 +16,26 @@ ifndef TF_WORKSPACE
 $(error TF_WORKSPACE is not set)
 endif
 
-.PHONY: all linux  darwin windows build dir test build_requirements
+.PHONY: all build dir test build_requirements
 
+all: \
+	../builds/$(TF_WORKSPACE)/cli/keyconjurer-linux \
+	../builds/$(TF_WORKSPACE)/cli/keyconjurer-darwin-amd64 \
+	../builds/$(TF_WORKSPACE)/cli/keyconjurer-darwin-arm64 \
+	../builds/$(TF_WORKSPACE)/cli/keyconjurer-windows.exe
 
-all: linux darwin windows
+../builds/$(TF_WORKSPACE)/cli/keyconjurer-linux:
+	GOOS=linux GOARCH=amd64 BUILD_TARGET=keyconjurer-linux $(MAKE) build
 
+../builds/$(TF_WORKSPACE)/cli/keyconjurer-darwin:
+../builds/$(TF_WORKSPACE)/cli/keyconjurer-darwin-amd64:
+../builds/$(TF_WORKSPACE)/cli/keyconjurer-darwin-arm64:
+	GOOS=linux GOARCH=amd64 BUILD_TARGET=keyconjurer-darwin $(MAKE) build
+	GOOS=linux GOARCH=arm64 BUILD_TARGET=keyconjurer-darwin-arm64 $(MAKE) build
+	cp ../builds/$(TF_WORKSPACE)/cli/keyconjurer-darwin ../builds/$(TF_WORKSPACE)/cli/keyconjurer-darwin-amd64
 
-linux: export GOOS=linux
-linux: export BUILD_TARGET=keyconjurer-linux
-linux: dir
-	make build
-
-
-darwin: export GOOS=darwin
-darwin: export BUILD_TARGET=keyconjurer-darwin
-darwin: dir
-	make build
-
-
-windows: export GOOS=windows
-windows: export BUILD_TARGET=keyconjurer-windows.exe
-windows: dir
-	make build
+../builds/$(TF_WORKSPACE)/cli/keyconjurer-windows.exe:
+	GOOS=windows GOARCH=amd64 BUILD_TARGET=keyconjurer-windows.exe $(MAKE) build
 
 dir:
 	mkdir -p ../builds/$(TF_WORKSPACE)/cli

@@ -33,10 +33,17 @@ class History extends Component {
             <br />
             <br />
             <a
-              href={`${keyConjurerDomain}/${binaryName}-darwin`}
+              href={`${keyConjurerDomain}/${binaryName}-darwin-amd64`}
               download={`${binaryName}`}
             >
               {`${binaryName}`}-darwin (osx)
+            </a>
+            <br />
+            <a
+              href={`${keyConjurerDomain}/${binaryName}-darwin-arm64`}
+              download={`${binaryName}`}
+            >
+              {`${binaryName}`}-darwin (osx M1/M2)
             </a>
             <br />
             <a

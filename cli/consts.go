@@ -27,7 +27,8 @@ var DownloadURL string = "URL not set yet"
 // CLI binary names
 const LinuxBinaryName string = "keyconjurer-linux"
 const WindowsBinaryName string = "keyconjurer-windows.exe"
-const DarwinBinaryName string = "keyconjurer-darwin"
+const DarwinArm64BinaryName string = "keyconjurer-darwin-arm64"
+const DarwinAmd64BinaryName string = "keyconjurer-darwin-amd64"
 
 const appname string = "keyconjurer"
 

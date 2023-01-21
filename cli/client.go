@@ -222,7 +222,10 @@ func getBinaryName() string {
 	case "windows":
 		return WindowsBinaryName
 	default:
-		return DarwinBinaryName
+		if runtime.GOARCH == "arm64" {
+			return DarwinArm64BinaryName
+		}
+		return DarwinAmd64BinaryName
 	}
 }
 
