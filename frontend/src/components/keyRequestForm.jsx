@@ -164,10 +164,14 @@ class KeyRequestForm extends Component {
               <Form.Group widths='equal'>
                 <Form.Field>
                   <label htmlFor="account">Account</label>
-                  <select className='ui field dropdown selection' disabled={!accounts.length} id="account" placeholder={accountPlaceHolder} onChange={this.setAccount} value={selectedAccount}>
-                    {accounts.map(({ name, id }) =>
-                      <option key={id} value={id}>{name}</option>
-                    )}
+                  <select className='ui field dropdown selection' disabled={!accounts.length} id="account" onChange={this.setAccount} value={selectedAccount}>
+                    { !selectedAccount && <option hidden>{ accountPlaceHolder }</option> }
+
+                    {
+                      accounts.map(({ name, id }) =>
+                        <option key={id} value={id}>{name}</option>
+                      )
+                    }
                   </select>
                 </Form.Field>
 
