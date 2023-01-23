@@ -30,8 +30,8 @@ all: \
 ../builds/$(TF_WORKSPACE)/cli/keyconjurer-darwin:
 ../builds/$(TF_WORKSPACE)/cli/keyconjurer-darwin-amd64:
 ../builds/$(TF_WORKSPACE)/cli/keyconjurer-darwin-arm64:
-	GOOS=linux GOARCH=amd64 BUILD_TARGET=keyconjurer-darwin $(MAKE) build
-	GOOS=linux GOARCH=arm64 BUILD_TARGET=keyconjurer-darwin-arm64 $(MAKE) build
+	GOOS=darwin GOARCH=amd64 BUILD_TARGET=keyconjurer-darwin $(MAKE) build
+	GOOS=darwin GOARCH=arm64 BUILD_TARGET=keyconjurer-darwin-arm64 $(MAKE) build
 	cp ../builds/$(TF_WORKSPACE)/cli/keyconjurer-darwin ../builds/$(TF_WORKSPACE)/cli/keyconjurer-darwin-amd64
 
 ../builds/$(TF_WORKSPACE)/cli/keyconjurer-windows.exe:
