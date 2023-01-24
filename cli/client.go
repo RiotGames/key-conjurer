@@ -10,6 +10,7 @@ import (
 	"io"
 	"mime"
 	"net/http"
+	"net/url"
 	"runtime"
 	"strings"
 	"time"
@@ -30,22 +31,19 @@ var (
 	errInvalidJSONResponse    = errors.New("unable to parse JSON from the server")
 )
 
-func createAPIURL(hostname, path string) string {
-	if strings.HasPrefix(path, "/") {
-		return fmt.Sprintf("%v%v", hostname, path)
-	}
-
-	return fmt.Sprintf("%v/%v", hostname, path)
+func createAPIURL(base url.URL, path string) string {
+	base.Path = strings.TrimPrefix(path, "/")
+	return base.String()
 }
 
 // Client is the struct through which all KeyConjurer operations stem.
 type Client struct {
-	hostname string
-	http     *http.Client
+	baseURL url.URL
+	http    *http.Client
 }
 
 // NewClient creates a new client with the given hostname.
-func NewClient(hostname string) (Client, error) {
+func NewClient(baseURL url.URL) (Client, error) {
 	certs, err := rootcerts.LoadSystemCAs()
 	if err != nil {
 		return Client{}, fmt.Errorf("could not load System root CA files. Reason: %v", err)
@@ -60,11 +58,11 @@ func NewClient(hostname string) (Client, error) {
 		Timeout: time.Second * time.Duration(clientHttpTimeoutSeconds),
 	}
 
-	return Client{http: httpClient, hostname: hostname}, nil
+	return Client{http: httpClient, baseURL: baseURL}, nil
 }
 
-func (c *Client) do(ctx context.Context, url string, r io.Reader, responseStruct interface{}) error {
-	apiURL := createAPIURL(c.hostname, url)
+func (c *Client) do(ctx context.Context, path string, r io.Reader, responseStruct interface{}) error {
+	apiURL := createAPIURL(c.baseURL, path)
 	req, err := http.NewRequestWithContext(ctx, "POST", apiURL, r)
 	if err != nil {
 		return err
