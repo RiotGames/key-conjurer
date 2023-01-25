@@ -33,6 +33,4 @@ POLICY
       }
     }
   }
-
-  tags = var.tags
 }

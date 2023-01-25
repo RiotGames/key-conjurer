@@ -46,7 +46,5 @@ resource "aws_cloudfront_distribution" "keyconjurer_distribution" {
     ssl_support_method  = "sni-only"
   }
 
-  web_acl_id = aws_waf_web_acl.keyconjurer_waf_acl.id
-  tags       = var.tags
+  web_acl_id = var.waf_acl_id == "" ? aws_waf_web_acl.keyconjurer_waf_acl[0].id : var.waf_acl_id
 }
-

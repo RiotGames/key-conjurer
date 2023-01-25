@@ -1,9 +1,15 @@
 resource "aws_security_group" "keyconjurer-default" {
-  name        = "Key Conjurer ${terraform.workspace}"
+  name_prefix = "keyconjurer"
   description = "default security group to allow most expected protocols"
   vpc_id      = var.vpc_id
 
-  tags = var.tags
+  egress {
+    from_port        = 0
+    to_port          = 0
+    protocol         = "-1"
+    cidr_blocks      = ["0.0.0.0/0"]
+    ipv6_cidr_blocks = ["::/0"]
+  }
 }
 
 resource "aws_lambda_function" "keyconjurer-get_aws_creds" {
@@ -25,8 +31,6 @@ resource "aws_lambda_function" "keyconjurer-get_aws_creds" {
     subnet_ids         = var.subnets
     security_group_ids = [aws_security_group.keyconjurer-default.id]
   }
-
-  tags = var.tags
 }
 
 resource "aws_lambda_function" "keyconjurer-get_user_data" {
@@ -48,8 +52,6 @@ resource "aws_lambda_function" "keyconjurer-get_user_data" {
     subnet_ids         = var.subnets
     security_group_ids = [aws_security_group.keyconjurer-default.id]
   }
-
-  tags = var.tags
 }
 
 
@@ -72,6 +74,4 @@ resource "aws_lambda_function" "keyconjurer-list_providers" {
     subnet_ids         = var.subnets
     security_group_ids = [aws_security_group.keyconjurer-default.id]
   }
-
-  tags = var.tags
 }

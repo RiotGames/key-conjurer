@@ -1,8 +1,8 @@
 prod_build = ./build/index.html
 prod_input = ./src/App.js ./src/actions.js ./src/index.js ./src/stores.js ./src/components/*.jsx ./src/version.js
 
-ifndef TF_WORKSPACE
-$(error TF_WORKSPACE is not set)
+ifndef RELEASE
+$(error RELEASE is not set)
 endif
 
 ifndef FRONTEND_URL
@@ -24,7 +24,7 @@ dev: reset_version version
 build: create_consts_file version $(prod_input)
 	npm install \
 	&& npm run-script build \
-	&& cp -R build/* ../builds/$(TF_WORKSPACE)/frontend
+	&& cp -R build/* ../builds/$(RELEASE)/frontend
 
 reset_consts_file:
 	echo "export const keyConjurerDomain = '';" > ./src/consts.js \
@@ -41,7 +41,7 @@ create_consts_file:
 	&& echo "export const documentationURL = '${DOCUMENTATION_URL}';" >> ./src/consts.js
 
 version:
-	echo "export const version = '$$(git rev-parse --short HEAD)-$(TF_WORKSPACE)';"  > ./src/version.js
+	echo "export const version = '$$(git rev-parse --short HEAD)-$(RELEASE)';"  > ./src/version.js
 
 reset_version:
 	echo "export const version = '';" > ./src/version.js

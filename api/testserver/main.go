@@ -1,7 +1,7 @@
 package main
 
 import (
-	"io/ioutil"
+	"io"
 	"mime"
 	"net/http"
 
@@ -14,11 +14,11 @@ type server struct {
 	h keyconjurer.Handler
 }
 
-// encodeGatewayResponse encodes the given APIGatewayProxyResponse to JSON
+// encodeTargetGroupResponse encodes the given ALBTargetGroupResponse to JSON
 //
 // In normal operation, AWS will extract our payload from this response.
 // We must manually do this in the test server because the client will not understand it.
-func encodeGatewayResponse(w http.ResponseWriter, response *events.APIGatewayProxyResponse) {
+func encodeTargetGroupResponse(w http.ResponseWriter, response *events.ALBTargetGroupResponse) {
 	w.Header().Set("Content-Type", mime.FormatMediaType("application/json", map[string]string{"encoding": "utf8"}))
 
 	// Body is already JSON
@@ -31,20 +31,20 @@ func (s *server) getAWSCreds(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	body, err := ioutil.ReadAll(r.Body)
+	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	request := &events.APIGatewayProxyRequest{Body: string(body)}
+	request := &events.ALBTargetGroupRequest{Body: string(body)}
 	resp, err := s.h.GetTemporaryCredentialEventHandler(r.Context(), request)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	encodeGatewayResponse(w, resp)
+	encodeTargetGroupResponse(w, resp)
 }
 
 func (s *server) getUserData(w http.ResponseWriter, r *http.Request) {
@@ -53,20 +53,20 @@ func (s *server) getUserData(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	body, err := ioutil.ReadAll(r.Body)
+	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	request := &events.APIGatewayProxyRequest{Body: string(body)}
+	request := &events.ALBTargetGroupRequest{Body: string(body)}
 	resp, err := s.h.GetUserDataEventHandler(r.Context(), request)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	encodeGatewayResponse(w, resp)
+	encodeTargetGroupResponse(w, resp)
 }
 
 func (s *server) listAuthenticationProviders(w http.ResponseWriter, r *http.Request) {
@@ -81,7 +81,7 @@ func (s *server) listAuthenticationProviders(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	encodeGatewayResponse(w, resp)
+	encodeTargetGroupResponse(w, resp)
 }
 
 func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {

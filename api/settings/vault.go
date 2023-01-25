@@ -36,7 +36,7 @@ func retrieveFromVault() (*Settings, error) {
 	}
 
 	if _, err := client.Auth.IAM.Login(opts); err != nil {
-		return nil, fmt.Errorf("unable to login to Vault")
+		return nil, fmt.Errorf("unable to login to Vault: %w", err)
 	}
 
 	kvOpts := vault.KV2GetOptions{

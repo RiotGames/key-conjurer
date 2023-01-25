@@ -28,11 +28,6 @@ variable "lambda_env" {
   description = "Enviroment variables for lambdas"
 }
 
-variable "region" {
-  type        = string
-  description = "AWS region"
-}
-
 variable "s3_tf_bucket" {
   type        = string
   description = "Bucket to store terraform information; it should be same as the one in your AWS provider"
@@ -43,12 +38,28 @@ variable "subnets" {
   description = "Subnets to use for deployment"
 }
 
-variable "tags" {
-  type        = map(string)
-  description = "Tags to use for AWS resources"
-}
-
 variable "vpc_id" {
   type        = string
   description = "VPC to use for deployment"
+}
+
+variable waf_acl_id {
+  type = string
+  default = ""
+  description = "The ACL to use with the Cloudfront distribution that is created. if not specified, an ACL which blocks all public access will be created"
+}
+
+variable allowed_cidrs_ipv4 {
+  type = list(string)
+  default = []
+}
+
+variable allowed_cidrs_ipv6 {
+  type = list(string)
+  default = []
+}
+
+variable kms_key_arn {
+  type = string
+  description = "The KMS encryption key that is used to encrypt and decrypt credentials so that they are not stored on the users drive in plaintext"
 }
