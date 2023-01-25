@@ -43,23 +43,22 @@ variable "vpc_id" {
   description = "VPC to use for deployment"
 }
 
+variable create_waf_acl {
+  type = bool
+  default = false
+}
+
 variable waf_acl_id {
   type = string
   default = ""
   description = "The ACL to use with the Cloudfront distribution that is created. if not specified, an ACL which blocks all public access will be created"
 }
 
-variable allowed_cidrs_ipv4 {
-  type = list(string)
-  default = []
-}
-
-variable allowed_cidrs_ipv6 {
-  type = list(string)
-  default = []
-}
-
 variable kms_key_arn {
   type = string
   description = "The KMS encryption key that is used to encrypt and decrypt credentials so that they are not stored on the users drive in plaintext"
+}
+
+variable lb_security_group_ids {
+  type = list(string)
 }

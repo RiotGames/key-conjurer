@@ -1,8 +1,10 @@
 resource "aws_lb" "keyconjurer" {
-  name_prefix     = "keycon"
-  internal        = true
-  security_groups = [aws_security_group.keyconjurer-lb.id]
-  subnets         = var.subnets
+  name_prefix = "keycon"
+  internal    = true
+  subnets = var.subnets
+  security_groups = concat(var.lb_security_group_ids, [
+    aws_security_group.keyconjurer-lb.id
+  ])
 }
 
 resource "aws_lb_listener" "keyconjurer" {
@@ -124,22 +126,6 @@ resource "aws_lambda_permission" "lb-list_providers" {
 resource "aws_security_group" "keyconjurer-lb" {
   name_prefix = "keyconjurer-lb"
   vpc_id      = var.vpc_id
-
-  ingress {
-    from_port        = 80
-    to_port          = 80
-    protocol         = "tcp"
-    cidr_blocks      = var.allowed_cidrs_ipv4
-    ipv6_cidr_blocks = var.allowed_cidrs_ipv6
-  }
-
-  ingress {
-    from_port        = 443
-    to_port          = 443
-    protocol         = "tcp"
-    cidr_blocks      = var.allowed_cidrs_ipv4
-    ipv6_cidr_blocks = var.allowed_cidrs_ipv6
-  }
 
   egress {
     from_port        = 0

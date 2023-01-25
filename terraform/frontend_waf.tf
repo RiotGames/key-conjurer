@@ -1,5 +1,5 @@
 resource "aws_waf_ipset" "ipset" {
-  count = var.waf_acl_id == "" ? 1 : 0
+  count = var.create_waf_acl == true ? 1 : 0
 
   name = "keyconjurer-${terraform.workspace}-tfIPSet"
   ip_set_descriptors {
@@ -9,7 +9,7 @@ resource "aws_waf_ipset" "ipset" {
 }
 
 resource "aws_waf_rule" "not_ip_rule" {
-  count = var.waf_acl_id == "" ? 1 : 0
+  count = var.create_waf_acl == true ? 1 : 0
 
   name        = "KeyConjurer${terraform.workspace}WafRule"
   metric_name = "KeyConjurer${terraform.workspace}WafRule"
@@ -22,7 +22,7 @@ resource "aws_waf_rule" "not_ip_rule" {
 }
 
 resource "aws_waf_web_acl" "keyconjurer_waf_acl" {
-  count = var.waf_acl_id == "" ? 1 : 0
+  count = var.create_waf_acl == true ? 1 : 0
 
   name        = "KeyConjurerWAF${terraform.workspace}WebACL"
   metric_name = "KeyConjurerWAF${terraform.workspace}WebACL"
