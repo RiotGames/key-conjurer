@@ -1,0 +1,1 @@
+terraform fmt `find . -type f -name "*.tf" | uniq`
