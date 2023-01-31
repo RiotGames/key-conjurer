@@ -7,12 +7,12 @@ resource "aws_lb" "keyconjurer" {
   ])
 }
 
-resource "aws_lb_listener" "keyconjurer" {
+resource "aws_lb_listener" "https" {
   load_balancer_arn = aws_lb.keyconjurer.arn
-  # TODO: HTTPS
-  # TODO: redirect all http to https
-  port     = "80"
-  protocol = "HTTP"
+  certificate_arn = var.api_cert
+
+  port     = "443"
+  protocol = "HTTPS"
 
   default_action {
     type = "fixed-response"
@@ -24,8 +24,24 @@ resource "aws_lb_listener" "keyconjurer" {
   }
 }
 
+resource "aws_lb_listener" "https_redirect" {
+  load_balancer_arn = aws_lb.keyconjurer.arn
+  port              = "80"
+  protocol          = "HTTP"
+
+  default_action {
+    type = "redirect"
+
+    redirect {
+      port        = "443"
+      protocol    = "HTTPS"
+      status_code = "HTTP_301"
+    }
+  }
+}
+
 resource "aws_lb_listener_rule" "get_aws_creds" {
-  listener_arn = aws_lb_listener.keyconjurer.arn
+  listener_arn = aws_lb_listener.https.arn
 
   action {
     type             = "forward"
@@ -40,7 +56,7 @@ resource "aws_lb_listener_rule" "get_aws_creds" {
 }
 
 resource "aws_lb_listener_rule" "list_providers" {
-  listener_arn = aws_lb_listener.keyconjurer.arn
+  listener_arn = aws_lb_listener.https.arn
 
   action {
     type             = "forward"
@@ -55,7 +71,7 @@ resource "aws_lb_listener_rule" "list_providers" {
 }
 
 resource "aws_lb_listener_rule" "get_user_data" {
-  listener_arn = aws_lb_listener.keyconjurer.arn
+  listener_arn = aws_lb_listener.https.arn
 
   action {
     type             = "forward"
