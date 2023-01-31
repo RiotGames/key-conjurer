@@ -1,7 +1,7 @@
 resource "aws_lb" "keyconjurer" {
   name_prefix = "keycon"
   internal    = true
-  subnets = var.subnets
+  subnets     = var.subnets
   security_groups = concat(var.lb_security_group_ids, [
     aws_security_group.keyconjurer-lb.id
   ])
@@ -9,7 +9,7 @@ resource "aws_lb" "keyconjurer" {
 
 resource "aws_lb_listener" "https" {
   load_balancer_arn = aws_lb.keyconjurer.arn
-  certificate_arn = var.api_cert
+  certificate_arn   = var.api_cert
 
   port     = "443"
   protocol = "HTTPS"
