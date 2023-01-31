@@ -13,13 +13,13 @@ const History = () => (
         Publishing AWS API keys publicly (e.g. to Github) is a significant
         security risk to Riot and our players. On several occasions, Rioters
         have unfortunately done this and these leaked keys have been used to
-        modify AWS infrastructures, though the worst case of having player
-        data compromised has thankfully not been realised.
+        modify AWS infrastructures, though the worst case of having player data
+        compromised has thankfully not been realised.
       </Card.Content>
       <Divider />
       <Card.Content>
-        This service provides temporary AWS API keys. Log in to retrieve a
-        list of AWS accounts available to you.
+        This service provides temporary AWS API keys. Log in to retrieve a list
+        of AWS accounts available to you.
       </Card.Content>
       <Divider />
       <Card.Content>
@@ -35,13 +35,9 @@ const History = () => (
           {`${binaryName}`}-darwin (osx M1/M2)
         </a>
         <br />
-        <a href={`${binaryName}-linux`}>
-          {`${binaryName}`}-linux
-        </a>
+        <a href={`${binaryName}-linux`}>{`${binaryName}`}-linux</a>
         <br />
-        <a href={`${binaryName}-windows.exe`}>
-          {`${binaryName}`}-windows
-        </a>
+        <a href={`${binaryName}-windows.exe`}>{`${binaryName}`}-windows</a>
       </Card.Content>
     </Card.Content>
   </Card>
