@@ -32,7 +32,7 @@ test("should change account to first account in list when the account list is ch
   update("idpInfo", { apps: [] });
 
   const select = getByLabelText("Account");
-  expect(select.value).toEqual("");
+  expect(select.value).toEqual("No Accounts");
 
   update("idpInfo", {
     apps: [
@@ -118,5 +118,5 @@ test("should change account to the first account in list if one has been selecte
     ],
   });
 
-  expect(select.value).toEqual("0");
+  expect(select.value).toEqual("Accounts");
 });
