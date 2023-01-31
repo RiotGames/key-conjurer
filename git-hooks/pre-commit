@@ -1,1 +1,1 @@
-terraform fmt `find . -type f -name "*.tf" | uniq`
+terraform fmt `git diff --name-only | grep "*.tf" | uniq`
