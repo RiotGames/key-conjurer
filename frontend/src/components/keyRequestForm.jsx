@@ -174,13 +174,15 @@ class KeyRequestForm extends Component {
                     onChange={this.setAccount}
                     value={selectedAccount}
                   >
-                    { !selectedAccount && <option hidden>{ accountPlaceHolder }</option> }
+                    {!selectedAccount && (
+                      <option hidden>{accountPlaceHolder}</option>
+                    )}
 
-                    {
-                      accounts.map(({ name, id }) =>
-                        <option key={id} value={id}>{name}</option>
-                      )
-                    }
+                    {accounts.map(({ name, id }) => (
+                      <option key={id} value={id}>
+                        {name}
+                      </option>
+                    ))}
                   </select>
                 </Form.Field>
 
