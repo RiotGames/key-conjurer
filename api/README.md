@@ -10,10 +10,10 @@ The deployment of the Key Conjurer API is taken care of by the main makefile and
 
 ## API Deployment Requirements
 1. Private API Gateway endpoint in your VPC
-1. A version enabled S3 bucket
-1. Valid AWS credentials in environment or credentials file
-1. A KMS key (accessible via Lambda)
-
+2. A version enabled S3 bucket
+3. Valid AWS credentials in environment or credentials file
+4. A KMS key (accessible via Lambda)
+5. Terraform 1.3.7 or better
 
 ## Lambda Env Settings
 ### Environment Variables
