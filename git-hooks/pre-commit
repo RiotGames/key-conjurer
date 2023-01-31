@@ -1,2 +1,2 @@
 terraform fmt **/*.tf
-cd frontend && npx --no prettier -- -w src/**/*.{jsx,js} && cd -
+cd frontend && npm run fmt && cd -
