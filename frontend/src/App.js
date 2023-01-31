@@ -10,7 +10,7 @@ import { updateUserInfo } from "./actions";
 
 const App = () => {
   React.useEffect(() => {
-    if (localStorage.getItem("provider") === "onelogin") {
+    if (localStorage.    getItem("provider") === "onelogin") {
       // Force a user to log out if they are using OneLogin as their provider
       updateUserInfo({ username: "", password: "" });
       localStorage.removeItem("provider");
