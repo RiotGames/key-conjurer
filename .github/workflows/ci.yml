@@ -1,0 +1,63 @@
+name: Pull Request Flow
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  format-code:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          ref: ${{ github.head_ref }}
+      - uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: "1.3.7"
+      - uses: actions/setup-node@v3
+        with:
+          node-version: "16.17.0"
+      - run: terraform fmt **/*.tf
+      - run: npm --prefix frontend ci
+      - run: npm --prefix frontend run-script fmt
+      - name: Commit changes
+        uses: stefanzweifel/git-auto-commit-action@v4
+        with:
+          commit_message: Apply formatting changes
+          branch: ${{ github.head_ref }}
+  client-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          ref: ${{ github.head_ref }}
+      - uses: actions/setup-node@v3
+        with:
+          node-version: "16.17.0"
+      # Tests just need the file to exist with the appropriate exports - the values do not matter.
+      - run: cp frontend/src/consts.template.js frontend/src/consts.js
+      - run: cd frontend && npm install && npm test
+  api-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          ref: ${{ github.head_ref }}
+      - uses: actions/setup-go@v3
+        with:
+          go-version: "1.19"
+      - run: cd api && go test ./...
+  cli-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          ref: ${{ github.head_ref }}
+      - uses: actions/setup-go@v3
+        with:
+          go-version: "1.19"
+      # CLI test requires a dummy ~/.aws/credentials and config file exists.
+      - run: mkdir -p ~/.aws
+      - run: touch ~/.aws/{credentials,config}
+      - run: cd cli && go test ./...

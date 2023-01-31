@@ -27,7 +27,6 @@ const defaultStores = {
   },
 };
 
-
 const stores = _.cloneDeep(defaultStores);
 
 export function save(key, value) {

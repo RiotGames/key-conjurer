@@ -83,12 +83,6 @@ To get started run the following commands:
 	SilenceUsage:  true,
 	SilenceErrors: true,
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-		var err error
-		host, err = parseHostname(host)
-		if err != nil {
-			return fmt.Errorf("invalid hostname: %w", err)
-		}
-
 		fp := keyConjurerRcPath
 		if expanded, err := homedir.Expand(fp); err == nil {
 			fp = expanded
@@ -137,17 +131,27 @@ To get started run the following commands:
 
 var errHostnameCannotContainPath = errors.New("hostname must not contain a path")
 
-func parseHostname(hostname string) (string, error) {
-	uri, err := url.Parse(hostname)
+func ParseAddress(addr string) (url.URL, error) {
+	uri, err := url.Parse(addr)
 	// Sometimes url.Parse is not smart enough to return an error but fails parsing all the same.
 	// This enables us to self-heal if the user passes something like "idp.example.com" or "idp.example.com:4000"
 	if err != nil {
-		return "", err
+		// url.Parse may fail parsing if we received an ip address and port, which should still be valid.
+		_, _, err2 := net.SplitHostPort(addr)
+		if err2 != nil {
+			// Just looks like a completely invalid string
+			return url.URL{}, err
+		}
+
+		return url.URL{
+			Scheme: "http",
+			Host:   addr,
+		}, nil
 	}
 
 	// This indicate the user passed a URL with a path & a port *or* a hostname with a path and neither specified scheme.
 	if strings.Contains(uri.Opaque, "/") || strings.Contains(uri.Path, "/") {
-		return "", errHostnameCannotContainPath
+		return url.URL{}, errHostnameCannotContainPath
 	}
 
 	// If the user passes something like foo.example.com, this will all be dumped inside the Path
@@ -165,16 +169,21 @@ func parseHostname(hostname string) (string, error) {
 	}
 
 	if uri.Host == "" || err != nil {
-		return "", err
+		return url.URL{}, err
 	}
 
 	if uri.Path != "" && uri.Path != "/" {
-		return "", errHostnameCannotContainPath
+		return url.URL{}, errHostnameCannotContainPath
 	}
 
-	return uri.String(), nil
+	return *uri, nil
 }
 
 func newClient() (Client, error) {
-	return NewClient(host)
+	url, err := ParseAddress(host)
+	if err != nil {
+		return Client{}, fmt.Errorf("invalid address: %w", err)
+	}
+
+	return NewClient(url)
 }

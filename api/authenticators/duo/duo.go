@@ -10,7 +10,6 @@ import (
 	"net/url"
 	"regexp"
 	"strings"
-	"time"
 
 	"github.com/riotgames/key-conjurer/api/consts"
 )
@@ -54,7 +53,7 @@ type duoPushResponse struct {
 // New returns a new Duo client that uses the provided logger
 func New() Duo {
 	duoHTTPClient := &http.Client{
-		Timeout: time.Second * consts.HttpTimeout,
+		Timeout: consts.HttpTimeout,
 	}
 	return Duo{httpClient: duoHTTPClient}
 }
