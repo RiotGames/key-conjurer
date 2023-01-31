@@ -23,12 +23,8 @@ class KeyCard extends Component {
   }
 
   render() {
-    const {
-      accessKeyId,
-      secretAccessKey,
-      sessionToken,
-      expiration,
-    } = this.state;
+    const { accessKeyId, secretAccessKey, sessionToken, expiration } =
+      this.state;
 
     const keys = `export AWS_ACCESS_KEY_ID=${accessKeyId}
 export AWS_SECRET_ACCESS_KEY=${secretAccessKey}

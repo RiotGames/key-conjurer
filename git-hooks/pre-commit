@@ -1,1 +1,2 @@
-terraform fmt `git diff --name-only | grep "*.tf" | uniq`
+terraform fmt **/*.tf
+cd frontend && npx --no prettier -- -w src/**/*.{jsx,js} && cd -

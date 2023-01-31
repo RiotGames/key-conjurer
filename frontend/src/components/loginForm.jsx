@@ -73,14 +73,8 @@ class LoginForm extends Component {
   };
 
   render() {
-    const {
-      username,
-      password,
-      requestSent,
-      error,
-      errorEvent,
-      errorMessage,
-    } = this.state;
+    const { username, password, requestSent, error, errorEvent, errorMessage } =
+      this.state;
 
     return (
       <Card fluid>

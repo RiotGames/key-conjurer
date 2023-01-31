@@ -32,7 +32,6 @@ const RoleInput = ({ onChange, value }) => {
   );
 };
 
-
 class KeyRequestForm extends Component {
   state = {
     accounts: [],
@@ -58,7 +57,7 @@ class KeyRequestForm extends Component {
 
   setAccount = (event) => {
     this.setState({ selectedAccount: event.currentTarget.value });
-  }
+  };
 
   componentDidMount() {
     subscribe("idpInfo", ({ apps: accounts }) => {
@@ -74,7 +73,10 @@ class KeyRequestForm extends Component {
       this.setState((prevState) => {
         if (prevState.selectedAccount !== undefined) {
           // An account was selected by the user.
-          if (accounts.length > 0 && accounts.every(acc => acc.id !== prevState.selectedAccount)) {
+          if (
+            accounts.length > 0 &&
+            accounts.every((acc) => acc.id !== prevState.selectedAccount)
+          ) {
             // There are no accounts in the new account set that match the users current account, so we should unset.
             // This is unlikely to ever happen - a user would have to be removed from an account between two button presses.
             return { accounts, selectedAccount: undefined };
@@ -92,7 +94,7 @@ class KeyRequestForm extends Component {
 
         // The user had no account preference, and there are no special cases for the accounts list,
         // so preserve the current selection.
-        return { accounts }
+        return { accounts };
       });
     });
 
@@ -144,7 +146,7 @@ class KeyRequestForm extends Component {
       errorEvent,
       errorMessage,
       role,
-      selectedAccount
+      selectedAccount,
     } = this.state;
 
     const accountPlaceHolder = accounts.length ? "Accounts" : "No Accounts";
@@ -161,22 +163,38 @@ class KeyRequestForm extends Component {
           <Card.Meta>Will MFA push on request</Card.Meta>
           <Card.Description>
             <Form loading={requestSent} onSubmit={this.handleSubmit}>
-              <Form.Group widths='equal'>
+              <Form.Group widths="equal">
                 <Form.Field>
                   <label htmlFor="account">Account</label>
-                  <select className='ui field dropdown selection' disabled={!accounts.length} id="account" placeholder={accountPlaceHolder} onChange={this.setAccount} value={selectedAccount}>
-                    {accounts.map(({ name, id }) =>
-                      <option key={id} value={id}>{name}</option>
-                    )}
+                  <select
+                    className="ui field dropdown selection"
+                    disabled={!accounts.length}
+                    id="account"
+                    placeholder={accountPlaceHolder}
+                    onChange={this.setAccount}
+                    value={selectedAccount}
+                  >
+                    {accounts.map(({ name, id }) => (
+                      <option key={id} value={id}>
+                        {name}
+                      </option>
+                    ))}
                   </select>
                 </Form.Field>
 
                 <Form.Field>
                   <label htmlFor="timeout">TTL (hours)</label>
-                  <select className='ui field dropdown selection' id="timeout" onChange={this.handleChange("timeout")} value={timeout}>
-                    {timeouts.map((timeout) =>
-                      <option key={timeout} value={timeout}>{timeout}</option>
-                    )}
+                  <select
+                    className="ui field dropdown selection"
+                    id="timeout"
+                    onChange={this.handleChange("timeout")}
+                    value={timeout}
+                  >
+                    {timeouts.map((timeout) => (
+                      <option key={timeout} value={timeout}>
+                        {timeout}
+                      </option>
+                    ))}
                   </select>
                 </Form.Field>
               </Form.Group>
@@ -193,7 +211,7 @@ class KeyRequestForm extends Component {
             )}
           </Card.Description>
         </Card.Content>
-      </Card >
+      </Card>
     );
   }
 }
