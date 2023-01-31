@@ -113,6 +113,7 @@ type GetCredentialsOptions struct {
 	Credentials            core.Credentials
 	ApplicationID          string
 	TimeoutInHours         uint8
+	MFACode                string
 	RoleName               string
 	AuthenticationProvider keyconjurer.AuthenticationProviderName
 }
@@ -133,6 +134,7 @@ func (c *Client) GetCredentials(ctx context.Context, opts *GetCredentialsOptions
 		TimeoutInHours:         opts.TimeoutInHours,
 		RoleName:               opts.RoleName,
 		AuthenticationProvider: opts.AuthenticationProvider,
+		MFACode:                opts.MFACode,
 	}
 
 	buf, err := c.encodeJSON(request)

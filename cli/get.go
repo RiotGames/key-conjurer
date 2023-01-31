@@ -19,6 +19,7 @@ var (
 	roleName       string
 	cloudFlag      string
 	shell          string = shellTypeInfer
+	mfaCode        string
 )
 
 var (
@@ -42,6 +43,7 @@ func init() {
 	getCmd.Flags().StringVar(&roleName, "role", "", "The name of the role to assume.")
 	getCmd.Flags().StringVarP(&cloudFlag, "cloud", "", "aws", "Choose a cloud vendor. Default is aws. Can choose aws or tencent")
 	getCmd.Flags().StringVar(&identityProvider, "identity-provider", defaultIdentityProvider, "The identity provider to use. Refer to `"+appname+" identity-providers` for more info.")
+	getCmd.Flags().StringVarP(&mfaCode, "mfa-code", "m", "", "The MFA code to use. If provided, will not issue a push to a mobile device. This can be considerably faster and more secure than push notifications, but requires more user effort to employ.")
 }
 
 var getCmd = &cobra.Command{
@@ -132,6 +134,7 @@ var getCmd = &cobra.Command{
 		credentials, err = client.GetCredentials(ctx, &GetCredentialsOptions{
 			Credentials:            creds,
 			ApplicationID:          applicationID,
+			MFACode:                strings.TrimSpace(mfaCode),
 			RoleName:               roleName,
 			TimeoutInHours:         uint8(ttl),
 			AuthenticationProvider: identityProvider,
