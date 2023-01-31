@@ -73,17 +73,17 @@ func (r *Response) GetError(dest *ErrorData) error {
 	return json.Unmarshal(raw, dest)
 }
 
-// DataResponse returns a response that wraps the data in an APIGatewayProxyResponse in the correct format.
+// DataResponse returns a response that wraps the data in an ALBTargetGroupResponse in the correct format.
 // Error is always nil to make returning from a Lambda less cumbersome.
-func DataResponse(data interface{}) (*events.APIGatewayProxyResponse, error) {
+func DataResponse(data interface{}) (*events.ALBTargetGroupResponse, error) {
 	// Message must be "success" for legacy clients to correctly interpret it
 	response := Response{Success: true, Message: "success", Data: data}
 	body, err := json.Marshal(response)
 	if err != nil {
-		return GetAPIGatewayProxyResponse(ErrCodeInternalServerError, []byte("JSON encoding failed"))
+		return createAWSResponse(ErrCodeInternalServerError, []byte("JSON encoding failed"))
 	}
 
-	return GetAPIGatewayProxyResponse(Success, body)
+	return createAWSResponse(Success, body)
 }
 
 var (
@@ -145,23 +145,22 @@ func (e ErrorData) Error() string {
 
 var _ error = ErrorData{}
 
-// ErrorResponse creates a standardized error response with an error message from the server
-// and wraps it in an APIGatewayProxyResponse that the AWS API gateway understands.
+// ErrorResponse creates a standardized error response with an error message from the server and wraps it in an ALBTargetGroupResponse that the AWS ALB understands.
 // It also always returns a nil error, simply to make returning from a Lambda less cumbersome.
-func ErrorResponse(code ErrorCode, message string) (*events.APIGatewayProxyResponse, error) {
+func ErrorResponse(code ErrorCode, message string) (*events.ALBTargetGroupResponse, error) {
 	response := Response{Success: false, Message: message, Data: ErrorData{Code: code, Message: message}}
 	body, err := json.Marshal(response)
 	if err != nil {
-		return GetAPIGatewayProxyResponse(ErrCodeInternalServerError, []byte("JSON encoding failed"))
+		return createAWSResponse(ErrCodeInternalServerError, []byte("JSON encoding failed"))
 	}
 
-	return GetAPIGatewayProxyResponse(code, body)
+	return createAWSResponse(code, body)
 }
 
-// GetAPIGatewayProxyResponse creates a response that wraps data in an APIGatewayProxyResponse that the AWS API Gateway understands.
+// createAWSResponse creates a response that wraps data in an ALBTargetGroupResponse that the AWS API Gateway understands.
 // It also sets an HTTP status code based on a specified error code.
-func GetAPIGatewayProxyResponse(code ErrorCode, data []byte) (*events.APIGatewayProxyResponse, error) {
-	return &events.APIGatewayProxyResponse{
+func createAWSResponse(code ErrorCode, data []byte) (*events.ALBTargetGroupResponse, error) {
+	return &events.ALBTargetGroupResponse{
 		StatusCode:        code.GetHttpStatus(),
 		Headers:           map[string]string{"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"},
 		MultiValueHeaders: make(map[string][]string),

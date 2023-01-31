@@ -31,16 +31,7 @@ Current platforms supported for deployment are:
 
 ## Platform Pre-Deployment Resources
 
-### Generate/Initialize AWS Resources
-
-1. Certificates - Make sure a certificate in ACM is requested with the desired hostname (the arn will be needed later)
-
-```
-aws acm request-certificate --domain-name <api domain> --validation-method EMAIL --region us-east-1
-aws acm request-certificate --domain-name <frontend domain> --validation-method EMAIL --region us-east-1
-```
-
-2. Make an S3 Bucket:
+1. Make an S3 Bucket:
 
 ```
 aws s3api create-bucket --bucket <terraform state bucket> --region us-west-2 --create-bucket-configuration LocationConstraint=us-west-2
@@ -69,7 +60,6 @@ Create `prod.env` based on `example.env`.
 | Variable          | Purpose                                                           |
 | ----------------- | ----------------------------------------------------------------- |
 | EncryptedSettings | A KMS encrypted json blob with settings (See below for more info) |
-| AWSRegion         | Used for KMS Region. Typically the same region KeyConjuer is in   |
 
 ##### Encrypted Settings
 
@@ -105,24 +95,101 @@ These steps assume you created `prod.env` as instructed above.
 
 ## First Deploy
 
-```
-source prod.env
-make build deploy
+You'll need to create a Terraform module which references KeyConjurer. We recommend you do this outside of the KeyConjurer folder itself and check your Terraform configuration into source control. An example module that uses KeyConjurer might look like this:
+
+
+```hcl
+resource "aws_acm_certificate" "api-cert" {
+  domain_name       = "api.keyconjurer.example.com"
+  validation_method = "EMAIL"
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
+resource "aws_acm_certificate_validation" "api-cert" {
+  certificate_arn = aws_acm_certificate.api-cert.arn
+}
+
+resource "aws_acm_certificate" "frontend-cert" {
+  domain_name       = "keyconjurer.example.com"
+  validation_method = "EMAIL"
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
+resource "aws_acm_certificate_validation" "frontend-cert" {
+  certificate_arn = aws_acm_certificate.frontend-cert.arn
+}
+
+module "keyconjurer-production" {
+  source          = "./Key-Conjurer/terraform"
+  api_cert        = aws_acm_certificate.development-cert.arn
+  api_domain      = aws_acm_certificate.development-cert.domain_name
+  frontend_cert   = aws_acm_certificate.frontend-cert.arn
+  frontend_domain = aws_acm_certificate.frontend-cert.domain_name
+  vpc_id          = "vpc-xxxxxx"
+  subnets         = ["subnet-xxxxxx", "subnet-xxxxxx", "subnet-xxxxxx"]
+  s3_tf_bucket    = "<the bucket you created in step 1>"
+  kms_key_arn     = data.aws_kms_key.development.arn
+
+  lambda_env = {
+    VAULT_ADDR              = ""
+    VAULT_ROLE_NAME         = "
+    VAULT_SECRET_MOUNT_PATH = ""
+    VAULT_SECRET_PATH       = ""
+    VAULT_AWS_AUTH_PATH     = ""
+    SETTINGS_PROVIDER       = "vault"
+  }
+
+  lb_security_group_ids = []
+  depends_on = [
+    aws_acm_certificate_validation.frontend-cert
+    aws_acm_certificate_validation.api-cert
+  ]
+}
 ```
 
-_When Deploying to AWS_ Ensure the IAM role provisioned by `terraform` has access to use the `KMS` key created above
+After modifying `example.env` to your liking, we would recommend renaming this to `prod.env`. You can then deploy KeyConjurer using the following steps:
+
+```
+$ pwd
+/key-conjurer
+$ make build
+$ cd terraform
+/key-conjurer
+$ make upload
+$ /your/key-conjurer/terraform/folder
+$ terraform apply
+```
+
+During your initial deployment, you may need to verify the domain name you've created. This is left as an exercise to the reader; the only thing KeyConjurer requires is _two_ ACM certificates:
+
+1. One for the frontend Cloudfront distribution
+2. One for the Load Balancer.
 
 ## Future Deploys
 
+Similar to the above steps:
+
 ```
-source prod.env
-make deploy
+$ pwd
+/key-conjurer
+$ make build
+$ cd terraform
+/key-conjurer
+$ make upload
+$ /your/key-conjurer/terraform/folder
+$ terraform apply
 ```
+
 
 ## Noteworthy Info
 
-`frontend` serves the CLI tool. This means the binaries created in `cli`
-need to be uploaded to the same bucket that's used to serve the frontend.
+* `frontend` serves the CLI tool. This means the binaries created in `cli` need to be uploaded to the same bucket that's used to serve the frontend.
+* KeyConjurer's Terraform will create an ACL by default unless `create_waf_acl` is set to _false_ and a WAF ACL is provided using `waf_acl_id`. This default ACL will **block all connections**.
+* Both a Load Balancer Security Group and a WAF are used to control connections to KeyConjurer. These both need to agree on the IP ranges to allow to KeyConjurer, otherwise you may end up in a situation where a user can access the frontend or use KeyConjurer from the CLI, but not both.
 
 # Development
 

@@ -15,30 +15,29 @@ resource "aws_iam_role" "keyconjurer-lambda" {
   ]
 }
 POLICY
+}
 
-  tags = var.tags
+data "aws_iam_policy_document" "keyconjurer_lambda_permissions" {
+  statement {
+    sid       = "AllowAssumeRoleIntoFederatedUser"
+    actions   = ["sts:AssumeRole"]
+    resources = ["arn:aws:sts::*:federated-user/*"]
+  }
+
+  statement {
+    sid = "AllowDecryptAndEncryptCredentials"
+    actions = [
+      "kms:Encrypt",
+      "kms:Decrypt"
+    ]
+    resources = [var.kms_key_arn]
+  }
 }
 
 resource "aws_iam_role_policy" "keyconjurer-lamdba" {
-  name = "keyconjurer-lambda-policy-${terraform.workspace}"
-  role = aws_iam_role.keyconjurer-lambda.id
-
-  policy = <<POLICY
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Effect": "Allow",
-      "Action": [
-          "sts:AssumeRole"
-       ],
-            "Resource": [
-                "arn:aws:sts::*:federated-user/*"
-            ]
-    }
-  ]
-}
-POLICY
+  name   = "keyconjurer-lambda-policy-${terraform.workspace}"
+  role   = aws_iam_role.keyconjurer-lambda.id
+  policy = data.aws_iam_policy_document.keyconjurer_lambda_permissions.json
 }
 
 resource "aws_iam_role_policy_attachment" "keyconjurer-lambda-basic-execution" {

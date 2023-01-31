@@ -3,6 +3,7 @@ package keyconjurer
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -54,6 +55,10 @@ func TestErrorResponseStatusCodes(t *testing.T) {
 	require.Equal(t, 500, proxyResponse.StatusCode, "unexpected status code")
 }
 
+func EscapeQuotes(raw string) string {
+	return strings.ReplaceAll(raw, `"`, `\"`)
+}
+
 func TestResponseMarshalJSON(t *testing.T) {
 	response, err := DataResponse(T{Foo: "Foo", Bar: "Qux"})
 	require.NoError(t, err)
@@ -61,9 +66,14 @@ func TestResponseMarshalJSON(t *testing.T) {
 	b, err := json.Marshal(response)
 	require.NoError(t, err)
 
-	expectedBody := `{\"Success\":true,\"Message\":\"success\",\"Data\":{\"Foo\":\"Foo\",\"Bar\":\"Qux\"}}`
+	expectedBody := `{"Success":true,"Message":"success","Data":{"Foo":"Foo","Bar":"Qux"}}`
 	expectedHeaders := `{"Access-Control-Allow-Origin":"*","Content-Type":"application/json"}`
-	expectedData := fmt.Sprintf(`{"statusCode":200,"headers":%s,"multiValueHeaders":{},"body":"%s"}`, expectedHeaders, expectedBody)
+	expectedFrame := `{"statusCode":200,"statusDescription":"","headers":%s,"multiValueHeaders":{},"body":"%s","isBase64Encoded":false}`
+	expectedData := fmt.Sprintf(expectedFrame,
+		expectedHeaders,
+		EscapeQuotes(expectedBody),
+	)
+
 	require.Equal(t, expectedData, string(b))
 }
 
@@ -78,9 +88,10 @@ func TestErrorResponseMarshalJSON(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, b)
 
-	expectedBody := fmt.Sprintf(`{\"Success\":false,\"Message\":\"%s\",\"Data\":{\"Code\":\"bad_request\",\"Message\":\"%s\"}}`, message, message)
+	expectedBody := fmt.Sprintf(`{"Success":false,"Message":"%s","Data":{"Code":"bad_request","Message":"%s"}}`, message, message)
 	expectedHeaders := `{"Access-Control-Allow-Origin":"*","Content-Type":"application/json"}`
-	expectedData := fmt.Sprintf(`{"statusCode":400,"headers":%s,"multiValueHeaders":{},"body":"%s"}`, expectedHeaders, expectedBody)
+	expectedFrame := `{"statusCode":400,"statusDescription":"","headers":%s,"multiValueHeaders":{},"body":"%s","isBase64Encoded":false}`
+	expectedData := fmt.Sprintf(expectedFrame, expectedHeaders, EscapeQuotes(expectedBody))
 	require.Equal(t, expectedData, string(b))
 }
 

@@ -7,12 +7,12 @@ else
 $(info ${SERVERLESS_BUILDS} will be built)
 endif
 
-ifndef TF_WORKSPACE
-$(error TF_WORKSPACE is not set)
+ifndef RELEASE
+$(error RELEASE is not set)
 endif
 
 version = $(shell git rev-parse --short HEAD)
-ldflags = "-X github.com/riotgames/key-conjurer/api/consts.Version=$(version)-${TF_WORKSPACE}"
+ldflags = "-X github.com/riotgames/key-conjurer/api/consts.Version=$(version)-${RELEASE}"
 
 deploy:
 	make build \
@@ -25,8 +25,7 @@ clean:
 build: $(SERVERLESS_BUILDS)
 
 $(SERVERLESS_BUILDS): build_dir
-	$(info building ${@})
-	GOOS=linux GOARCH=amd64 go build -ldflags $(ldflags) -o ../builds/$(TF_WORKSPACE)/$(subst serverless_functions/,,$@) $@/*.go;
+	GOOS=linux GOARCH=amd64 go build -ldflags $(ldflags) -o ../builds/$(RELEASE)/$(subst serverless_functions/,,$@) $@/*.go;
 
 build_dir:
 	mkdir -p builds
