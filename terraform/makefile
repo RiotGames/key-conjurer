@@ -27,7 +27,7 @@ api_upload: api_zip
 	&& aws s3 cp . s3://$(S3_TF_BUCKET_NAME)/$(RELEASE) --exclude "*" --include "*.zip" --recursive
 
 api_zip:
-	cd ../builds/$(RELEASE)/cloud && \
+	cd ../builds/$(RELEASE)/aws && \
 	zip get_user_data.zip get_user_data \
 	&& zip get_cloud_creds.zip get_cloud_creds \
 	&& zip list_providers.zip list_providers
