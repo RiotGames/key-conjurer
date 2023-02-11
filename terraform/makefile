@@ -23,7 +23,7 @@ frontend_upload:
 	&& aws s3 cp . s3://$(S3_FRONTEND_BUCKET_NAME)-$(RELEASE) --include "*" --recursive
 
 api_upload: api_zip
-	cd ../builds/$(RELEASE)/cloud \
+	cd ../builds/$(RELEASE)/aws \
 	&& aws s3 cp . s3://$(S3_TF_BUCKET_NAME)/$(RELEASE) --exclude "*" --include "*.zip" --recursive
 
 api_zip:
