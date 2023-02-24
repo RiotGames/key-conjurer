@@ -75,7 +75,7 @@ func (r *Response) GetError(dest *ErrorData) error {
 
 // DataResponse returns a response that wraps the data in an ALBTargetGroupResponse in the correct format.
 // Error is always nil to make returning from a Lambda less cumbersome.
-func DataResponse(data interface{}) (*events.ALBTargetGroupResponse, error) {
+func DataResponse(data any) (*events.ALBTargetGroupResponse, error) {
 	// Message must be "success" for legacy clients to correctly interpret it
 	response := Response{Success: true, Message: "success", Data: data}
 	body, err := json.Marshal(response)
@@ -161,8 +161,11 @@ func ErrorResponse(code ErrorCode, message string) (*events.ALBTargetGroupRespon
 // It also sets an HTTP status code based on a specified error code.
 func createAWSResponse(code ErrorCode, data []byte) (*events.ALBTargetGroupResponse, error) {
 	return &events.ALBTargetGroupResponse{
-		StatusCode:        code.GetHttpStatus(),
-		Headers:           map[string]string{"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"},
+		StatusCode: code.GetHttpStatus(),
+		Headers: map[string]string{
+			"Content-Type":                "application/json",
+			"Access-Control-Allow-Origin": "*",
+		},
 		MultiValueHeaders: make(map[string][]string),
 		Body:              string(data),
 		IsBase64Encoded:   false,

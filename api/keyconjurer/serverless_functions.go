@@ -69,6 +69,10 @@ type GetUserDataPayload struct {
 //
 // This MUST be backwards compatible with the old version of KeyConjurer for a time.
 func (h *Handler) GetUserDataEventHandler(ctx context.Context, req *events.ALBTargetGroupRequest) (*events.ALBTargetGroupResponse, error) {
+	if req.HTTPMethod == "OPTIONS" {
+		return createAWSResponse(Success, nil)
+	}
+
 	log := h.log
 
 	var event GetUserDataEvent
@@ -161,6 +165,10 @@ type GetTemporaryCredentialsPayload struct {
 //
 // This MUST be backwards compatible with the old version of KeyConjurer for a time.
 func (h *Handler) GetTemporaryCredentialEventHandler(ctx context.Context, req *events.ALBTargetGroupRequest) (*events.ALBTargetGroupResponse, error) {
+	if req.HTTPMethod == "OPTIONS" {
+		return createAWSResponse(Success, nil)
+	}
+
 	log := h.log
 
 	var event GetTemporaryCredentialEvent
