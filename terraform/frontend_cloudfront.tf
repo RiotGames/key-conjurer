@@ -1,5 +1,5 @@
 resource "aws_cloudfront_origin_access_identity" "keyconjurer_identity" {
-  comment = "Key Conjurer ${terraform.workspace} bucket access"
+  comment = "Key Conjurer bucket access"
 }
 
 resource "aws_cloudfront_distribution" "keyconjurer_distribution" {

@@ -1,6 +1,6 @@
 resource "aws_iam_role" "keyconjurer-lambda" {
-  name               = "keyconjurer-lambda-${terraform.workspace}"
-  description        = "Used by keyconjurer-lambda-${terraform.workspace} to allow lambda execution in a VPC"
+  name               = var.lambda_execution_role_name
+  description        = "Used by KeyConjurer Lambda functions to access protected resources"
   assume_role_policy = <<POLICY
 {
   "Version": "2012-10-17",
@@ -35,7 +35,7 @@ data "aws_iam_policy_document" "keyconjurer_lambda_permissions" {
 }
 
 resource "aws_iam_role_policy" "keyconjurer-lamdba" {
-  name   = "keyconjurer-lambda-policy-${terraform.workspace}"
+  name   = "${var.lambda_execution_role_name}-policy"
   role   = aws_iam_role.keyconjurer-lambda.id
   policy = data.aws_iam_policy_document.keyconjurer_lambda_permissions.json
 }

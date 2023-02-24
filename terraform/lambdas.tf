@@ -13,10 +13,10 @@ resource "aws_security_group" "keyconjurer-default" {
 }
 
 resource "aws_lambda_function" "keyconjurer-get_aws_creds" {
-  function_name    = "keyconjurer-${terraform.workspace}-get_aws_creds"
-  description      = "[${terraform.workspace}] Retrieves STS tokens from AWS after validating the user via OneLogin and MFA"
+  function_name    = "keyconjurer-${var.environment}-get_aws_creds"
+  description      = "[${var.environment}] Retrieves STS tokens from AWS after validating the user via OneLogin and MFA"
   s3_bucket        = var.s3_tf_bucket
-  s3_key           = "${terraform.workspace}/get_cloud_creds.zip"
+  s3_key           = "${var.environment}/get_cloud_creds.zip"
   source_code_hash = "true"
   role             = aws_iam_role.keyconjurer-lambda.arn
   handler          = "get_cloud_creds"
@@ -34,10 +34,10 @@ resource "aws_lambda_function" "keyconjurer-get_aws_creds" {
 }
 
 resource "aws_lambda_function" "keyconjurer-get_user_data" {
-  function_name    = "keyconjurer-${terraform.workspace}-get_user_data"
-  description      = "[${terraform.workspace}] Retrieves user access information from OneLogin"
+  function_name    = "keyconjurer-${var.environment}-get_user_data"
+  description      = "[${var.environment}] Retrieves user access information from OneLogin"
   s3_bucket        = var.s3_tf_bucket
-  s3_key           = "${terraform.workspace}/get_user_data.zip"
+  s3_key           = "${var.environment}/get_user_data.zip"
   source_code_hash = "true"
   role             = aws_iam_role.keyconjurer-lambda.arn
   handler          = "get_user_data"
@@ -56,10 +56,10 @@ resource "aws_lambda_function" "keyconjurer-get_user_data" {
 
 
 resource "aws_lambda_function" "keyconjurer-list_providers" {
-  function_name    = "keyconjurer-${terraform.workspace}-list_providers"
-  description      = "[${terraform.workspace}] List the providers a user can use"
+  function_name    = "keyconjurer-${var.environment}-list_providers"
+  description      = "[${var.environment}] List the providers a user can use"
   s3_bucket        = var.s3_tf_bucket
-  s3_key           = "${terraform.workspace}/list_providers.zip"
+  s3_key           = "${var.environment}/list_providers.zip"
   source_code_hash = "true"
   role             = aws_iam_role.keyconjurer-lambda.arn
   handler          = "list_providers"
