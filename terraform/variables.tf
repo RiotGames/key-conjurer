@@ -63,14 +63,14 @@ variable "lb_security_group_ids" {
   type = list(string)
 }
 
-variable frontend_bucket_name {
+variable "frontend_bucket_name" {
   type = string
 }
 
-variable lambda_execution_role_name {
+variable "lambda_execution_role_name" {
   type = string
 }
 
-variable environment {
+variable "environment" {
   type = string
 }
