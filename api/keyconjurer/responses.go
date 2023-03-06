@@ -163,8 +163,10 @@ func createAWSResponse(code ErrorCode, data []byte) (*events.ALBTargetGroupRespo
 	return &events.ALBTargetGroupResponse{
 		StatusCode: code.GetHttpStatus(),
 		Headers: map[string]string{
-			"Content-Type":                "application/json",
-			"Access-Control-Allow-Origin": "*",
+			"Content-Type":                 "application/json",
+			"Access-Control-Allow-Origin":  "*",
+			"Access-Control-Allow-Headers": "*",
+			"Access-Control-Allow-Method":  "*",
 		},
 		MultiValueHeaders: make(map[string][]string),
 		Body:              string(data),
