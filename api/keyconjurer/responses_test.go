@@ -63,36 +63,26 @@ func TestResponseMarshalJSON(t *testing.T) {
 	response, err := DataResponse(T{Foo: "Foo", Bar: "Qux"})
 	require.NoError(t, err)
 
-	b, err := json.Marshal(response)
-	require.NoError(t, err)
-
 	expectedBody := `{"Success":true,"Message":"success","Data":{"Foo":"Foo","Bar":"Qux"}}`
-	expectedHeaders := `{"Access-Control-Allow-Origin":"*","Content-Type":"application/json"}`
-	expectedFrame := `{"statusCode":200,"statusDescription":"","headers":%s,"multiValueHeaders":{},"body":"%s","isBase64Encoded":false}`
-	expectedData := fmt.Sprintf(expectedFrame,
-		expectedHeaders,
-		EscapeQuotes(expectedBody),
-	)
-
-	require.Equal(t, expectedData, string(b))
+	require.Equal(t, expectedBody, response.Body)
+	require.Equal(t, "*", response.Headers["Access-Control-Allow-Origin"])
+	require.Equal(t, "*", response.Headers["Access-Control-Allow-Headers"])
+	require.Equal(t, "*", response.Headers["Access-Control-Allow-Method"])
+	require.Equal(t, "application/json", response.Headers["Content-Type"])
+	require.Equal(t, 200, response.StatusCode)
 }
 
 func TestErrorResponseMarshalJSON(t *testing.T) {
 	message := "this is a error message"
-
 	response, err := ErrorResponse(ErrCodeBadRequest, message)
 	require.NoError(t, err)
-	require.NotNil(t, response)
-
-	b, err := json.Marshal(response)
-	require.NoError(t, err)
-	require.NotNil(t, b)
-
 	expectedBody := fmt.Sprintf(`{"Success":false,"Message":"%s","Data":{"Code":"bad_request","Message":"%s"}}`, message, message)
-	expectedHeaders := `{"Access-Control-Allow-Origin":"*","Content-Type":"application/json"}`
-	expectedFrame := `{"statusCode":400,"statusDescription":"","headers":%s,"multiValueHeaders":{},"body":"%s","isBase64Encoded":false}`
-	expectedData := fmt.Sprintf(expectedFrame, expectedHeaders, EscapeQuotes(expectedBody))
-	require.Equal(t, expectedData, string(b))
+	require.Equal(t, expectedBody, response.Body)
+	require.Equal(t, "*", response.Headers["Access-Control-Allow-Origin"])
+	require.Equal(t, "*", response.Headers["Access-Control-Allow-Headers"])
+	require.Equal(t, "*", response.Headers["Access-Control-Allow-Method"])
+	require.Equal(t, "application/json", response.Headers["Content-Type"])
+	require.Equal(t, 400, response.StatusCode)
 }
 
 func TestResponseGetPayload(t *testing.T) {
