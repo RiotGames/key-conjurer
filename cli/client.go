@@ -18,6 +18,7 @@ import (
 	rootcerts "github.com/hashicorp/go-rootcerts"
 	"github.com/riotgames/key-conjurer/api/core"
 	"github.com/riotgames/key-conjurer/api/keyconjurer"
+	"github.com/riotgames/key-conjurer/providers"
 )
 
 // client and version are injected at compile time, refer to consts.go
@@ -114,7 +115,7 @@ type GetCredentialsOptions struct {
 	ApplicationID          string
 	TimeoutInHours         uint8
 	RoleName               string
-	AuthenticationProvider keyconjurer.AuthenticationProviderName
+	AuthenticationProvider string
 }
 
 func (c *Client) encodeJSON(data interface{}) (bytes.Buffer, error) {
@@ -156,7 +157,7 @@ func (c *Client) GetCredentials(ctx context.Context, opts *GetCredentialsOptions
 
 type GetUserDataOptions struct {
 	Credentials            core.Credentials
-	AuthenticationProvider keyconjurer.AuthenticationProviderName
+	AuthenticationProvider string
 }
 
 // GetUserData returns data on the user stored in the API.
@@ -176,7 +177,7 @@ func (c *Client) GetUserData(ctx context.Context, opts *GetUserDataOptions) (key
 }
 
 type ListAccountsOptions struct {
-	AuthenticationProvider keyconjurer.AuthenticationProviderName
+	AuthenticationProvider string
 	Credentials            core.Credentials
 }
 
@@ -189,7 +190,7 @@ func (c *Client) ListAccounts(ctx context.Context, opts *ListAccountsOptions) ([
 	}
 
 	if opts.AuthenticationProvider == "" {
-		payload.AuthenticationProvider = keyconjurer.AuthenticationProviderOkta
+		payload.AuthenticationProvider = providers.Okta
 	}
 
 	buf, err := c.encodeJSON(payload)

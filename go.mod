@@ -19,7 +19,7 @@ require (
 	github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/cam v1.0.392
 	github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/common v1.0.479
 	github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/sts v1.0.479
-	github.com/valyala/fastjson v1.6.3
+	github.com/tidwall/gjson v1.14.4
 	golang.org/x/crypto v0.0.0-20201016220609-9e8e0b390897
 	golang.org/x/net v0.0.0-20200904194848-62affa334b73
 )
@@ -54,6 +54,8 @@ require (
 	github.com/ryanuber/go-glob v1.0.0 // indirect
 	github.com/smartystreets/goconvey v0.0.0-20190330032615-68dc04aab96a // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
+	github.com/tidwall/match v1.1.1 // indirect
+	github.com/tidwall/pretty v1.2.0 // indirect
 	golang.org/x/sys v0.0.0-20220708085239-5a0f0661e09d // indirect
 	golang.org/x/text v0.3.3 // indirect
 	golang.org/x/time v0.0.0-20200630173020-3af7569d3a1e // indirect

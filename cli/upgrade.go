@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"runtime"
@@ -37,7 +36,7 @@ var upgradeCmd = &cobra.Command{
 //  replaces the old one, finally it removes itself from the filesystem. The cmd prompt should
 //  appear on the users screen to give them feedback that the download process began an ended.
 func windowsDownload(keyConjurerRcPath string) error {
-	f, err := ioutil.TempFile(os.TempDir(), "keyconjurer-downloader-*.cmd")
+	f, err := os.CreateTemp(os.TempDir(), "keyconjurer-downloader-*.cmd")
 	if err != nil {
 		return fmt.Errorf("unable to create download script: %w", err)
 	}
