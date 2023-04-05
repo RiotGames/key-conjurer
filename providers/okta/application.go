@@ -100,6 +100,7 @@ func DetermineUpgradePath(resp IdentifyResponse) (MultiFactorUpgradeMethod, bool
 	return nil, false
 }
 
+// ApplicationSAMLSource handles the SP-initiated SAML flow for KeyConjurer.
 type ApplicationSAMLSource string
 
 func (source ApplicationSAMLSource) URL() string {
@@ -206,12 +207,11 @@ func (source ApplicationSAMLSource) GetAssertion(ctx context.Context, username, 
 		return nil, fmt.Errorf("could not upgrade session with mfa: %w", err)
 	}
 
-	// HACK: In the live version of Okta, a different series of events is followed, where the correct URL obtained by following /idp/idx/introspect.
-	// However, we can also issue a request to the application endpoint again, because at this point we have a valid session in our http.Client cookie jar.
-	//
-	// Note that this only works for the 'old' flow - for the new flow, we do indeed need introspect.
+	// This type switch violates encapsulation but I've yet to find a "neat" way of encapsulating the Okta-Duo relationship in a single type that isn't a leaky abstraction.
 	switch method.(type) {
 	case DuoIframe:
+		// HACK: In the live version of Okta, a different series of events is followed, where the correct URL obtained by following /idp/idx/introspect.
+		// However, we can also issue a request to the application endpoint again, because at this point we have a valid session in our http.Client cookie jar.
 		req, _ = http.NewRequest("GET", string(source.URL()), nil)
 		resp, err = client.Do(req)
 		if err != nil {

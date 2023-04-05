@@ -35,21 +35,11 @@ func (f DuoIframe) Upgrade(ctx context.Context, client *http.Client) (StateToken
 		"stateHandle": f.StateHandle,
 	}
 
-	// HACK: This sequence of events doesn't track with what is experienced in the web browser.
-	// In the web browser, vals is sent to f.CallbackURL, like here, but the response is inspected to retrieve the `success.href` property within the body -
-	// this is a redirect link which, when followed, should redirect us to the SAML page.
-	//
-	// However, this appears to always return HTTP 500 and take quite a bit of time to execute.
-	//
-	// As mentioned in application.go, we can work around this by visiting the application link again, which the caller will do - because our cookie jar in
-	// the http.Client is tracking all of our cookies, we have a valid session by the time this call ends, with or without following the redirection, because
-	// the session is upgraded with the following request.
+	// The following request will redirect us back to Okta when we receive a successful response.
 	reqBuf, _ := json.Marshal(vals)
 	req, _ := http.NewRequestWithContext(ctx, f.Method, f.CallbackURL, bytes.NewReader(reqBuf))
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := client.Do(req)
-	// We need to get the redirect URI. This redirect will fail with a HTTP 500, but is necessary to ensure the state token is upgraded.
-	// The redirect URI can be found at success.href.
 	if err != nil {
 		return f.StateToken, err
 	}
@@ -60,9 +50,14 @@ func (f DuoIframe) Upgrade(ctx context.Context, client *http.Client) (StateToken
 		return f.StateToken, err
 	}
 
-	// This call WILL http 500 and that is ok! we just need to ensure it goes through.
-	// It's unclear why it HTTP 500s, but the important part is that we issue the request to success.href (which will usually be /redirect with a state token).
-	// Okta still sets the appropriate response cookie, allowing us to authenticate.
+	// HACK: This HTTP response will always HTTP 500.
+	//
+	// The SP-initiated flow using an application link always yields a HTTP 500 on the last redirect.
+	// This has been raised with Okta and it's not clear why this occurs.
+	//
+	// Because the SP-initiated flow works so well in DuoFrameless, and the SP-initiated flow with DuoIframe will only be around for a short while, we're okay with this hack.
+	//
+	// The server will always return HTTP 500 here, but it will still upgrade the users session and set the cookie. Without this step, the session won't be upgraded correctly and a user won't be able to auth.
 	req, _ = http.NewRequestWithContext(ctx, "GET", gjson.GetBytes(bodyBuf, "success.href").Str, nil)
 	_, err = client.Do(req)
 	return f.StateToken, err
