@@ -224,6 +224,7 @@ func (d DuoV4) Prompt(ctx context.Context, session Session, factor, device strin
 	return session, nil
 }
 
+// PromptPhone1 issues a push notification to the default mobile phone device for the user which is 2fa compatible.
 func (d DuoV4) PromptPhone1(ctx context.Context, session Session) (Session, error) {
 	return d.Prompt(ctx, session, "Duo Push", "phone1")
 }
