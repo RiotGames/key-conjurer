@@ -53,14 +53,12 @@ func (p AuthResponse) Factors() []okta.UserFactor {
 	return factors
 }
 
-func (p AuthResponse) UserID() string {
+func (p AuthResponse) FindUserID() (string, error) {
 	var user struct {
 		ID string `json:"id"`
 	}
 
-	// Error intentionally ignored.
-	p.Embedded.Get("user", &user)
-	return user.ID
+	return user.ID, p.Embedded.Get("user", &user)
 }
 
 func NewAuthClient(hostname string, opts ...func(*AuthClient)) AuthClient {

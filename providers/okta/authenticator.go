@@ -25,7 +25,16 @@ type Authenticator struct {
 func (a Authenticator) Authenticate(ctx context.Context, creds providers.Credentials) (core.User, error) {
 	req := AuthRequest{Username: creds.Username, Password: creds.Password}
 	res, err := a.oktaAuthClient.VerifyCredentials(ctx, req)
-	return core.User{ID: res.UserID()}, err
+	if err != nil {
+		return core.User{}, err
+	}
+
+	id, err := res.FindUserID()
+	if err != nil {
+		return core.User{}, err
+	}
+
+	return core.User{ID: id}, err
 }
 
 // ListApplications should list all the applications the given user is entitled to access.
