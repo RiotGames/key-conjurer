@@ -14,8 +14,6 @@ import (
 	"github.com/okta/okta-sdk-golang/v2/okta/query"
 )
 
-var ErrNoSupportedFactors = errors.New("no supported second factors")
-
 type Authenticator struct {
 	client         *okta.Client
 	oktaAuthClient AuthClient

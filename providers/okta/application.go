@@ -17,6 +17,12 @@ import (
 	"golang.org/x/net/publicsuffix"
 )
 
+var (
+	ErrStateTokenNotFound           = errors.New("could not find state token")
+	ErrNoSupportedMultiFactorDevice = errors.New("no supported multi-factor device")
+	ErrUnauthorized                 = errors.New("unauthorized")
+)
+
 // StateToken is a token extracted from the body of an Okta response.
 //
 // It is used to track a single session.
@@ -128,7 +134,7 @@ func (source ApplicationSAMLSource) Identify(ctx context.Context, client *http.C
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusForbidden {
-		err = errors.New("user does not have access to this application")
+		err = ErrUnauthorized
 		return
 	}
 
@@ -200,7 +206,7 @@ func (source ApplicationSAMLSource) GetAssertion(ctx context.Context, username, 
 
 	stateToken, ok := findStateToken(buf)
 	if !ok {
-		return nil, fmt.Errorf("could not find state token: %w", err)
+		return nil, ErrStateTokenNotFound
 	}
 
 	identifyResponse, err := source.Identify(ctx, &client, resp.Request.URL, username, password, stateToken)
@@ -210,7 +216,7 @@ func (source ApplicationSAMLSource) GetAssertion(ctx context.Context, username, 
 
 	method, ok := DetermineUpgradePath(identifyResponse)
 	if !ok {
-		return nil, errors.New("could determine 2fa upgrade path - users probably does not have a supported device")
+		return nil, ErrNoSupportedMultiFactorDevice
 	}
 
 	nextStateToken, err := method.Upgrade(ctx, &client)
