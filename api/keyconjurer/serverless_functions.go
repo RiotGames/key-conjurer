@@ -198,7 +198,7 @@ func (h *Handler) GetTemporaryCredentialEventHandler(ctx context.Context, req *e
 
 	response, err := provider.GenerateSAMLAssertion(ctx, providers.Credentials(event.Credentials), event.AppID)
 	if err != nil {
-		log.Errorf("Unable to authenticate user. The credentials may be incorrect, or something may have gone wrong internally. Reason: %w", err)
+		log.Errorf("Unable to authenticate user. The credentials may be incorrect, or something may have gone wrong internally. Reason: %s", err)
 		return ErrorResponse(getErrorCode(err), "Unable to authenticate. Your credentials may be incorrect. Please contact your system administrators if you're unsure of what to do.")
 	}
 
