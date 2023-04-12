@@ -76,16 +76,19 @@ type IdentifyResponse struct {
 	}
 }
 
+// DetermineUpgradePath determines which multi-factor authentication method the current user should avail of to upgrade their session.
 func DetermineUpgradePath(resp IdentifyResponse) (MultiFactorUpgradeMethod, bool) {
-	// Two iterations is fine, this is a small list
-	// Prefer Duo OIDC flow
-	for _, rem := range resp.Remediation.Value {
+	// authMethods is a list of all of the authentication methods available to a user to upgrade their session into a fully authenticated one.
+	// This list's order is not guaranteed, so we loop through it twice: Once to find the first available authenticator of type OIDC, and next to find the first available authenticator with the name challenge-authenticator.
+	// This ensures that we always prefer OIDC authenticators first (which is the DuoFrameless flow), and only fall back to challenge-authenticator (which is the DuoFrame flow) as a last resort.
+	authMethods := resp.Remediation.Value
+	for _, rem := range authMethods {
 		if rem.Type == "OIDC" {
 			return DuoFrameless{remediation: rem}, true
 		}
 	}
 
-	for _, rem := range resp.Remediation.Value {
+	for _, rem := range authMethods {
 		// This is intentionally 'Name' as Type is missing for cases where this is true.
 		if rem.Name == "challenge-authenticator" && resp.CurrentAuthenticatorEnrollment.Value.Key == "duo" {
 			host := resp.CurrentAuthenticatorEnrollment.Value.ContextualData.Host
