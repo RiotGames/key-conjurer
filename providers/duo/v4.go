@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/riotgames/key-conjurer/pkg/htmlutil"
 	"github.com/tidwall/gjson"
 	"golang.org/x/net/html"
 )
@@ -102,7 +103,7 @@ func (d DuoV4) AuthFromResponse(ctx context.Context, resp *http.Response) (Sessi
 		return Session{}, err
 	}
 
-	form, ok := findFirstForm(body)
+	form, ok := htmlutil.FindFirstForm(body)
 	if !ok {
 		// Couldn't find a form - This is probably the wrong web page, or the format changed somehow
 		return Session{}, ErrCouldNotFindDuoForm
@@ -123,7 +124,7 @@ func (d DuoV4) AuthFromResponse(ctx context.Context, resp *http.Response) (Sessi
 		return Session{}, err
 	}
 
-	form, ok = findFirstForm(body)
+	form, ok = htmlutil.FindFirstForm(body)
 	if !ok {
 		return Session{}, ErrCouldNotFindDuoForm
 	}
@@ -143,7 +144,7 @@ func (d DuoV4) AuthFromResponse(ctx context.Context, resp *http.Response) (Sessi
 		return Session{}, err
 	}
 
-	form, ok = findFirstForm(body)
+	form, ok = htmlutil.FindFirstForm(body)
 	if !ok {
 		return Session{}, ErrCouldNotFindDuoForm
 	}

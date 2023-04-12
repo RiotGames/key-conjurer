@@ -12,6 +12,7 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/riotgames/key-conjurer/pkg/htmlutil"
 	"golang.org/x/net/html"
 	"golang.org/x/net/publicsuffix"
 )
@@ -226,7 +227,7 @@ func (source ApplicationSAMLSource) GetAssertion(ctx context.Context, username, 
 		defer resp.Body.Close()
 
 		doc, _ := html.Parse(resp.Body)
-		appForm, ok := findFormByID(doc, "appForm")
+		appForm, ok := htmlutil.FindFormByID(doc, "appForm")
 		if !ok {
 			return nil, errors.New("could not find SAMLResponse within response from Okta")
 		}
@@ -246,7 +247,7 @@ func (source ApplicationSAMLSource) GetAssertion(ctx context.Context, username, 
 
 		defer resp.Body.Close()
 		doc, _ := html.Parse(resp.Body)
-		appForm, ok := findFormByID(doc, "appForm")
+		appForm, ok := htmlutil.FindFormByID(doc, "appForm")
 		if !ok {
 			return nil, errors.New("could not find SAMLResponse within response from Okta")
 		}

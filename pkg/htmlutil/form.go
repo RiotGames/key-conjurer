@@ -1,4 +1,4 @@
-package okta
+package htmlutil
 
 import (
 	"net/url"
@@ -59,7 +59,29 @@ func collectFormValues(node *html.Node) (Form, error) {
 	return f, nil
 }
 
-func findFormByID(node *html.Node, id string) (Form, bool) {
+// FindFirstForm finds the first form within the given HTML document and returns it, or false if it doesn't exist.
+func FindFirstForm(node *html.Node) (Form, bool) {
+	if node == nil {
+		return Form{}, false
+	}
+
+	if node.Data == "form" {
+		form, err := collectFormValues(node)
+		return form, err == nil
+	}
+
+	for node := node.FirstChild; node != nil; node = node.NextSibling {
+		form, ok := FindFirstForm(node)
+		if ok {
+			return form, ok
+		}
+	}
+
+	return Form{}, false
+}
+
+// FindFormByID returns the first form present in the given document with the given ID, or false if it doesn't exist.
+func FindFormByID(node *html.Node, id string) (Form, bool) {
 	if node == nil {
 		return Form{}, false
 	}
@@ -73,7 +95,7 @@ func findFormByID(node *html.Node, id string) (Form, bool) {
 	}
 
 	for node := node.FirstChild; node != nil; node = node.NextSibling {
-		form, ok := findFormByID(node, id)
+		form, ok := FindFormByID(node, id)
 		if ok {
 			return form, ok
 		}
