@@ -38,12 +38,9 @@ func getAttribute(attrs []html.Attribute, key string) (string, bool) {
 	return "", false
 }
 
-// Walk traverses the given HTML node and calls the function walker on each one encountered.
-//
-// Walk will continue executing until walker returns false or Walk reaches the end of the tree.
-func Walk(node *html.Node, walker func(node *html.Node) bool) {
+func walkInner(node *html.Node, walker func(node *html.Node) bool) bool {
 	if node == nil {
-		return
+		return false
 	}
 
 	for node := node.FirstChild; node != nil; node = node.NextSibling {
@@ -51,12 +48,28 @@ func Walk(node *html.Node, walker func(node *html.Node) bool) {
 			continue
 		}
 
+		// If the walker tells to stop, then we should stop
 		if stop := walker(node); stop {
-			return
+			return true
 		}
 
-		Walk(node, walker)
+		// Pass the stop signal back up
+		stop := walkInner(node, walker)
+		if stop {
+			return true
+		}
 	}
+
+	return false
+}
+
+// Walk traverses the given HTML node and calls the function walker on each one encountered.
+//
+// Walk will continue executing until walker returns false or Walk reaches the end of the tree.
+//
+// Walk uses depth-first search.
+func Walk(node *html.Node, walker func(node *html.Node) bool) {
+	walkInner(node, walker)
 }
 
 func collectFormValues(node *html.Node) (Form, error) {
@@ -66,7 +79,6 @@ func collectFormValues(node *html.Node) (Form, error) {
 	}
 
 	f.Method, _ = getAttribute(node.Attr, "method")
-
 	Walk(node, func(node *html.Node) bool {
 		if node.Data != "input" {
 			return false
@@ -86,24 +98,24 @@ func collectFormValues(node *html.Node) (Form, error) {
 }
 
 // FindFirstForm finds the first form within the given HTML document and returns it, or false if it doesn't exist.
-func FindFirstForm(node *html.Node) (Form, bool) {
-	if node == nil {
+func FindFirstForm(tree *html.Node) (Form, bool) {
+	var formNode *html.Node
+
+	Walk(tree, func(n *html.Node) bool {
+		if n.Data == "form" {
+			formNode = n
+			return true
+		}
+
+		return false
+	})
+
+	if formNode == nil {
 		return Form{}, false
 	}
 
-	if node.Data == "form" {
-		form, err := collectFormValues(node)
-		return form, err == nil
-	}
-
-	for node := node.FirstChild; node != nil; node = node.NextSibling {
-		form, ok := FindFirstForm(node)
-		if ok {
-			return form, ok
-		}
-	}
-
-	return Form{}, false
+	form, err := collectFormValues(formNode)
+	return form, err == nil
 }
 
 // FindFormByID returns the first form present in the given document with the given ID, or false if it doesn't exist.

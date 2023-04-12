@@ -127,7 +127,6 @@ func Test_FindFirstFormFindsFormsNestedWithinChildren(t *testing.T) {
 
 	form, ok := FindFirstForm(node)
 	require.True(t, ok)
-
 	require.Equal(t, "a non-empty value", form.Inputs["value1"])
 }
 
@@ -205,4 +204,32 @@ func TestWalkWalksElementsCorrectly(t *testing.T) {
 	})
 
 	assert.Equal(t, expected, elements)
+}
+
+func TestWalkStopsWhenFunctionReturnsTrue(t *testing.T) {
+	doc := `<html>
+<head />
+<body>
+	<div id=1 />
+	<div id=2 />
+	<div id=3>
+		<div id=4>
+	</div>
+	<div id=5 />
+</body>
+</html>`
+
+	var lastElement *html.Node
+	node, err := html.Parse(strings.NewReader(doc))
+	require.NoError(t, err)
+
+	Walk(node, func(node *html.Node) bool {
+		lastElement = node
+		id, _ := getAttribute(lastElement.Attr, "id")
+		return id == "4"
+	})
+
+	require.NotNil(t, lastElement)
+	id, _ := getAttribute(lastElement.Attr, "id")
+	assert.Equal(t, id, "4")
 }
