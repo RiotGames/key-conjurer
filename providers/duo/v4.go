@@ -91,7 +91,7 @@ type Session struct {
 	Xsrf string
 }
 
-// OpenFromResponse is like Open, but it consumes the given response rather than issuing one.
+// AuthFromResponse is like Open, but it consumes the given response rather than issuing one.
 //
 // This is useful when you know you have been redirected to the Duo session Auth page.
 func (d DuoV4) AuthFromResponse(ctx context.Context, resp *http.Response) (Session, error) {
