@@ -85,3 +85,47 @@ func Test_findFormByID(t *testing.T) {
 	require.Equal(t, "a jwt object", form.Inputs["tx"])
 	require.Equal(t, "xsrf token", form.Inputs["_xsrf"])
 }
+
+func Test_FindFormByIDFindsFormsNestedWithinChildren(t *testing.T) {
+	doc := `<html>
+<body>
+	<div />
+	<form id="another form"></form>
+	<div>
+		<form method="post" id="form">
+			<input type="string" name="value1" value="a non-empty value" />
+		</form>
+	</div>
+</body>
+</html>`
+
+	node, err := html.Parse(strings.NewReader(doc))
+	require.NoError(t, err)
+
+	form, ok := FindFormByID(node, "form")
+	require.True(t, ok)
+
+	require.Equal(t, "a non-empty value", form.Inputs["value1"])
+}
+
+func Test_FindFirstFormFindsFormsNestedWithinChildren(t *testing.T) {
+	doc := `<html>
+<body>
+	<div />
+	<div>
+		<form method="post" id="form">
+			<input type="string" name="value1" value="a non-empty value" />
+		</form>
+	</div>
+	<form id="another form"></form>
+</body>
+</html>`
+
+	node, err := html.Parse(strings.NewReader(doc))
+	require.NoError(t, err)
+
+	form, ok := FindFirstForm(node)
+	require.True(t, ok)
+
+	require.Equal(t, "a non-empty value", form.Inputs["value1"])
+}
