@@ -198,9 +198,8 @@ func (h *Handler) GetTemporaryCredentialEventHandler(ctx context.Context, req *e
 
 	response, err := provider.GenerateSAMLAssertion(ctx, providers.Credentials(event.Credentials), event.AppID)
 	if err != nil {
-		msg := fmt.Sprintf("unable to generate SAML assertion: %s", err)
-		log.Errorf(msg)
-		return ErrorResponse(getErrorCode(err), msg)
+		log.Errorf("Unable to authenticate user %s. The credentials may be incorrect, or something may have gone wrong internally. Reason: %w", err)
+		return ErrorResponse(getErrorCode(err), "Unable to authenticate. Your credentials may be incorrect. Please contact your system administrators if you're unsure of what to do.")
 	}
 
 	cloudFlag, sts, err := h.cloud.GetTemporaryCredentialsForUser(ctx, event.RoleName, response, int(event.TimeoutInHours))
