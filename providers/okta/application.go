@@ -125,6 +125,7 @@ func (source ApplicationSAMLSource) Identify(ctx context.Context, client *http.C
 	if err != nil {
 		return
 	}
+	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusForbidden {
 		err = errors.New("user does not have access to this application")
@@ -152,6 +153,7 @@ func (source ApplicationSAMLSource) Introspect(ctx context.Context, client *http
 	if err != nil {
 		return
 	}
+	defer resp.Body.Close()
 
 	err = json.NewDecoder(resp.Body).Decode(&introspectResponse)
 	return
