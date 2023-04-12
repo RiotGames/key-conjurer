@@ -22,6 +22,7 @@ func (f DuoFrameless) Upgrade(ctx context.Context, client *http.Client) (StateTo
 	if err != nil {
 		return "", err
 	}
+	defer resp.Body.Close()
 
 	d := duo.DuoV4{
 		Client:  client,

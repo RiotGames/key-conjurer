@@ -95,8 +95,6 @@ type Session struct {
 //
 // This is useful when you know you have been redirected to the Duo session Auth page.
 func (d DuoV4) AuthFromResponse(ctx context.Context, resp *http.Response) (Session, error) {
-	defer resp.Body.Close()
-
 	// This is the /frame/frameless/v4/auth stage.
 	body, err := html.Parse(resp.Body)
 	if err != nil {
