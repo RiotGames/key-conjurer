@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/net/html"
 )
@@ -128,4 +129,80 @@ func Test_FindFirstFormFindsFormsNestedWithinChildren(t *testing.T) {
 	require.True(t, ok)
 
 	require.Equal(t, "a non-empty value", form.Inputs["value1"])
+}
+
+func Test_FindFormByIDFindsNestedInputs(t *testing.T) {
+	doc := `<html>
+<body>
+	<div />
+	<div>
+		<form method="post" id="form">
+			<div>
+				<input type="string" name="value1" value="a non-empty value" />
+			</div>
+		</form>
+	</div>
+	<form id="another form"></form>
+</body>
+</html>`
+
+	node, err := html.Parse(strings.NewReader(doc))
+	require.NoError(t, err)
+
+	form, ok := FindFormByID(node, "form")
+	require.True(t, ok)
+
+	require.Equal(t, "a non-empty value", form.Inputs["value1"])
+}
+
+func Test_FindFirstFormFindsNestedInputs(t *testing.T) {
+	doc := `<html>
+<body>
+	<div />
+	<div>
+		<form method="post" id="form">
+			<div>
+				<input type="string" name="value1" value="a non-empty value" />
+			</div>
+		</form>
+	</div>
+	<form id="another form"></form>
+</body>
+</html>`
+
+	node, err := html.Parse(strings.NewReader(doc))
+	require.NoError(t, err)
+
+	form, ok := FindFirstForm(node)
+	require.True(t, ok)
+
+	require.Equal(t, "a non-empty value", form.Inputs["value1"])
+}
+
+func TestWalkWalksElementsCorrectly(t *testing.T) {
+	doc := `<html>
+<head />
+<body>
+	<div />
+	<div>
+		<form method="post" id="form">
+			<div>
+				<input type="string" name="value1" value="a non-empty value" />
+			</div>
+		</form>
+	</div>
+	<form id="another form"></form>
+</body>
+</html>`
+	expected := []string{"html", "head", "body", "div", "div", "form", "div", "input", "form"}
+	elements := []string{}
+	node, err := html.Parse(strings.NewReader(doc))
+	require.NoError(t, err)
+
+	Walk(node, func(node *html.Node) bool {
+		elements = append(elements, node.Data)
+		return false
+	})
+
+	assert.Equal(t, expected, elements)
 }

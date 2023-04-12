@@ -1,6 +1,7 @@
 package htmlutil
 
 import (
+	"errors"
 	"net/url"
 
 	"golang.org/x/net/html"
@@ -37,24 +38,49 @@ func getAttribute(attrs []html.Attribute, key string) (string, bool) {
 	return "", false
 }
 
+// Walk traverses the given HTML node and calls the function walker on each one encountered.
+//
+// Walk will continue executing until walker returns false or Walk reaches the end of the tree.
+func Walk(node *html.Node, walker func(node *html.Node) bool) {
+	if node == nil {
+		return
+	}
+
+	for node := node.FirstChild; node != nil; node = node.NextSibling {
+		if node.Type != html.ElementNode {
+			continue
+		}
+
+		if stop := walker(node); stop {
+			return
+		}
+
+		Walk(node, walker)
+	}
+}
+
 func collectFormValues(node *html.Node) (Form, error) {
 	var f Form
-	if node.Type != html.ElementNode || node.Data != "form" {
-		panic("invalid element given to parseForm")
+	if node == nil || node.Type != html.ElementNode || node.Data != "form" {
+		return Form{}, errors.New("invalid element given to parseForm")
 	}
 
 	f.Method, _ = getAttribute(node.Attr, "method")
-	for node := node.FirstChild; node != nil; node = node.NextSibling {
-		if node.Data == "input" {
-			if f.Inputs == nil {
-				f.Inputs = make(map[string]string)
-			}
 
-			name, _ := getAttribute(node.Attr, "name")
-			val, _ := getAttribute(node.Attr, "value")
-			f.Inputs[name] = val
+	Walk(node, func(node *html.Node) bool {
+		if node.Data != "input" {
+			return false
 		}
-	}
+
+		if f.Inputs == nil {
+			f.Inputs = make(map[string]string)
+		}
+
+		name, _ := getAttribute(node.Attr, "name")
+		val, _ := getAttribute(node.Attr, "value")
+		f.Inputs[name] = val
+		return false
+	})
 
 	return f, nil
 }
@@ -81,25 +107,20 @@ func FindFirstForm(node *html.Node) (Form, bool) {
 }
 
 // FindFormByID returns the first form present in the given document with the given ID, or false if it doesn't exist.
-func FindFormByID(node *html.Node, id string) (Form, bool) {
-	if node == nil {
-		return Form{}, false
-	}
-
-	if node.Data == "form" {
-		attrID, _ := getAttribute(node.Attr, "id")
-		if attrID == id {
-			form, err := collectFormValues(node)
-			return form, err == nil
+func FindFormByID(tree *html.Node, id string) (Form, bool) {
+	var formNode *html.Node
+	Walk(tree, func(n *html.Node) bool {
+		if n.Data == "form" {
+			attrID, _ := getAttribute(n.Attr, "id")
+			if attrID == id {
+				formNode = n
+				return true
+			}
 		}
-	}
 
-	for node := node.FirstChild; node != nil; node = node.NextSibling {
-		form, ok := FindFormByID(node, id)
-		if ok {
-			return form, ok
-		}
-	}
+		return false
+	})
 
-	return Form{}, false
+	form, err := collectFormValues(formNode)
+	return form, err == nil
 }
