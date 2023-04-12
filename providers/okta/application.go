@@ -153,8 +153,12 @@ func (source ApplicationSAMLSource) Introspect(ctx context.Context, client *http
 	return
 }
 
+// findStateToken extracts an Okta state token from the given set of bytes, which must be a HTML response from a page which initiates an Okta session.
+//
+// Okta uses JavaScript redirections to drive the authentication mechanism within its website. To authenticate with Okta, one requires a state token. KeyConjurer relies on intercepting HTTP response from Okta to capture the SAML response in order to exchange that SAML response for temporary credentials with AWS. Because Riot's Okta configuration does not have redirection URLs set up back to KeyConjurer, we're not able to use a headless browser like Selenium to follow the JavaScript redirects, because the browser would follow redirects to the AWS (or Tencent) console. Therefore, we need to get a state token and execute the flow manually. The only way to retrieve a state token that works in both the legacy and in the OAuth redirection flow is by interrogating a SP-initiated response from Okta, which will contain the state token within an inline script on the page.
+//
+// This is brittle. If anything within KeyConjurer were to break, it's most likely this portion of the code. We have mentioned our reliance on this idiosyncrasy to Okta, and hopefully they never change it.
 func findStateToken(b []byte) (StateToken, bool) {
-	// Extremely cursed
 	matches := stateTokenExpr.FindSubmatch(b)
 	idx := stateTokenExpr.SubexpIndex("Token")
 	if len(matches) < idx+1 {
