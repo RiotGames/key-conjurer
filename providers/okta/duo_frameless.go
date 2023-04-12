@@ -2,6 +2,8 @@ package okta
 
 import (
 	"context"
+	"fmt"
+	"io"
 	"net/http"
 	"regexp"
 
@@ -33,7 +35,18 @@ func (f DuoFrameless) Upgrade(ctx context.Context, client *http.Client) (StateTo
 	}
 
 	defer resp.Body.Close()
-	return extractStateToken(resp.Body)
+
+	buf, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("could not read response body: %w", err)
+	}
+
+	stateToken, ok := findStateToken(buf)
+	if !ok {
+		return "", fmt.Errorf("could not find state token: %w", err)
+	}
+
+	return stateToken, nil
 }
 
 // handleFramelessDuoFlow handles a Duo-type remediation flow from Okta using the OIDC duo flow.

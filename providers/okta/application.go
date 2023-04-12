@@ -153,24 +153,18 @@ func (source ApplicationSAMLSource) Introspect(ctx context.Context, client *http
 	return
 }
 
-func extractStateToken(r io.Reader) (StateToken, error) {
+func findStateToken(b []byte) (StateToken, bool) {
 	// Extremely cursed
-	bodyBuf, err := io.ReadAll(r)
-	if err != nil {
-		return "", err
-	}
-
-	// Extremely cursed
-	matches := stateTokenExpr.FindSubmatch(bodyBuf)
+	matches := stateTokenExpr.FindSubmatch(b)
 	idx := stateTokenExpr.SubexpIndex("Token")
 	if len(matches) < idx+1 {
-		return "", errors.New("no match found")
+		return "", false
 	}
 
 	// The JavaScript in the response has HTML-encoded characters in.
 	// When a web browser reads it, this is no problem. But, when we read it, it is.
 	// Specifically the only character observed so far is \x2D which is a hyphen.
-	return StateToken(strings.ReplaceAll(string(matches[idx]), "\\x2D", "-")), nil
+	return StateToken(strings.ReplaceAll(string(matches[idx]), "\\x2D", "-")), true
 }
 
 // GetAssertion attempts to retrieve a SAML assertion from the given source and returns the bytes of that assertion.
@@ -187,8 +181,15 @@ func (source ApplicationSAMLSource) GetAssertion(ctx context.Context, username, 
 		return nil, fmt.Errorf("could not send initial application request: %w", err)
 	}
 
-	stateToken, err := extractStateToken(resp.Body)
+	defer resp.Body.Close()
+
+	buf, err := io.ReadAll(resp.Body)
 	if err != nil {
+		return nil, fmt.Errorf("could not read response body: %w", err)
+	}
+
+	stateToken, ok := findStateToken(buf)
+	if !ok {
 		return nil, fmt.Errorf("could not find state token: %w", err)
 	}
 
