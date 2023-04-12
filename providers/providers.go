@@ -33,7 +33,7 @@ var providers map[string]Provider = map[string]Provider{}
 
 func Get(name string) (Provider, bool) {
 	if name == Default {
-		name = OneLogin
+		name = Okta
 	}
 
 	p, ok := providers[name]
