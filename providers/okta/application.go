@@ -192,8 +192,6 @@ func findStateToken(b []byte) (StateToken, bool) {
 //
 // These bytes are not parsed.
 func (source ApplicationSAMLSource) GetAssertion(ctx context.Context, username, password string) ([]byte, error) {
-	println(source.URL())
-
 	jar, _ := cookiejar.New(&cookiejar.Options{
 		PublicSuffixList: publicsuffix.List,
 	})
