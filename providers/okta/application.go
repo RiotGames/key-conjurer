@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/http/cookiejar"
 	"net/url"
+	"regexp"
 	"strings"
 
 	"github.com/riotgames/key-conjurer/pkg/htmlutil"
@@ -166,6 +167,8 @@ func (source ApplicationSAMLSource) Introspect(ctx context.Context, client *http
 	err = json.NewDecoder(resp.Body).Decode(&introspectResponse)
 	return
 }
+
+var stateTokenExpr = regexp.MustCompile("var stateToken = '(?P<Token>.*)';")
 
 // findStateToken extracts an Okta state token from the given set of bytes, which must be a HTML response from a page which initiates an Okta session.
 //

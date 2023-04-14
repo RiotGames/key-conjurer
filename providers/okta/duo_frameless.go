@@ -5,12 +5,9 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"regexp"
 
 	"github.com/riotgames/key-conjurer/providers/duo"
 )
-
-var stateTokenExpr = regexp.MustCompile("var stateToken = '(?P<Token>.*)';")
 
 type DuoFrameless struct {
 	remediation Remediation
