@@ -189,6 +189,8 @@ func findStateToken(b []byte) (StateToken, bool) {
 //
 // These bytes are not parsed.
 func (source ApplicationSAMLSource) GetAssertion(ctx context.Context, username, password string) ([]byte, error) {
+	println(source.URL())
+
 	jar, _ := cookiejar.New(&cookiejar.Options{
 		PublicSuffixList: publicsuffix.List,
 	})
@@ -234,6 +236,8 @@ func (source ApplicationSAMLSource) GetAssertion(ctx context.Context, username, 
 		req, _ = http.NewRequest("GET", string(source.URL()), nil)
 		resp, err = client.Do(req)
 	case DuoFrameless:
+		// There is a bug where SP-initiated flows are sometimes hitting HTTP 500 in the DuoFrameless flow. This appears to have come out of nowhere.
+		// Much like in the DuoIframe flow, initiating a request to the original source URL after an otherwise successful login (as indicated by Introspect) will allow us to continue to log in.
 		var ixResp IntrospectResponse
 		ixResp, err = source.Introspect(ctx, &client, resp.Request.URL, nextStateToken)
 		if err != nil {
@@ -241,7 +245,12 @@ func (source ApplicationSAMLSource) GetAssertion(ctx context.Context, username, 
 		}
 
 		req, _ = http.NewRequest("GET", ixResp.Success.Href, nil)
+		// If this http 500s, we need to issue a second request to the original source URL.
 		resp, err = client.Do(req)
+		if err == nil && resp.StatusCode == http.StatusInternalServerError {
+			req, _ = http.NewRequest("GET", string(source.URL()), nil)
+			resp, err = client.Do(req)
+		}
 	default:
 		panic("not implemented")
 	}
