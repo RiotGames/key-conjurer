@@ -21,6 +21,8 @@ var (
 	ErrStateTokenNotFound           = errors.New("could not find state token")
 	ErrNoSupportedMultiFactorDevice = errors.New("no supported multi-factor device")
 	ErrUnauthorized                 = errors.New("unauthorized")
+	ErrInternalServerError          = errors.New("internal server error")
+	ErrNoSAMLResponseFound          = errors.New("no SAML response found")
 )
 
 // StateToken is a token extracted from the body of an Okta response.
@@ -231,39 +233,33 @@ func (source ApplicationSAMLSource) GetAssertion(ctx context.Context, username, 
 		// However, we can also issue a request to the application endpoint again, because at this point we have a valid session in our http.Client cookie jar.
 		req, _ = http.NewRequest("GET", string(source.URL()), nil)
 		resp, err = client.Do(req)
-		if err != nil {
-			return nil, fmt.Errorf("could not send initial application request: %w", err)
-		}
-
-		defer resp.Body.Close()
-
-		doc, _ := html.Parse(resp.Body)
-		appForm, ok := htmlutil.FindFormByID(doc, "appForm")
-		if !ok {
-			return nil, errors.New("could not find SAMLResponse within response from Okta")
-		}
-
-		return []byte(appForm.Inputs["SAMLResponse"]), nil
 	case DuoFrameless:
-		ixResp, err := source.Introspect(ctx, &client, resp.Request.URL, nextStateToken)
+		var ixResp IntrospectResponse
+		ixResp, err = source.Introspect(ctx, &client, resp.Request.URL, nextStateToken)
 		if err != nil {
 			return nil, err
 		}
 
 		req, _ = http.NewRequest("GET", ixResp.Success.Href, nil)
 		resp, err = client.Do(req)
-		if err != nil {
-			return nil, fmt.Errorf("could not fetch SAML response: %w", err)
-		}
-
-		defer resp.Body.Close()
-		doc, _ := html.Parse(resp.Body)
-		appForm, ok := htmlutil.FindFormByID(doc, "appForm")
-		if !ok {
-			return nil, errors.New("could not find SAMLResponse within response from Okta")
-		}
-		return []byte(appForm.Inputs["SAMLResponse"]), nil
 	default:
 		panic("not implemented")
 	}
+
+	if err != nil {
+		return nil, fmt.Errorf("could not fetch SAML response: %w", err)
+	}
+
+	if resp.StatusCode == http.StatusInternalServerError {
+		return nil, ErrInternalServerError
+	}
+
+	defer resp.Body.Close()
+	doc, _ := html.Parse(resp.Body)
+	appForm, ok := htmlutil.FindFormByID(doc, "appForm")
+	if !ok {
+		return nil, ErrNoSAMLResponseFound
+	}
+
+	return []byte(appForm.Inputs["SAMLResponse"]), nil
 }
