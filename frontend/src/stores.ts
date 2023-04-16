@@ -84,7 +84,12 @@ export function subscribe<K extends keyof Store>(
   store: K,
   cb: (store: Store[K]) => unknown
 ) {
-  events.on(`${store}Updated`, (_) => cb(stores[store]));
+  const fn = () => cb(stores[store]);
+  const key = `${store}Updated`;
+  events.on(key, fn);
+  return () => {
+    events.off(key, fn);
+  };
 }
 
 function resetStore<K extends keyof Store>(store: K) {

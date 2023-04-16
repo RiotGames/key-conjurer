@@ -67,6 +67,8 @@ class KeyRequestForm extends Component<{}, State> {
     role: "",
   };
 
+  subs: (() => void)[] = [];
+
   handleChange =
     <K extends keyof State>(name: K) =>
     (event: React.ChangeEvent<HTMLSelectElement | HTMLInputElement>) => {
@@ -84,61 +86,76 @@ class KeyRequestForm extends Component<{}, State> {
   };
 
   componentDidMount() {
-    subscribe("idpInfo", ({ apps: accounts }) => {
-      // when idpInfo is triggered, we may have not selected an account yet, but
-      // the DOM will visually indicate we have selected the first element.
-      // The easiest way to fix this is to update the selected account to the first
-      // available, if one has not already been selected.
-      //
-      // This doesn't get reproduced in tests because the tests can only test the
-      // visual output to the browser, but this is happening within the internal state
-      // of this component. Even when specifying that the browser should use the internal
-      // state value, this still happens, which is very strange.
-      this.setState((prevState) => {
-        if (prevState.selectedAccount !== undefined) {
-          // An account was selected by the user.
-          if (
-            accounts.length > 0 &&
-            accounts.every((acc) => acc.id !== prevState.selectedAccount)
-          ) {
-            // There are no accounts in the new account set that match the users current account, so we should unset.
-            // This is unlikely to ever happen - a user would have to be removed from an account between two button presses.
-            return { accounts, selectedAccount: undefined };
+    this.subs.push(
+      subscribe("idpInfo", ({ apps: accounts }) => {
+        // when idpInfo is triggered, we may have not selected an account yet, but
+        // the DOM will visually indicate we have selected the first element.
+        // The easiest way to fix this is to update the selected account to the first
+        // available, if one has not already been selected.
+        //
+        // This doesn't get reproduced in tests because the tests can only test the
+        // visual output to the browser, but this is happening within the internal state
+        // of this component. Even when specifying that the browser should use the internal
+        // state value, this still happens, which is very strange.
+        this.setState((prevState) => {
+          if (prevState.selectedAccount !== undefined) {
+            // An account was selected by the user.
+            if (
+              accounts.length > 0 &&
+              accounts.every((acc) => acc.id !== prevState.selectedAccount)
+            ) {
+              // There are no accounts in the new account set that match the users current account, so we should unset.
+              // This is unlikely to ever happen - a user would have to be removed from an account between two button presses.
+              return { accounts, selectedAccount: undefined };
+            }
+
+            // The only case left that a user had selected an account, and is still entitled to it.
+            return { accounts, selectedAccount: prevState.selectedAccount };
           }
 
-          // The only case left that a user had selected an account, and is still entitled to it.
-          return { accounts, selectedAccount: prevState.selectedAccount };
+          if (accounts.length > 0 && prevState.accounts.length === 0) {
+            // The user was not entitled to any accounts, and now they are - we should pick the first one.
+            // This resolves #18.
+            return { accounts, selectedAccount: accounts[0].id };
+          }
+
+          // The user had no account preference, and there are no special cases for the accounts list,
+          // so preserve the current selection.
+          return { accounts };
+        });
+      })
+    );
+
+    this.subs.push(
+      subscribe("userInfo", ({ username, password }) => {
+        this.setState({
+          username,
+          password,
+        });
+      })
+    );
+
+    this.subs.push(
+      subscribe("request", ({ requestSent }) => {
+        this.setState({
+          requestSent,
+          keyRequest: requestSent && this.state.keyRequest,
+        });
+      })
+    );
+    this.subs.push(
+      subscribe("errors", ({ error, event, message: errorMessage }) => {
+        if (event === "keyRequest") {
+          this.setState({ error, errorMessage, errorEvent: event });
         }
+      })
+    );
+  }
 
-        if (accounts.length > 0 && prevState.accounts.length === 0) {
-          // The user was not entitled to any accounts, and now they are - we should pick the first one.
-          // This resolves #18.
-          return { accounts, selectedAccount: accounts[0].id };
-        }
-
-        // The user had no account preference, and there are no special cases for the accounts list,
-        // so preserve the current selection.
-        return { accounts };
-      });
-    });
-
-    subscribe("userInfo", ({ username, password }) => {
-      this.setState({
-        username,
-        password,
-      });
-    });
-    subscribe("request", ({ requestSent }) => {
-      this.setState({
-        requestSent,
-        keyRequest: requestSent && this.state.keyRequest,
-      });
-    });
-    subscribe("errors", ({ error, event, message: errorMessage }) => {
-      if (event === "keyRequest") {
-        this.setState({ error, errorMessage, errorEvent: event });
-      }
-    });
+  componentWillUnmount(): void {
+    for (const unsub of this.subs) {
+      unsub();
+    }
   }
 
   handleSubmit = (event: unknown) => {
