@@ -30,7 +30,7 @@
     "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
-    "fmt": "prettier -w src/**/*.{jsx,js}"
+    "fmt": "prettier -w src/**/*.{tsx,ts}"
   },
   "browserslist": {
     "production": [
