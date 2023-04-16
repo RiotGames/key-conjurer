@@ -1,11 +1,11 @@
 import React from "react";
 import { Grid } from "semantic-ui-react";
-import Header from "./components/header";
-import History from "./components/history";
+import Header from "./components/Header";
+import History from "./components/History";
 import KeyCard from "./components/KeyCard";
 import KeyRequestForm from "./components/KeyRequestForm";
-import LoginForm from "./components/loginForm";
-import TroubleshootingCard from "./components/troubleshootingCard";
+import LoginForm from "./components/LoginForm";
+import TroubleshootingCard from "./components/TroubleshootingCard";
 import { updateUserInfo } from "./actions";
 
 const App = () => {
