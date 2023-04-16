@@ -10,8 +10,8 @@ import { updateUserInfo } from "./actions";
 
 const App = () => {
   React.useEffect(() => {
-    if (localStorage.getItem("provider") === "onelogin") {
-      // Force a user to log out if they are using OneLogin as their provider
+    // We used to support OneLogin as a provider; this ensures it isn't kept around.
+    if (localStorage.getItem("provider") !== "okta") {
       updateUserInfo({ username: "", password: "" });
       localStorage.removeItem("provider");
     }
@@ -28,8 +28,8 @@ const App = () => {
             <History />
           </Grid.Column>
           <Grid.Column width={8}>
-            <LoginForm idp="okta" />
-            <KeyRequestForm idp="okta" />
+            <LoginForm />
+            <KeyRequestForm />
             <KeyCard />
             <TroubleshootingCard />
           </Grid.Column>

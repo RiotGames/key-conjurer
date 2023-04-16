@@ -2,7 +2,6 @@ import React, { Component } from "react";
 import { Form, Card, Message } from "semantic-ui-react";
 import { authenticate, updateUserInfo } from "./../actions";
 import { subscribe } from "./../stores";
-import * as PropTypes from "prop-types";
 
 class LoginForm extends Component {
   state = {
@@ -65,7 +64,7 @@ class LoginForm extends Component {
       error: false,
       errorMessage: "",
     });
-    authenticate(username, password, this.props.idp);
+    authenticate(username, password);
   };
 
   handleSubmit = () => {
@@ -117,7 +116,3 @@ class LoginForm extends Component {
 }
 
 export default LoginForm;
-
-LoginForm.propTypes = {
-  idp: PropTypes.string.isRequired,
-};

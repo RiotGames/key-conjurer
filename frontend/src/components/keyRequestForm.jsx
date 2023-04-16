@@ -131,7 +131,6 @@ class KeyRequestForm extends Component {
       password,
       selectedAccount,
       timeout,
-      idp: this.props.idp,
       role,
     });
   };
