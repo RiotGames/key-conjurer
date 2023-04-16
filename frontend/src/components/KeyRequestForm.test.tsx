@@ -1,5 +1,5 @@
 import * as React from "react";
-import KeyRequestForm from "./keyRequestForm";
+import KeyRequestForm from "./KeyRequestForm";
 import { cleanup, render } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { update, resetAllStores } from "../stores";
@@ -15,13 +15,13 @@ test("should change account to the one selected", async () => {
   const { getByLabelText } = render(<KeyRequestForm />);
   update("idpInfo", {
     apps: [
-      { name: "Account #1", id: 0 },
-      { name: "Account #2", id: 1 },
-      { name: "Account #3", id: 2 },
+      { name: "Account #1", id: "0" },
+      { name: "Account #2", id: "1" },
+      { name: "Account #3", id: "2" },
     ],
   });
 
-  const select = getByLabelText("Account");
+  const select = getByLabelText("Account") as HTMLInputElement;
   await user.selectOptions(select, "Account #2");
 
   expect(select.value).toEqual("1");
@@ -31,14 +31,14 @@ test("should change account to first account in list when the account list is ch
   const { getByLabelText } = render(<KeyRequestForm />);
   update("idpInfo", { apps: [] });
 
-  const select = getByLabelText("Account");
+  const select = getByLabelText("Account") as HTMLInputElement;
   expect(select.value).toEqual("No Accounts");
 
   update("idpInfo", {
     apps: [
-      { name: "Account #3", id: 2 },
-      { name: "Account #2", id: 1 },
-      { name: "Account #1", id: 0 },
+      { name: "Account #3", id: "2" },
+      { name: "Account #2", id: "1" },
+      { name: "Account #1", id: "0" },
     ],
   });
 
@@ -50,23 +50,23 @@ test("should not change account when the accounts list changes if one has alread
   const { getByLabelText } = render(<KeyRequestForm />);
   update("idpInfo", {
     apps: [
-      { name: "Account #1", id: 0 },
-      { name: "Account #2", id: 1 },
-      { name: "Account #3", id: 2 },
+      { name: "Account #1", id: "0" },
+      { name: "Account #2", id: "1" },
+      { name: "Account #3", id: "2" },
     ],
   });
 
-  const select = getByLabelText("Account");
+  const select = getByLabelText("Account") as HTMLInputElement;
   await user.selectOptions(select, "Account #2");
   expect(select.value).toEqual("1");
 
   // Add a new value after the selected value
   update("idpInfo", {
     apps: [
-      { name: "Account #1", id: 0 },
-      { name: "Account #2", id: 1 },
-      { name: "Account #3", id: 2 },
-      { name: "Account #4", id: 3 },
+      { name: "Account #1", id: "0" },
+      { name: "Account #2", id: "1" },
+      { name: "Account #3", id: "2" },
+      { name: "Account #4", id: "3" },
     ],
   });
 
@@ -75,9 +75,9 @@ test("should not change account when the accounts list changes if one has alread
   // Remove value from before the selected value
   update("idpInfo", {
     apps: [
-      { name: "Account #2", id: 1 },
-      { name: "Account #3", id: 2 },
-      { name: "Account #4", id: 3 },
+      { name: "Account #2", id: "1" },
+      { name: "Account #3", id: "2" },
+      { name: "Account #4", id: "3" },
     ],
   });
 
@@ -86,10 +86,10 @@ test("should not change account when the accounts list changes if one has alread
   // Add a value before the selected value
   update("idpInfo", {
     apps: [
-      { name: "Account #1", id: 0 },
-      { name: "Account #2", id: 1 },
-      { name: "Account #3", id: 2 },
-      { name: "Account #4", id: 3 },
+      { name: "Account #1", id: "0" },
+      { name: "Account #2", id: "1" },
+      { name: "Account #3", id: "2" },
+      { name: "Account #4", id: "3" },
     ],
   });
 
@@ -101,20 +101,20 @@ test("should change account to the first account in list if one has been selecte
   const { getByLabelText } = render(<KeyRequestForm />);
   update("idpInfo", {
     apps: [
-      { name: "Account #1", id: 0 },
-      { name: "Account #2", id: 1 },
-      { name: "Account #3", id: 2 },
+      { name: "Account #1", id: "0" },
+      { name: "Account #2", id: "1" },
+      { name: "Account #3", id: "2" },
     ],
   });
 
-  const select = getByLabelText("Account");
+  const select = getByLabelText("Account") as HTMLInputElement;
   await user.selectOptions(select, "Account #2");
   expect(select.value).toEqual("1");
 
   update("idpInfo", {
     apps: [
-      { name: "Account #1", id: 0 },
-      { name: "Account #3", id: 2 },
+      { name: "Account #1", id: "0" },
+      { name: "Account #3", id: "2" },
     ],
   });
 
