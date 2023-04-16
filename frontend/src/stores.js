@@ -1,4 +1,4 @@
-import _ from "lodash";
+import { keys, clone } from "ramda";
 import { EventEmitter } from "events";
 
 const events = new EventEmitter();
@@ -27,7 +27,7 @@ const defaultStores = {
   },
 };
 
-const stores = _.cloneDeep(defaultStores);
+const stores = clone(defaultStores);
 
 export function save(key, value) {
   localStorage[key] = value;
@@ -38,7 +38,7 @@ export function resetStores(stores) {
 }
 
 export function resetAllStores() {
-  resetStores(Object.keys(stores));
+  resetStores(keys(stores));
 }
 
 export function update(store, value) {
@@ -58,7 +58,7 @@ export function subscribe(store, cb) {
 
 function resetStore(store) {
   if (stores[store]) {
-    stores[store] = _.cloneDeep(defaultStores[store]);
+    stores[store] = clone(defaultStores[store]);
     events.emit(`${store}Updated`, stores[store]);
   } else {
     console.log(`No store named ${store}`);
