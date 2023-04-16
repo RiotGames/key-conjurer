@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
+    "@types/react-copy-to-clipboard": "^5.0.4",
     "prop-types": "^15.7.2",
     "ramda": "^0.29.0",
     "react": "^16.12.0",

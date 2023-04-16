@@ -2,7 +2,7 @@ import React from "react";
 import { Grid } from "semantic-ui-react";
 import Header from "./components/header";
 import History from "./components/history";
-import KeyCard from "./components/keyCard";
+import KeyCard from "./components/KeyCard";
 import KeyRequestForm from "./components/KeyRequestForm";
 import LoginForm from "./components/loginForm";
 import TroubleshootingCard from "./components/troubleshootingCard";
