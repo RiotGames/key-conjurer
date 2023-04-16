@@ -1,13 +1,15 @@
 import { update, save, resetStores } from "./stores";
-import { keyConjurerApiUrl, client } from "./consts";
-import { version as clientVersion } from "./version";
+
+const apiURL = process.env.REACT_APP_API_URL;
+const client = process.env.REACT_APP_CLIENT;
+const clientVersion = process.env.REACT_APP_VERSION;
 
 export async function authenticate(username, password, idp) {
   resetStores(["idpInfo", "awsKeys"]);
   update("request", { requestSent: true });
 
   try {
-    const response = await fetch(`${keyConjurerApiUrl}/get_user_data`, {
+    const response = await fetch(`${apiURL}/get_user_data`, {
       method: "POST",
       mode: "cors",
       headers: {

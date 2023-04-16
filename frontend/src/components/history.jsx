@@ -1,7 +1,8 @@
 import React from "react";
 import { Card, Image, Divider } from "semantic-ui-react";
-import { binaryName } from "./../consts";
 import keyConjurerLogo from "./../images/KeyConjurer.png";
+
+const binaryName = process.env.REACT_APP_BINARY_NAME;
 
 const History = () => (
   <Card fluid>

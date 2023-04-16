@@ -2,9 +2,9 @@ import React, { Component } from "react";
 import { Message, Form, Card } from "semantic-ui-react";
 import * as PropTypes from "prop-types";
 import { requestKeys } from "./../actions";
-import { subscribe, update } from "./../stores";
-import { documentationURL } from "../consts";
+import { subscribe } from "./../stores";
 
+const documentationURL = process.env.REACT_APP_DOCUMENTATION_URL;
 const timeouts = [1, 2, 3, 4, 5, 6, 7, 8];
 
 const RoleInput = ({ onChange, value }) => {
