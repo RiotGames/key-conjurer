@@ -13,8 +13,6 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/riotgames/key-conjurer/pkg/htmlutil"
-	"golang.org/x/net/html"
 	"golang.org/x/net/publicsuffix"
 )
 
@@ -54,7 +52,7 @@ func ParseSignedToken(token string) (SignedToken, error) {
 }
 
 type MultiFactorUpgradeMethod interface {
-	Upgrade(ctx context.Context, client *http.Client) (StateToken, error)
+	Upgrade(ctx context.Context, client *http.Client) ([]byte, error)
 }
 
 type AuthenticatorEnrollment struct {
@@ -86,14 +84,14 @@ type IdentifyResponse struct {
 }
 
 // DetermineUpgradePath determines which multi-factor authentication method the current user should avail of to upgrade their session.
-func DetermineUpgradePath(resp IdentifyResponse) (MultiFactorUpgradeMethod, bool) {
+func DetermineUpgradePath(resp IdentifyResponse, source ApplicationSAMLSource) (MultiFactorUpgradeMethod, bool) {
 	// authMethods is a list of all of the authentication methods available to a user to upgrade their session into a fully authenticated one.
 	// This list's order is not guaranteed, so we loop through it twice: Once to find the first available authenticator of type OIDC, and next to find the first available authenticator with the name challenge-authenticator.
 	// This ensures that we always prefer OIDC authenticators first (which is the DuoFrameless flow), and only fall back to challenge-authenticator (which is the DuoFrame flow) as a last resort.
 	authMethods := resp.Remediation.Value
 	for _, rem := range authMethods {
 		if rem.Type == "OIDC" {
-			return DuoFrameless{remediation: rem}, true
+			return DuoFrameless{remediation: rem, source: source}, true
 		}
 	}
 
@@ -219,57 +217,15 @@ func (source ApplicationSAMLSource) GetAssertion(ctx context.Context, username, 
 		return nil, fmt.Errorf("could not call /idp/idx/identify: %w", err)
 	}
 
-	method, ok := DetermineUpgradePath(identifyResponse)
+	method, ok := DetermineUpgradePath(identifyResponse, source)
 	if !ok {
 		return nil, ErrNoSupportedMultiFactorDevice
 	}
 
-	nextStateToken, err := method.Upgrade(ctx, &client)
+	saml, err := method.Upgrade(ctx, &client)
 	if err != nil {
 		return nil, fmt.Errorf("could not upgrade session with mfa: %w", err)
 	}
 
-	// This type switch violates encapsulation but I've yet to find a "neat" way of encapsulating the Okta-Duo relationship in a single type that isn't a leaky abstraction.
-	switch method.(type) {
-	case DuoIframe:
-		// HACK: In the live version of Okta, a different series of events is followed, where the correct URL obtained by following /idp/idx/introspect.
-		// However, we can also issue a request to the application endpoint again, because at this point we have a valid session in our http.Client cookie jar.
-		req, _ = http.NewRequest("GET", string(source.URL()), nil)
-		resp, err = client.Do(req)
-	case DuoFrameless:
-		// There is a bug where SP-initiated flows are sometimes hitting HTTP 500 in the DuoFrameless flow. This appears to have come out of nowhere.
-		// Much like in the DuoIframe flow, initiating a request to the original source URL after an otherwise successful login (as indicated by Introspect) will allow us to continue to log in.
-		var ixResp IntrospectResponse
-		ixResp, err = source.Introspect(ctx, &client, resp.Request.URL, nextStateToken)
-		if err != nil {
-			return nil, err
-		}
-
-		req, _ = http.NewRequest("GET", ixResp.Success.Href, nil)
-		// If this http 500s, we need to issue a second request to the original source URL.
-		resp, err = client.Do(req)
-		if err == nil && resp.StatusCode == http.StatusInternalServerError {
-			req, _ = http.NewRequest("GET", string(source.URL()), nil)
-			resp, err = client.Do(req)
-		}
-	default:
-		panic("not implemented")
-	}
-
-	if err != nil {
-		return nil, fmt.Errorf("could not fetch SAML response: %w", err)
-	}
-
-	if resp.StatusCode == http.StatusInternalServerError {
-		return nil, ErrInternalServerError
-	}
-
-	defer resp.Body.Close()
-	doc, _ := html.Parse(resp.Body)
-	appForm, ok := htmlutil.FindFormByID(doc, "appForm")
-	if !ok {
-		return nil, ErrNoSAMLResponseFound
-	}
-
-	return []byte(appForm.Inputs["SAMLResponse"]), nil
+	return saml, nil
 }

@@ -6,18 +6,21 @@ import (
 	"io"
 	"net/http"
 
+	"github.com/riotgames/key-conjurer/pkg/htmlutil"
 	"github.com/riotgames/key-conjurer/providers/duo"
+	"golang.org/x/net/html"
 )
 
 type DuoFrameless struct {
 	remediation Remediation
+	source      ApplicationSAMLSource
 }
 
-func (f DuoFrameless) Upgrade(ctx context.Context, client *http.Client) (StateToken, error) {
+func (f DuoFrameless) Upgrade(ctx context.Context, client *http.Client) ([]byte, error) {
 	req, _ := http.NewRequestWithContext(ctx, f.remediation.Method, f.remediation.Href, nil)
 	resp, err := client.Do(req)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	defer resp.Body.Close()
 
@@ -29,22 +32,59 @@ func (f DuoFrameless) Upgrade(ctx context.Context, client *http.Client) (StateTo
 	// The frameless flow does include a new state token in the response.
 	resp, err = f.handleFlow(ctx, d, resp)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	defer resp.Body.Close()
 
 	buf, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return "", fmt.Errorf("could not read response body: %w", err)
+		return nil, fmt.Errorf("could not read response body: %w", err)
 	}
 
 	stateToken, ok := findStateToken(buf)
 	if !ok {
-		return "", fmt.Errorf("could not find state token: %w", err)
+		return nil, fmt.Errorf("could not find state token: %w", err)
 	}
 
-	return stateToken, nil
+	// There is a bug where SP-initiated flows are sometimes hitting HTTP 500 in the DuoFrameless flow. This appears to have come out of nowhere.
+	// Much like in the DuoIframe flow, initiating a request to the original source URL after an otherwise successful login (as indicated by Introspect) will allow us to continue to log in.
+	var ixResp IntrospectResponse
+	ixResp, err = f.source.Introspect(ctx, client, resp.Request.URL, stateToken)
+	if err != nil {
+		return nil, err
+	}
+
+	req, _ = http.NewRequest("GET", ixResp.Success.Href, nil)
+	resp, err = client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	defer resp.Body.Close()
+
+	// If this http 500s, we need to issue a second request to the original source URL.
+	if resp.StatusCode == http.StatusInternalServerError {
+		req, _ = http.NewRequest("GET", string(f.source.URL()), nil)
+		resp, err = client.Do(req)
+		if err != nil {
+			return nil, err
+		}
+
+		defer resp.Body.Close()
+
+		if resp.StatusCode == http.StatusInternalServerError {
+			return nil, ErrInternalServerError
+		}
+	}
+
+	doc, _ := html.Parse(resp.Body)
+	form, ok := htmlutil.FindFormByID(doc, "appForm")
+	if !ok {
+		return nil, ErrNoSAMLResponseFound
+	}
+
+	return []byte(form.Inputs["SAMLResponse"]), nil
 }
 
 // handleFramelessDuoFlow handles a Duo-type remediation flow from Okta using the OIDC duo flow.
