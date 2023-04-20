@@ -8,21 +8,20 @@ import (
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/riotgames/key-conjurer/api/authenticators/duo"
-	"github.com/riotgames/key-conjurer/api/authenticators/okta"
 	"github.com/riotgames/key-conjurer/api/cloud"
 	"github.com/riotgames/key-conjurer/api/consts"
 	"github.com/riotgames/key-conjurer/api/core"
 	"github.com/riotgames/key-conjurer/api/settings"
+	"github.com/riotgames/key-conjurer/providers"
+	"github.com/riotgames/key-conjurer/providers/okta"
 	"github.com/sirupsen/logrus"
 )
 
 type Handler struct {
-	crypt                   core.Crypto
-	cfg                     *settings.Settings
-	cloud                   *cloud.Provider
-	log                     *logrus.Entry
-	authenticationProviders providerMap
+	crypt core.Crypto
+	cfg   *settings.Settings
+	cloud *cloud.Provider
+	log   *logrus.Entry
 }
 
 func NewHandler(cfg *settings.Settings) Handler {
@@ -39,7 +38,13 @@ func NewHandler(cfg *settings.Settings) Handler {
 		})
 	}
 
-	mfa := duo.New()
+	ok, err := okta.New(cfg.OktaHost, cfg.OktaToken)
+	if err != nil {
+		panic(err)
+	}
+
+	providers.Register(providers.Okta, &ok)
+
 	return Handler{
 		crypt: core.NewCrypto(prov),
 		log: newLogger(loggerSettings{
@@ -48,16 +53,13 @@ func NewHandler(cfg *settings.Settings) Handler {
 		}),
 		cfg:   cfg,
 		cloud: client,
-		authenticationProviders: providerMap{
-			AuthenticationProviderOkta: okta.Must(cfg.OktaHost, cfg.OktaToken, mfa),
-		},
 	}
 }
 
 type GetUserDataEvent struct {
 	core.Credentials
 	// AuthenticationProvider is the authentication provider that should be used when logging in.
-	AuthenticationProvider AuthenticationProviderName `json:"authentication_provider"`
+	AuthenticationProvider string `json:"authentication_provider"`
 }
 
 type GetUserDataPayload struct {
@@ -87,13 +89,13 @@ func (h *Handler) GetUserDataEventHandler(ctx context.Context, req *events.ALBTa
 	}
 
 	log = h.log.WithFields(logrus.Fields{"username": event.Credentials.Username, "idp": event.AuthenticationProvider})
-	provider, ok := h.authenticationProviders.Get(event.AuthenticationProvider)
+	provider, ok := providers.Get(event.AuthenticationProvider)
 	if !ok {
 		log.Infof("unknown provider %q", provider)
 		return ErrorResponse(ErrCodeInvalidProvider, "the provider you supplied is unsupported by this version of KeyConjurer")
 	}
 
-	user, err := provider.Authenticate(ctx, event.Credentials)
+	user, err := provider.Authenticate(ctx, providers.Credentials(event.Credentials))
 	if err != nil {
 		log.Errorf("failed to authenticate user: %s", err)
 		return ErrorResponse(ErrCodeInvalidCredentials, "credentials are incorrect")
@@ -125,7 +127,7 @@ type GetTemporaryCredentialEvent struct {
 
 	// AuthenticationProvider is the authentication provider that should be used when logging in.
 	// This will be blank for old versions of KeyConjurer; if it is blank, you must default to OneLogin
-	AuthenticationProvider AuthenticationProviderName `json:"authentication_provider"`
+	AuthenticationProvider string `json:"authentication_provider"`
 }
 
 var (
@@ -139,12 +141,12 @@ func (e *GetTemporaryCredentialEvent) Validate() error {
 		return errTimeoutBadSize
 	}
 
-	if e.AuthenticationProvider == AuthenticationProviderOneLogin {
+	if e.AuthenticationProvider == providers.OneLogin {
 		// We don't use role names in OneLogin
 		e.RoleName = ""
 	}
 
-	if e.AuthenticationProvider == AuthenticationProviderOkta && e.RoleName == "" {
+	if e.AuthenticationProvider == providers.Okta && e.RoleName == "" {
 		return errNoRoleProvided
 	}
 
@@ -188,22 +190,16 @@ func (h *Handler) GetTemporaryCredentialEventHandler(ctx context.Context, req *e
 	}
 
 	log = h.log.WithFields(logrus.Fields{"username": event.Credentials.Username, "idp": event.AuthenticationProvider, "account_id": event.AppID})
-	provider, ok := h.authenticationProviders.Get(event.AuthenticationProvider)
+	provider, ok := providers.Get(event.AuthenticationProvider)
 	if !ok {
 		log.Infof("unknown provider %q", provider)
 		return ErrorResponse(ErrCodeInvalidProvider, "invalid provider")
 	}
 
-	if _, err := provider.Authenticate(ctx, event.Credentials); err != nil {
-		log.Errorf("failed to authenticate user: %s", err)
-		return ErrorResponse(ErrCodeInvalidCredentials, "credentials are incorrect")
-	}
-
-	response, err := provider.GenerateSAMLAssertion(ctx, event.Credentials, event.AppID)
+	response, err := provider.GenerateSAMLAssertion(ctx, providers.Credentials(event.Credentials), event.AppID)
 	if err != nil {
-		msg := fmt.Sprintf("unable to generate SAML assertion: %s", err)
-		log.Errorf(msg)
-		return ErrorResponse(getErrorCode(err), msg)
+		log.Errorf("Unable to authenticate user. The credentials may be incorrect, or something may have gone wrong internally. Reason: %s", err)
+		return ErrorResponse(getErrorCode(err), "Unable to authenticate. Your credentials may be incorrect. Please contact your system administrators if you're unsure of what to do.")
 	}
 
 	cloudFlag, sts, err := h.cloud.GetTemporaryCredentialsForUser(ctx, event.RoleName, response, int(event.TimeoutInHours))
@@ -247,9 +243,10 @@ type ListProvidersPayload struct {
 // This does NOT need to be backwards compatible with old KeyConjurer clients.
 func (h *Handler) ListProvidersHandler(ctx context.Context) (*events.ALBTargetGroupResponse, error) {
 	var p []Provider
-	for key := range h.authenticationProviders {
-		p = append(p, Provider{ID: key})
-	}
+
+	providers.ForEach(func(name string, _ providers.Provider) {
+		p = append(p, Provider{ID: name})
+	})
 
 	return DataResponse(ListProvidersPayload{Providers: p})
 }

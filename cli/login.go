@@ -10,7 +10,7 @@ import (
 	"syscall"
 
 	"github.com/riotgames/key-conjurer/api/core"
-	"github.com/riotgames/key-conjurer/api/keyconjurer"
+	"github.com/riotgames/key-conjurer/providers"
 	"golang.org/x/crypto/ssh/terminal"
 
 	"github.com/spf13/cobra"
@@ -47,7 +47,7 @@ func promptForCredentials(r io.Reader) (core.Credentials, error) {
 }
 
 func init() {
-	loginCmd.Flags().StringVar(&identityProvider, "identity-provider", keyconjurer.AuthenticationProviderOkta, "The identity provider to use.")
+	loginCmd.Flags().StringVar(&identityProvider, "identity-provider", providers.Okta, "The identity provider to use.")
 }
 
 var loginCmd = &cobra.Command{
