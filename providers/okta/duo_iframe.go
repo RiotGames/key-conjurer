@@ -58,8 +58,9 @@ func (f DuoIframe) Upgrade(ctx context.Context, client *http.Client) ([]byte, er
 	req, _ = http.NewRequestWithContext(ctx, "GET", gjson.GetBytes(bodyBuf, "success.href").Str, nil)
 	resp, err = client.Do(req)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to issue initial DuoIframe request: %w", err)
 	}
+
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusInternalServerError {
@@ -70,6 +71,10 @@ func (f DuoIframe) Upgrade(ctx context.Context, client *http.Client) ([]byte, er
 		// Luckily, the server still upgrades the users session, so we are able to retrieve the SAML response from this response instead.
 		req, _ = http.NewRequest("GET", f.InitialURL.String(), nil)
 		resp, err = client.Do(req)
+	}
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to issue secondary DuoIframe request: %w", err)
 	}
 
 	if resp.StatusCode != http.StatusOK {
