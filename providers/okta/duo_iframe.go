@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"net/url"
 
 	"github.com/riotgames/key-conjurer/pkg/htmlutil"
 	"github.com/riotgames/key-conjurer/providers/duo"
@@ -22,7 +21,7 @@ type DuoIframe struct {
 	StateHandle string
 	Method      string
 	StateToken  StateToken
-	InitialURL  url.URL
+	InitialURL  string
 }
 
 func (f DuoIframe) Upgrade(ctx context.Context, client *http.Client) ([]byte, error) {
@@ -69,7 +68,7 @@ func (f DuoIframe) Upgrade(ctx context.Context, client *http.Client) ([]byte, er
 		// The SP-initiated flow using an application link may yield a HTTP 500 on the last redirect.
 		// This has been raised with Okta and it's not clear why this occurs.
 		// Luckily, the server still upgrades the users session, so we are able to retrieve the SAML response from this response instead.
-		req, _ = http.NewRequest("GET", f.InitialURL.String(), nil)
+		req, _ = http.NewRequest("GET", f.InitialURL, nil)
 		resp, err = client.Do(req)
 	}
 

@@ -104,7 +104,7 @@ func DetermineUpgradePath(resp IdentifyResponse, source ApplicationSAMLSource) (
 				break
 			}
 
-			return DuoIframe{Host: host, SignedToken: tok, CallbackURL: rem.Href, Method: rem.Method, StateHandle: resp.StateHandle}, true
+			return DuoIframe{Host: host, SignedToken: tok, CallbackURL: rem.Href, Method: rem.Method, StateHandle: resp.StateHandle, InitialURL: source.URL()}, true
 		}
 	}
 
