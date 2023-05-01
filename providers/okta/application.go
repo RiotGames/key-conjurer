@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/http/cookiejar"
 	"net/url"
@@ -294,11 +295,11 @@ func (source ApplicationSAMLSource) GetAssertion(ctx context.Context, username, 
 	if errors.As(err, &errAuthSelection) {
 		// This branch attempts to have the user pick the first IDP authenticator.
 		// If this does not work, or one does not exist, there's nothing we can do and we return an error to the user.
-
 		authenticatorID, ok := findIdpAuthenticatorId(errAuthSelection.Remediation)
 		// We couldn't find an IDP-based authenticator and the user doesn't have anything else we can use.
 		if !ok {
-			return nil, ErrNoSupportedMultiFactorDevice
+			log.Printf("The user had no supported devices when responding to the Okta challenge. Raw device output: %s", errAuthSelection.Remediation.Value)
+			return nil, fmt.Errorf("could not respond to Okta challenge: %w", ErrNoSupportedMultiFactorDevice)
 		}
 
 		challResponse, err := source.RespondToChallenge(ctx, &client, resp.Request.URL, authenticatorID, identifyResponse.StateHandle)
