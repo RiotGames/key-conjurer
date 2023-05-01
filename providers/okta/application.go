@@ -13,6 +13,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/tidwall/gjson"
 	"golang.org/x/net/publicsuffix"
 )
 
@@ -68,6 +69,10 @@ type Remediation struct {
 	Type   *string
 	Href   string
 	Method string
+
+	// Value can be multiple types which can only be discerned at runtime.
+	// In the tested flows we have, this will be identified as either a string property, or an object.
+	Value json.RawMessage
 }
 
 type IdentifyResponse struct {
@@ -103,11 +108,57 @@ func findRemediationByName(rems []Remediation, name string) (Remediation, bool) 
 	return Remediation{}, false
 }
 
+// findIdpAuthenticatorId identifies the correct authenticator enrollment that corresponds with the new Duo OIDC flow.
+//
+// In some situations, Okta may present the user with a UI indicating that they must choose an authenticator to authorize with. This breaks our present Duo OIDC flow.
+//
+// We can interrogate the response from Okta to find the correct value by using this method.
+func findIdpAuthenticatorId(rem Remediation) (string, bool) {
+	// This method is a bit rough because we need to interrogate rem.Value, whose type is undefined until runtime.
+	// Generally, it looks a bit like this:
+	// [{"name": "authenticator": "type": "object", "options": [{"label": "...", "relatesTo": "..."}, {"name": "stateHandle", ....}]
+	if !gjson.ValidBytes(rem.Value) {
+		return "", false
+	}
+
+	var authenticators []gjson.Result
+	for _, auth := range gjson.ParseBytes(rem.Value).Array() {
+		if auth.Get("name").Str == "authenticator" {
+			authenticators = append(authenticators, auth)
+		}
+	}
+
+	// Find the first id where methodType == idp.
+	for _, auth := range authenticators {
+		for _, option := range auth.Get("options").Array() {
+			formValues := option.Get("value.form.value")
+			maybeId := formValues.Get(`#(name=="id").value`)
+			maybeMethodType := formValues.Get(`#(name=="methodType").value`)
+			if maybeMethodType.Str == "idp" && maybeId.Exists() {
+				return maybeId.Str, true
+			}
+		}
+	}
+
+	return "", false
+}
+
+// errNeedsAuthenticatorSelection indicates that Okta wanted the user to select an authenticator.
+//
+// This type should not leave the bounds of this package - either we should pick an authenticator for the user, or we should return ErrNoSupportedMultiFactorDevice
+type errNeedsAuthenticatorSelection struct {
+	Remediation Remediation
+}
+
+func (e errNeedsAuthenticatorSelection) Error() string {
+	return "user needs to select an authenticator"
+}
+
 // DetermineUpgradePath determines which multi-factor authentication method the current user should avail of to upgrade their session.
-func DetermineUpgradePath(resp IdentifyResponse, source ApplicationSAMLSource) (MultiFactorUpgradeMethod, bool) {
+func DetermineUpgradePath(resp IdentifyResponse, source ApplicationSAMLSource) (MultiFactorUpgradeMethod, error) {
 	authMethods := resp.Remediation.Value
 	if rem, ok := findRemediationByType(authMethods, "OIDC"); ok {
-		return DuoFrameless{remediation: rem, source: source}, true
+		return DuoFrameless{remediation: rem, source: source}, nil
 	}
 
 	// Legacy Duo Flow
@@ -115,13 +166,19 @@ func DetermineUpgradePath(resp IdentifyResponse, source ApplicationSAMLSource) (
 		host := resp.CurrentAuthenticatorEnrollment.Value.ContextualData.Host
 		tok, err := ParseSignedToken(resp.CurrentAuthenticatorEnrollment.Value.ContextualData.SignedToken)
 		if err != nil {
-			return nil, false
+			// This should never happen
+			return nil, fmt.Errorf("failed to parse signed token from legacy duo flow: %s", err)
 		}
 
-		return DuoIframe{Host: host, SignedToken: tok, CallbackURL: rem.Href, Method: rem.Method, StateHandle: resp.StateHandle, InitialURL: source.URL()}, true
+		return DuoIframe{Host: host, SignedToken: tok, CallbackURL: rem.Href, Method: rem.Method, StateHandle: resp.StateHandle, InitialURL: source.URL()}, nil
 	}
 
-	return nil, false
+	// This occurs if the user has multiple options to choose from. We must issue a request to /idp/idx/challenge with an authenticator id, and try again.
+	if rem, ok := findRemediationByName(authMethods, "select-authenticator-authenticate"); ok {
+		return nil, errNeedsAuthenticatorSelection{Remediation: rem}
+	}
+
+	return nil, ErrNoSupportedMultiFactorDevice
 }
 
 // ApplicationSAMLSource handles the SP-initiated SAML flow for KeyConjurer.
@@ -230,9 +287,32 @@ func (source ApplicationSAMLSource) GetAssertion(ctx context.Context, username, 
 		return nil, fmt.Errorf("could not call /idp/idx/identify: %w", err)
 	}
 
-	method, ok := DetermineUpgradePath(identifyResponse, source)
-	if !ok {
-		return nil, ErrNoSupportedMultiFactorDevice
+	method, err := DetermineUpgradePath(identifyResponse, source)
+	// If a user has more than one device, Okta may require that the user pick one.
+	// If this is the case, an errNeedsAuthenticatorSelection will be returned which we must handle here.
+	var errAuthSelection errNeedsAuthenticatorSelection
+	if errors.As(err, &errAuthSelection) {
+		// This branch attempts to have the user pick the first IDP authenticator.
+		// If this does not work, or one does not exist, there's nothing we can do and we return an error to the user.
+
+		authenticatorID, ok := findIdpAuthenticatorId(errAuthSelection.Remediation)
+		// We couldn't find an IDP-based authenticator and the user doesn't have anything else we can use.
+		if !ok {
+			return nil, ErrNoSupportedMultiFactorDevice
+		}
+
+		challResponse, err := source.RespondToChallenge(ctx, &client, resp.Request.URL, authenticatorID, identifyResponse.StateHandle)
+		if err != nil {
+			return nil, fmt.Errorf("could not call /idp/idx/challenge: %w", err)
+		}
+
+		// If the challenge response was a success, we again try to determine the upgrade path based on the returned values.
+		method, err = DetermineUpgradePath(challResponse, source)
+		if err != nil {
+			return nil, ErrNoSupportedMultiFactorDevice
+		}
+	} else if err != nil {
+		return nil, err
 	}
 
 	saml, err := method.Upgrade(ctx, &client)
@@ -241,4 +321,19 @@ func (source ApplicationSAMLSource) GetAssertion(ctx context.Context, username, 
 	}
 
 	return saml, nil
+}
+
+func (source ApplicationSAMLSource) RespondToChallenge(ctx context.Context, client *http.Client, prevURL *url.URL, authenticatorID, stateHandle string) (challengeResp IdentifyResponse, err error) {
+	vals := map[string]any{"stateHandle": stateHandle, "authenticator": map[string]string{"id": authenticatorID}}
+	buf, _ := json.Marshal(vals)
+	uri := prevURL.ResolveReference(&url.URL{Path: "/idp/idx/challenge"})
+	resp, err := client.Post(uri.String(), "application/json", bytes.NewReader(buf))
+	if err != nil {
+		return
+	}
+
+	defer resp.Body.Close()
+
+	err = json.NewDecoder(resp.Body).Decode(&challengeResp)
+	return
 }
