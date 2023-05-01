@@ -65,7 +65,7 @@ type AuthenticatorEnrollment struct {
 
 type Remediation struct {
 	Name   string
-	Type   string
+	Type   *string
 	Href   string
 	Method string
 }
@@ -83,29 +83,42 @@ type IdentifyResponse struct {
 	}
 }
 
-// DetermineUpgradePath determines which multi-factor authentication method the current user should avail of to upgrade their session.
-func DetermineUpgradePath(resp IdentifyResponse, source ApplicationSAMLSource) (MultiFactorUpgradeMethod, bool) {
-	// authMethods is a list of all of the authentication methods available to a user to upgrade their session into a fully authenticated one.
-	// This list's order is not guaranteed, so we loop through it twice: Once to find the first available authenticator of type OIDC, and next to find the first available authenticator with the name challenge-authenticator.
-	// This ensures that we always prefer OIDC authenticators first (which is the DuoFrameless flow), and only fall back to challenge-authenticator (which is the DuoFrame flow) as a last resort.
-	authMethods := resp.Remediation.Value
-	for _, rem := range authMethods {
-		if rem.Type == "OIDC" {
-			return DuoFrameless{remediation: rem, source: source}, true
+func findRemediationByType(rems []Remediation, typ string) (Remediation, bool) {
+	for _, rem := range rems {
+		if rem.Type != nil && *rem.Type == typ {
+			return rem, true
 		}
 	}
 
-	for _, rem := range authMethods {
-		// This is intentionally 'Name' as Type is missing for cases where this is true.
-		if rem.Name == "challenge-authenticator" && resp.CurrentAuthenticatorEnrollment.Value.Key == "duo" {
-			host := resp.CurrentAuthenticatorEnrollment.Value.ContextualData.Host
-			tok, err := ParseSignedToken(resp.CurrentAuthenticatorEnrollment.Value.ContextualData.SignedToken)
-			if err != nil {
-				break
-			}
+	return Remediation{}, false
+}
 
-			return DuoIframe{Host: host, SignedToken: tok, CallbackURL: rem.Href, Method: rem.Method, StateHandle: resp.StateHandle, InitialURL: source.URL()}, true
+func findRemediationByName(rems []Remediation, name string) (Remediation, bool) {
+	for _, rem := range rems {
+		if rem.Name == name {
+			return rem, true
 		}
+	}
+
+	return Remediation{}, false
+}
+
+// DetermineUpgradePath determines which multi-factor authentication method the current user should avail of to upgrade their session.
+func DetermineUpgradePath(resp IdentifyResponse, source ApplicationSAMLSource) (MultiFactorUpgradeMethod, bool) {
+	authMethods := resp.Remediation.Value
+	if rem, ok := findRemediationByType(authMethods, "OIDC"); ok {
+		return DuoFrameless{remediation: rem, source: source}, true
+	}
+
+	// Legacy Duo Flow
+	if rem, ok := findRemediationByName(authMethods, "challenge-authenticator"); ok {
+		host := resp.CurrentAuthenticatorEnrollment.Value.ContextualData.Host
+		tok, err := ParseSignedToken(resp.CurrentAuthenticatorEnrollment.Value.ContextualData.SignedToken)
+		if err != nil {
+			return nil, false
+		}
+
+		return DuoIframe{Host: host, SignedToken: tok, CallbackURL: rem.Href, Method: rem.Method, StateHandle: resp.StateHandle, InitialURL: source.URL()}, true
 	}
 
 	return nil, false
