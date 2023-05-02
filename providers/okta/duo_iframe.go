@@ -6,9 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
-	"net/http/httputil"
 
 	"github.com/riotgames/key-conjurer/pkg/htmlutil"
 	"github.com/riotgames/key-conjurer/providers/duo"
@@ -59,9 +57,6 @@ func (f DuoIframe) Upgrade(ctx context.Context, client *http.Client) ([]byte, er
 	req, _ = http.NewRequestWithContext(ctx, "GET", gjson.GetBytes(bodyBuf, "success.href").Str, nil)
 	resp, err = client.Do(req)
 	if err != nil {
-		respDump, _ := httputil.DumpResponse(resp, true)
-		log.Printf("Failed to issue initial DuoIframe request: %s", err)
-		log.Printf("Response: %s", string(respDump))
 		return nil, fmt.Errorf("failed to issue initial DuoIframe request: %w", err)
 	}
 
