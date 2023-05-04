@@ -33,7 +33,7 @@ func Test_ApplicationSAMLSource_GetAssertion(t *testing.T) {
 	t.Logf("SessionToken: %s", *resp2.SessionToken)
 }
 
-func Test_findIdpRemediation(t *testing.T) {
+func Test_findAuthenticatorByMethodType(t *testing.T) {
 	blob := `
 {
 	"rel": [
@@ -109,7 +109,7 @@ func Test_findIdpRemediation(t *testing.T) {
 	var rem Remediation
 	require.NoError(t, json.Unmarshal([]byte(blob), &rem))
 
-	authenticatorId, ok := findIdpAuthenticatorId(rem)
+	authenticatorId, ok := findAuthenticatorByMethodType(rem, "idp")
 	assert.True(t, ok)
 	assert.Equal(t, "the id you are looking for", authenticatorId)
 }
