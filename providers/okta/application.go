@@ -108,12 +108,7 @@ func findRemediationByName(rems []Remediation, name string) (Remediation, bool) 
 	return Remediation{}, false
 }
 
-// findIdpAuthenticatorId identifies the correct authenticator enrollment that corresponds with the new Duo OIDC flow.
-//
-// In some situations, Okta may present the user with a UI indicating that they must choose an authenticator to authorize with. This breaks our present Duo OIDC flow.
-//
-// We can interrogate the response from Okta to find the correct value by using this method.
-func findIdpAuthenticatorId(rem Remediation) (string, bool) {
+func findAuthenticatorByMethodType(rem Remediation, typ string) (string, bool) {
 	// This method is a bit rough because we need to interrogate rem.Value, whose type is undefined until runtime.
 	// Generally, it looks a bit like this:
 	// [{"name": "authenticator": "type": "object", "options": [{"label": "...", "relatesTo": "..."}, {"name": "stateHandle", ....}]
@@ -134,13 +129,25 @@ func findIdpAuthenticatorId(rem Remediation) (string, bool) {
 			formValues := option.Get("value.form.value")
 			maybeId := formValues.Get(`#(name=="id").value`)
 			maybeMethodType := formValues.Get(`#(name=="methodType").value`)
-			if maybeMethodType.Str == "idp" && maybeId.Exists() {
+			if maybeMethodType.Str == typ && maybeId.Exists() {
 				return maybeId.Str, true
 			}
 		}
 	}
 
 	return "", false
+}
+
+// findFirstSuitableAuthenticatorID returns the first suitable authenticator ID for a user within the given remediation.
+//
+// This is useful for when a user has multiple  potentially valid authenticators and Okta has indicated that we must pick one.
+func findFirstSuitableAuthenticatorID(rem Remediation) (string, bool) {
+	id, ok := findAuthenticatorByMethodType(rem, "idp")
+	if ok {
+		return id, true
+	}
+
+	return findAuthenticatorByMethodType(rem, "duo")
 }
 
 // errNeedsAuthenticatorSelection indicates that Okta wanted the user to select an authenticator.
@@ -173,7 +180,9 @@ func DetermineUpgradePath(resp IdentifyResponse, source ApplicationSAMLSource) (
 		return DuoIframe{Host: host, SignedToken: tok, CallbackURL: rem.Href, Method: rem.Method, StateHandle: resp.StateHandle, InitialURL: source.URL()}, nil
 	}
 
-	// This occurs if the user has multiple options to choose from. We must issue a request to /idp/idx/challenge with an authenticator id, and try again.
+	// This will occur if the user has multiple choices to select from and Duo indicates that we must pick one.
+	//
+	// We can't just return the ID and be done with it - the caller must explicitly issue a request to RespondToChallenge first before continuing.
 	if rem, ok := findRemediationByName(authMethods, "select-authenticator-authenticate"); ok {
 		return nil, errNeedsAuthenticatorSelection{Remediation: rem}
 	}
@@ -292,11 +301,8 @@ func (source ApplicationSAMLSource) GetAssertion(ctx context.Context, username, 
 	// If this is the case, an errNeedsAuthenticatorSelection will be returned which we must handle here.
 	var errAuthSelection errNeedsAuthenticatorSelection
 	if errors.As(err, &errAuthSelection) {
-		// This branch attempts to have the user pick the first IDP authenticator.
-		// If this does not work, or one does not exist, there's nothing we can do and we return an error to the user.
-
-		authenticatorID, ok := findIdpAuthenticatorId(errAuthSelection.Remediation)
-		// We couldn't find an IDP-based authenticator and the user doesn't have anything else we can use.
+		authenticatorID, ok := findFirstSuitableAuthenticatorID(errAuthSelection.Remediation)
+		// We couldn't find a suitable authenticator and the user doesn't have anything else we can use.
 		if !ok {
 			return nil, ErrNoSupportedMultiFactorDevice
 		}
