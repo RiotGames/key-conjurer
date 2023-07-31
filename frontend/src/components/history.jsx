@@ -28,6 +28,7 @@ const History = () => (
         <br />
         <br />
         <a href={`/${binaryName}-darwin-amd64`}>{`${binaryName}`}-darwin</a>
+        <br />
         <a href={`/${binaryName}-darwin-arm64`}>
           {`${binaryName}`}-darwin ARM64 (M1/M2 etc)
         </a>
