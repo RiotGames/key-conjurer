@@ -23,7 +23,8 @@ const DefaultTimeRemaining uint = 5
 var DownloadURL string = "URL not set yet"
 
 // CLI binary names
-const LinuxBinaryName string = "keyconjurer-linux"
+const LinuxAmd64BinaryName string = "keyconjurer-linux-amd64"
+const LinuxArm64BinaryName string = "keyconjurer-linux-arm64"
 const WindowsBinaryName string = "keyconjurer-windows.exe"
 const DarwinArm64BinaryName string = "keyconjurer-darwin-arm64"
 const DarwinAmd64BinaryName string = "keyconjurer-darwin-amd64"

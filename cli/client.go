@@ -222,7 +222,11 @@ func (c *Client) ListProviders(ctx context.Context, opts *ListProvidersOptions) 
 func getBinaryName() string {
 	switch runtime.GOOS {
 	case "linux":
-		return LinuxBinaryName
+		if runtime.GOARCH == "arm64" {
+			return LinuxArm64BinaryName
+		}
+
+		return LinuxAmd64BinaryName
 	case "windows":
 		return WindowsBinaryName
 	default:

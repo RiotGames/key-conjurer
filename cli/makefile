@@ -19,13 +19,18 @@ endif
 .PHONY: all build dir test build_requirements
 
 all: \
-	../builds/$(RELEASE)/cli/keyconjurer-linux \
+	../builds/$(RELEASE)/cli/keyconjurer-linux-arm64 \
+	../builds/$(RELEASE)/cli/keyconjurer-linux-amd64 \
 	../builds/$(RELEASE)/cli/keyconjurer-darwin-amd64 \
 	../builds/$(RELEASE)/cli/keyconjurer-darwin-arm64 \
 	../builds/$(RELEASE)/cli/keyconjurer-windows.exe
 
 ../builds/$(RELEASE)/cli/keyconjurer-linux:
+../builds/$(RELEASE)/cli/keyconjurer-linux-arm64:
+../builds/$(RELEASE)/cli/keyconjurer-linux-amd64:
 	GOOS=linux GOARCH=amd64 BUILD_TARGET=keyconjurer-linux $(MAKE) build
+	GOOS=linux GOARCH=arm64 BUILD_TARGET=keyconjurer-linux-arm64 $(MAKE) build
+	cp ../builds/$(RELEASE)/cli/keyconjurer-linux ../builds/$(RELEASE)/cli/keyconjurer-linux-arm64
 
 ../builds/$(RELEASE)/cli/keyconjurer-darwin:
 ../builds/$(RELEASE)/cli/keyconjurer-darwin-amd64:

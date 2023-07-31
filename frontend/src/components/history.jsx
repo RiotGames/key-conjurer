@@ -31,11 +31,13 @@ const History = () => (
           {`${binaryName}`}-darwin (osx)
         </a>
         <br />
-        <a href={`${binaryName}-darwin-arm64`}>
-          {`${binaryName}`}-darwin (osx M1/M2)
+        <a href={`${binaryName}-linux-amd64`}>
+          {`${binaryName}`}-linux AMD64 (This is probably the one you want)
         </a>
         <br />
-        <a href={`${binaryName}-linux`}>{`${binaryName}`}-linux</a>
+        <a href={`${binaryName}-linux-arm64`}>
+          {`${binaryName}`}-linux ARM64
+        </a>
         <br />
         <a href={`${binaryName}-windows.exe`}>{`${binaryName}`}-windows</a>
       </Card.Content>
