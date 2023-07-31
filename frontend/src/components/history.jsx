@@ -27,9 +27,7 @@ const History = () => (
         following and move it into your $PATH:
         <br />
         <br />
-        <a href={`/${binaryName}-darwin-amd64`}>
-          {`${binaryName}`}-darwin
-        </a>
+        <a href={`/${binaryName}-darwin-amd64`}>{`${binaryName}`}-darwin</a>
         <a href={`/${binaryName}-darwin-arm64`}>
           {`${binaryName}`}-darwin ARM64 (M1/M2 etc)
         </a>
