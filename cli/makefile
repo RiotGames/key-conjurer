@@ -30,7 +30,7 @@ all: \
 ../builds/$(RELEASE)/cli/keyconjurer-linux-amd64:
 	GOOS=linux GOARCH=amd64 BUILD_TARGET=keyconjurer-linux $(MAKE) build
 	GOOS=linux GOARCH=arm64 BUILD_TARGET=keyconjurer-linux-arm64 $(MAKE) build
-	cp ../builds/$(RELEASE)/cli/keyconjurer-linux ../builds/$(RELEASE)/cli/keyconjurer-linux-arm64
+	cp ../builds/$(RELEASE)/cli/keyconjurer-linux ../builds/$(RELEASE)/cli/keyconjurer-linux-amd64
 
 ../builds/$(RELEASE)/cli/keyconjurer-darwin:
 ../builds/$(RELEASE)/cli/keyconjurer-darwin-amd64:
