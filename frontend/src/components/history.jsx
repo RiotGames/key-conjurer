@@ -35,9 +35,7 @@ const History = () => (
           {`${binaryName}`}-linux AMD64 (This is probably the one you want)
         </a>
         <br />
-        <a href={`${binaryName}-linux-arm64`}>
-          {`${binaryName}`}-linux ARM64
-        </a>
+        <a href={`${binaryName}-linux-arm64`}>{`${binaryName}`}-linux ARM64</a>
         <br />
         <a href={`${binaryName}-windows.exe`}>{`${binaryName}`}-windows</a>
       </Card.Content>
