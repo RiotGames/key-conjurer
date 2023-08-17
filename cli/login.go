@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/mdp/qrterminal"
 	"github.com/riotgames/key-conjurer/pkg/oauth2device"
 	"github.com/riotgames/key-conjurer/pkg/oidc"
 	"github.com/spf13/cobra"
@@ -71,8 +72,9 @@ func Login(ctx context.Context, domain string, useDeviceFlow bool) (*oauth2.Toke
 		if err != nil {
 			return nil, err
 		}
-		// TODO: Display a QR code that automatically does this for the user.
-		fmt.Printf("Visit %s\n", code.VerificationURLComplete)
+		fmt.Fprintf(os.Stderr, "Scan the following QR code with your phone:\n")
+		qrterminal.Generate(code.VerificationURLComplete, qrterminal.L, os.Stderr)
+
 		return oauth2device.WaitForDeviceAuthorization(http.DefaultClient, &oauthDeviceCfg, code)
 	} else {
 		listener := NewOAuth2Listener()
