@@ -2,11 +2,15 @@ package main
 
 import (
 	"context"
+	"crypto/rand"
+	"crypto/sha256"
 	"crypto/tls"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/coreos/go-oidc/v3/oidc"
@@ -65,6 +69,7 @@ func ParseCallbackRequest(r *http.Request) (OAuth2CallbackInfo, error) {
 		Error:            r.FormValue("error"),
 		ErrorDescription: r.FormValue("error_description"),
 		State:            r.FormValue("state"),
+		Code:             r.FormValue("code"),
 	}
 
 	return info, nil
@@ -76,6 +81,9 @@ func (o OAuth2Listener) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		// The only errors that might occur would be incorreclty formatted requests, which we will silently drop.
 		o.callbackCh <- info
 	}
+
+	// This is displayed to the end user in their browser.
+	fmt.Fprintln(w, "You may close this window now.")
 }
 
 func (o OAuth2Listener) Listen(ctx context.Context) {
@@ -98,6 +106,10 @@ func (o OAuth2Listener) WaitForAuthorizationCode(ctx context.Context, state stri
 	case info := <-o.callbackCh:
 		if info.Error != "" {
 			return "", OAuth2Error{Reason: info.Error, Description: info.ErrorDescription}
+		}
+
+		if strings.Compare(info.State, state) != 0 {
+			return "", OAuth2Error{Reason: "invalid_state", Description: "state mismatch"}
 		}
 
 		return info.Code, nil
@@ -137,9 +149,16 @@ var loginCmd = &cobra.Command{
 			RedirectURL: "http://localhost:8080",
 		}
 
-		state := "TODO: CREATE RANDOM STATE HERE"
-		codeChallenge := "TODO: INSERT CODE CHALLENGE HERE"
-		codeVerifier := "TODO: GENERATE CODE VERIFIER HERE"
+		stateBuf := make([]byte, 43)
+		rand.Read(stateBuf)
+		state := base64.URLEncoding.EncodeToString([]byte(stateBuf))
+
+		codeVerifierBuf := make([]byte, 43)
+		rand.Read(codeVerifierBuf)
+		codeVerifier := base64.RawURLEncoding.EncodeToString(codeVerifierBuf)
+
+		codeChallengeHash := sha256.Sum256([]byte(codeVerifier))
+		codeChallenge := base64.RawURLEncoding.EncodeToString(codeChallengeHash[:])
 		url := oauthCfg.AuthCodeURL(state,
 			oauth2.SetAuthURLParam("code_challenge_method", "S256"),
 			oauth2.SetAuthURLParam("code_challenge", codeChallenge),
