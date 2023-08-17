@@ -1,9 +1,13 @@
 package main
 
 import (
+	"net/http"
 	"os"
 
+	"github.com/okta/okta-sdk-golang/v2/okta"
+	"github.com/okta/okta-sdk-golang/v2/okta/query"
 	"github.com/spf13/cobra"
+	"golang.org/x/oauth2"
 )
 
 func init() {
@@ -21,11 +25,43 @@ var accountsCmd = &cobra.Command{
 			return nil
 		}
 
-		accounts := []Account{}
+		httpClient := http.Client{
+			Transport: &oauth2.Transport{
+				Base:   http.DefaultTransport,
+				Source: oauth2.StaticTokenSource(config.Tokens),
+			},
+		}
+
+		_, client, err := okta.NewClient(
+			cmd.Context(),
+			okta.WithOrgUrl(OktaDomain),
+			okta.WithHttpClient(httpClient),
+			// This is not used - the http client overwrites the tokens when a request is made.
+			// It must be specified to satisfy the Okta SDK.
+			okta.WithToken("dummy text"),
+		)
+
+		if err != nil {
+			return err
+		}
+
+		apps, _, err := client.Application.ListApplications(cmd.Context(), query.NewQueryParams())
+		if err != nil {
+			return err
+		}
 
 		var entries []Account
-		for _, acc := range accounts {
-			entries = append(entries, Account{ID: acc.ID, Name: acc.Name, Alias: generateDefaultAlias(acc.Name)})
+		for _, app := range apps {
+			app, ok := app.(*okta.Application)
+			if !ok {
+				continue
+			}
+
+			// if app.Name != "amazon_aws" && !strings.Contains(app.Name, "tencent") {
+			// 	continue
+			// }
+
+			entries = append(entries, Account{ID: app.Id, Name: app.Label, Alias: generateDefaultAlias(app.Label)})
 		}
 
 		config.UpdateAccounts(entries)
