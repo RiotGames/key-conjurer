@@ -10,6 +10,7 @@ import (
 
 	"github.com/olekukonko/tablewriter"
 	"github.com/riotgames/key-conjurer/api/core"
+	"golang.org/x/oauth2"
 )
 
 type maybeLegacyID string
@@ -214,6 +215,14 @@ type Config struct {
 	Creds         string      `json:"creds"`
 	TTL           uint        `json:"ttl"`
 	TimeRemaining uint        `json:"time_remaining"`
+}
+
+func (c Config) GetOAuthToken() (*oauth2.Token, bool) {
+	return nil, false
+}
+
+func (c Config) SaveOAuthToken(tok *oauth2.Token) error {
+	return nil
 }
 
 func (c *Config) GetCredentials() (core.Credentials, error) {
