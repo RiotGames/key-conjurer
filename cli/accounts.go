@@ -45,8 +45,14 @@ var accountsCmd = &cobra.Command{
 			return err
 		}
 
-		apps, _, err := client.Application.ListApplications(cmd.Context(), query.NewQueryParams())
+		apps, resp, err := client.Application.ListApplications(cmd.Context(), query.NewQueryParams())
 		if err != nil {
+			if resp.StatusCode == http.StatusUnauthorized {
+				// Tokens expired.
+				config.SaveOAuthToken(nil)
+				cmd.PrintErrln("Your session has expired. Please run login again.")
+				return nil
+			}
 			return err
 		}
 

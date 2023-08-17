@@ -53,6 +53,11 @@ var getCmd = &cobra.Command{
 	// Example: appname + " get <accountName/alias>",
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
+		if HasTokenExpired(config.Tokens) {
+			cmd.PrintErrln("Your session has expired. Please login again.")
+			return nil
+		}
+
 		ctx := context.Background()
 		client, err := newClient()
 		if err != nil {
