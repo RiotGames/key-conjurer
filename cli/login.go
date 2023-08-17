@@ -1,53 +1,46 @@
 package main
 
 import (
-	"bufio"
 	"context"
-	"errors"
+	"crypto/tls"
+	"encoding/json"
 	"fmt"
-	"io"
+	"net/http"
 	"os"
-	"syscall"
+	"time"
 
-	"github.com/riotgames/key-conjurer/api/core"
-	"github.com/riotgames/key-conjurer/providers"
-	"golang.org/x/crypto/ssh/terminal"
-
+	"github.com/coreos/go-oidc/v3/oidc"
+	rootcerts "github.com/hashicorp/go-rootcerts"
 	"github.com/spf13/cobra"
+	"golang.org/x/oauth2"
 )
 
-var errUnableToReadUsername = errors.New("unable to read username")
+var (
+	ClientID   = os.Getenv("OKTA_CLIENT_ID")
+	OktaDomain = os.Getenv("OKTA_DOMAIN")
+)
 
-// getUsernameAndPassword prompts the user for their username and password via stdin
-func getUsernameAndPassword(r io.Reader) (string, string, error) {
-	scanner := bufio.NewScanner(r)
-	fmt.Printf("username: ")
-	username := ""
-	if scanner.Scan() {
-		username = scanner.Text()
-	} else {
-		return "", "", errUnableToReadUsername
-	}
-
-	fmt.Printf("password: ")
-	bytes, err := terminal.ReadPassword(int(syscall.Stdin))
-	if err != nil {
-		return "", "", fmt.Errorf("unable to get password: %w", err)
-	}
-
-	password := string(bytes)
-	// Need to add our own newline
-	fmt.Println()
-	return username, password, nil
+func WaitForAuthorizationCode(ctx context.Context) (string, error) {
+	return "", nil
 }
 
-func promptForCredentials(r io.Reader) (core.Credentials, error) {
-	username, password, err := getUsernameAndPassword(r)
-	return core.Credentials{Username: username, Password: password}, err
-}
+func NewOAuth2Client(ctx context.Context, cfg *oauth2.Config, tok *oauth2.Token) *http.Client {
+	// Some Darwin systems require certs to be loaded from the system certificate store or attempts to verify SSL certs on internal websites may fail.
+	transport := http.DefaultTransport
+	if certs, err := rootcerts.LoadSystemCAs(); err == nil {
+		transport = &http.Transport{
+			TLSClientConfig: &tls.Config{
+				RootCAs: certs,
+			},
+		}
+	}
 
-func init() {
-	loginCmd.Flags().StringVar(&identityProvider, "identity-provider", providers.Okta, "The identity provider to use.")
+	// The following Oauth2 code is copied from the OAuth2 package with modifications to allow us to use our custom transport with root CAs on Darwin systems.
+	src := oauth2.ReuseTokenSource(tok, cfg.TokenSource(ctx, tok))
+	return &http.Client{
+		Transport: &oauth2.Transport{Base: transport, Source: src},
+		Timeout:   time.Second * time.Duration(clientHttpTimeoutSeconds),
+	}
 }
 
 var loginCmd = &cobra.Command{
@@ -56,36 +49,46 @@ var loginCmd = &cobra.Command{
 	Long:  "Login using your AD creds. This stores encrypted credentials on the local system.",
 	// Example: appname + " login",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		ctx := context.Background()
-		client, err := newClient()
+		provider, err := oidc.NewProvider(cmd.Context(), OktaDomain)
 		if err != nil {
-			return err
+			return fmt.Errorf("couldn't discover OIDC configuration for %s: %w", OktaDomain, err)
 		}
 
-		creds, err := promptForCredentials(os.Stdin)
+		oauthCfg := oauth2.Config{
+			ClientID: ClientID,
+			Endpoint: provider.Endpoint(),
+			Scopes:   []string{"openid", "email", "okta.apps.read"},
+			// TODO: Only use a redirect URL to localhost if the user has supplied the `--open-browser` flag.
+			// If they don't, the default behavior should be to display a QR code that the user should scan and follow the device authorization flow instead.
+			RedirectURL: "http://localhost:8080",
+		}
+
+		state := "TODO: CREATE RANDOM STATE HERE"
+		codeChallenge := "TODO: INSERT CODE CHALLENGE HERE"
+		codeVerifier := "TODO: GENERATE CODE VERIFIER HERE"
+		url := oauthCfg.AuthCodeURL(state,
+			oauth2.SetAuthURLParam("code_challenge_method", "S256"),
+			oauth2.SetAuthURLParam("code_challenge", codeChallenge),
+		)
+
+		fmt.Printf("Visit the following link in your terminal: %s\n", url)
+
+		// TODO: Allow cancellation with CTRL+C
+		// Cobra might already do this for us..
+		code, err := WaitForAuthorizationCode(cmd.Context())
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to get authorization code: %w", err)
 		}
 
-		data, err := client.GetUserData(ctx, &GetUserDataOptions{
-			Credentials:            creds,
-			AuthenticationProvider: identityProvider,
-		})
-
+		token, err := oauthCfg.Exchange(cmd.Context(), code, oauth2.SetAuthURLParam("code_verifier", codeVerifier))
 		if err != nil {
-			return err
+			return fmt.Errorf("Failed to exchange code for token: %w", err)
 		}
 
-		config.Creds = data.EncryptedCredentials
-		var entries []Account
-		for _, acc := range data.Apps {
-			entries = append(entries, Account{ID: acc.ID, Name: acc.Name, Alias: generateDefaultAlias(acc.Name)})
-		}
-
-		config.Accounts.ReplaceWith(entries)
-		if !quiet {
-			fmt.Fprintf(os.Stderr, "logged into %q successfully\n", creds.Username)
-		}
+		// TODO: Stash the token somewhere.
+		// TODO: Grab the email from the id token
+		b, _ := json.Marshal(token)
+		fmt.Printf("token: %s", b)
 		return nil
 	},
 }
