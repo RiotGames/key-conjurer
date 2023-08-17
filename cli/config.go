@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"strconv"
 
@@ -212,19 +211,19 @@ func (s accountSet) WriteTable(w io.Writer) {
 
 // Config stores all information related to the user
 type Config struct {
-	Accounts      *accountSet `json:"accounts"`
-	Creds         string      `json:"creds"`
-	TTL           uint        `json:"ttl"`
-	TimeRemaining uint        `json:"time_remaining"`
+	Accounts      *accountSet   `json:"accounts"`
+	Creds         string        `json:"creds"`
+	TTL           uint          `json:"ttl"`
+	TimeRemaining uint          `json:"time_remaining"`
+	Tokens        *oauth2.Token `json:"tokens"`
 }
 
 func (c Config) GetOAuthToken() (*oauth2.Token, bool) {
-	return nil, false
+	return c.Tokens, c.Tokens != nil
 }
 
-func (c Config) SaveOAuthToken(tok *oauth2.Token) error {
-	blob, _ := json.MarshalIndent(tok, "", "\t")
-	fmt.Printf("%s\n", blob)
+func (c *Config) SaveOAuthToken(tok *oauth2.Token) error {
+	c.Tokens = tok
 	return nil
 }
 

@@ -25,8 +25,11 @@ var loginCmd = &cobra.Command{
 	// Example: appname + " login",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		tok, ok := config.GetOAuthToken()
-		if ok && tok.Expiry.After(time.Now()) {
-			return nil
+		if ok {
+			// A zero-value expiry means the token never expires.
+			if tok.Expiry.After(time.Now()) || tok.Expiry.IsZero() {
+				return nil
+			}
 		}
 
 		token, err := Login(cmd.Context(), OktaDomain, true)
