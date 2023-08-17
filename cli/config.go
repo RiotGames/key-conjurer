@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"strconv"
 
@@ -222,6 +223,8 @@ func (c Config) GetOAuthToken() (*oauth2.Token, bool) {
 }
 
 func (c Config) SaveOAuthToken(tok *oauth2.Token) error {
+	blob, _ := json.MarshalIndent(tok, "", "\t")
+	fmt.Printf("%s\n", blob)
 	return nil
 }
 

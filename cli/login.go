@@ -3,10 +3,11 @@ package main
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"os"
 	"time"
 
-	"github.com/coreos/go-oidc/v3/oidc"
+	"github.com/riotgames/key-conjurer/pkg/oauth2device"
 	"github.com/spf13/cobra"
 	"golang.org/x/oauth2"
 )
@@ -27,7 +28,7 @@ var loginCmd = &cobra.Command{
 			return nil
 		}
 
-		token, err := Login(cmd.Context(), OktaDomain)
+		token, err := Login(cmd.Context(), OktaDomain, true)
 		if err != nil {
 			return err
 		}
@@ -36,22 +37,10 @@ var loginCmd = &cobra.Command{
 	},
 }
 
-func Login(ctx context.Context, domain string) (*oauth2.Token, error) {
-	provider, err := oidc.NewProvider(ctx, domain)
+func Login(ctx context.Context, domain string, useDeviceFlow bool) (*oauth2.Token, error) {
+	provider, err := DiscoverProvider(ctx, domain)
 	if err != nil {
 		return nil, fmt.Errorf("couldn't discover OIDC configuration for %s: %w", OktaDomain, err)
-	}
-
-	listener := NewOAuth2Listener()
-	go listener.Listen(ctx)
-
-	oauthCfg := oauth2.Config{
-		ClientID: ClientID,
-		Endpoint: provider.Endpoint(),
-		Scopes:   []string{"openid", "email", "okta.apps.read"},
-		// TODO: Only use a redirect URL to localhost if the user has supplied the `--open-browser` flag.
-		// If they don't, the default behavior should be to display a QR code that the user should scan and follow the device authorization flow instead.
-		RedirectURL: listener.Addr,
 	}
 
 	state, err := GenerateState()
@@ -64,24 +53,43 @@ func Login(ctx context.Context, domain string) (*oauth2.Token, error) {
 		return nil, err
 	}
 
-	url := oauthCfg.AuthCodeURL(state,
-		oauth2.SetAuthURLParam("code_challenge_method", "S256"),
-		oauth2.SetAuthURLParam("code_challenge", codeChallenge),
-	)
-
-	fmt.Printf("Visit the following link in your terminal: %s\n", url)
-
-	// TODO: Allow cancellation with CTRL+C
-	// Cobra might already do this for us..
-	code, err := listener.WaitForAuthorizationCode(ctx, state)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get authorization code: %w", err)
+	oauthCfg := oauth2.Config{
+		ClientID: ClientID,
+		Endpoint: provider.Endpoint(),
+		Scopes:   []string{"openid", "profile", "offline_access", "okta.apps.read"},
 	}
 
-	token, err := oauthCfg.Exchange(ctx, code, oauth2.SetAuthURLParam("code_verifier", codeVerifier))
-	if err != nil {
-		return nil, fmt.Errorf("failed to exchange code for token: %w", err)
-	}
+	// The device flow and the redirect flow are almost indistinguishable from a user point of view.
+	//
+	// The device flow should be preferred as it gives the user the option to open a browser on their mobile device or their terminal, whereas the redirect flow requires opening a browser on the current machine.
+	if useDeviceFlow && SupportsDeviceFlow(provider) {
+		oauthDeviceCfg := oauth2device.Config{
+			Config:         &oauthCfg,
+			DeviceEndpoint: provider.DeviceAuthorizationEndpoint(),
+		}
 
-	return token, nil
+		code, err := oauth2device.RequestDeviceCode(http.DefaultClient, &oauthDeviceCfg)
+		if err != nil {
+			return nil, err
+		}
+		// TODO: Display a QR code that automatically does this for the user.
+		fmt.Printf("Visit %s\n", code.VerificationURLComplete)
+		return oauth2device.WaitForDeviceAuthorization(http.DefaultClient, &oauthDeviceCfg, code)
+	} else {
+		listener := NewOAuth2Listener()
+		go listener.Listen(ctx)
+		oauthCfg.RedirectURL = "http://localhost:8080"
+		url := oauthCfg.AuthCodeURL(state,
+			oauth2.SetAuthURLParam("code_challenge_method", "S256"),
+			oauth2.SetAuthURLParam("code_challenge", codeChallenge),
+		)
+
+		fmt.Printf("Visit the following link in your terminal: %s\n", url)
+		code, err := listener.WaitForAuthorizationCode(ctx, state)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get authorization code: %w", err)
+		}
+
+		return oauthCfg.Exchange(ctx, code, oauth2.SetAuthURLParam("code_verifier", codeVerifier))
+	}
 }
