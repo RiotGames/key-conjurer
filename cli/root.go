@@ -44,7 +44,6 @@ func init() {
 	rootCmd.AddCommand(setCmd)
 	rootCmd.AddCommand(upgradeCmd)
 	rootCmd.AddCommand(&switchCmd)
-	rootCmd.AddCommand(&providersCmd)
 	rootCmd.AddCommand(&aliasCmd)
 	rootCmd.AddCommand(&unaliasCmd)
 	rootCmd.AddCommand(&rolesCmd)
