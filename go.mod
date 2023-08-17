@@ -7,6 +7,7 @@ require (
 	github.com/go-ini/ini v1.61.0
 	github.com/google/uuid v1.1.2
 	github.com/hashicorp/go-rootcerts v1.0.2
+	github.com/mdp/qrterminal v1.0.1
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/mitchellh/go-ps v1.0.0
 	github.com/okta/okta-sdk-golang/v2 v2.2.1
@@ -45,7 +46,6 @@ require (
 	github.com/konsorten/go-windows-terminal-sequences v1.0.3 // indirect
 	github.com/kr/text v0.2.0 // indirect
 	github.com/mattn/go-runewidth v0.0.9 // indirect
-	github.com/mdp/qrterminal v1.0.1 // indirect
 	github.com/mitchellh/mapstructure v1.3.3 // indirect
 	github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e // indirect
 	github.com/nu7hatch/gouuid v0.0.0-20131221200532-179d4d0c4d8d // indirect
