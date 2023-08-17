@@ -14,6 +14,14 @@ import (
 	"golang.org/x/oauth2"
 )
 
+type TokenSet struct {
+	AccessToken  string    `json:"access_token"`
+	RefreshToken string    `json:"refresh_token"`
+	IDToken      string    `json:"id_token"`
+	Expiry       time.Time `json:"expiry"`
+	TokenType    string    `json:"token_type"`
+}
+
 type maybeLegacyID string
 
 func (i *maybeLegacyID) UnmarshalJSON(buf []byte) error {
@@ -212,18 +220,18 @@ func (s accountSet) WriteTable(w io.Writer) {
 
 // Config stores all information related to the user
 type Config struct {
-	Accounts      *accountSet   `json:"accounts"`
-	Creds         string        `json:"creds"`
-	TTL           uint          `json:"ttl"`
-	TimeRemaining uint          `json:"time_remaining"`
-	Tokens        *oauth2.Token `json:"tokens"`
+	Accounts      *accountSet `json:"accounts"`
+	Creds         string      `json:"creds"`
+	TTL           uint        `json:"ttl"`
+	TimeRemaining uint        `json:"time_remaining"`
+	Tokens        *TokenSet   `json:"tokens"`
 }
 
-func (c Config) GetOAuthToken() (*oauth2.Token, bool) {
+func (c Config) GetOAuthToken() (*TokenSet, bool) {
 	return c.Tokens, c.Tokens != nil
 }
 
-func HasTokenExpired(tok *oauth2.Token) bool {
+func HasTokenExpired(tok *TokenSet) bool {
 	if tok == nil {
 		return true
 	}
@@ -236,7 +244,16 @@ func HasTokenExpired(tok *oauth2.Token) bool {
 }
 
 func (c *Config) SaveOAuthToken(tok *oauth2.Token) error {
-	c.Tokens = tok
+	idToken, _ := tok.Extra("id_token").(string)
+	tok2 := TokenSet{
+		AccessToken:  tok.AccessToken,
+		RefreshToken: tok.RefreshToken,
+		TokenType:    tok.TokenType,
+		Expiry:       tok.Expiry,
+		IDToken:      idToken,
+	}
+
+	c.Tokens = &tok2
 	return nil
 }
 

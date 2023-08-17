@@ -25,10 +25,17 @@ var accountsCmd = &cobra.Command{
 			return nil
 		}
 
+		tok := oauth2.Token{
+			AccessToken:  config.Tokens.AccessToken,
+			RefreshToken: config.Tokens.RefreshToken,
+			Expiry:       config.Tokens.Expiry,
+			TokenType:    config.Tokens.TokenType,
+		}
+
 		httpClient := http.Client{
 			Transport: &oauth2.Transport{
 				Base:   http.DefaultTransport,
-				Source: oauth2.StaticTokenSource(config.Tokens),
+				Source: oauth2.StaticTokenSource(&tok),
 			},
 		}
 

@@ -24,7 +24,7 @@ var loginCmd = &cobra.Command{
 			return nil
 		}
 
-		token, err := Login(cmd.Context(), OktaDomain, true)
+		token, err := Login(cmd.Context(), OktaDomain, false)
 		if err != nil {
 			return err
 		}
@@ -35,6 +35,10 @@ var loginCmd = &cobra.Command{
 
 func Login(ctx context.Context, domain string, useDeviceFlow bool) (*oauth2.Token, error) {
 	oauthCfg, provider, err := DiscoverOAuth2Config(ctx, domain)
+	if err != nil {
+		return nil, err
+	}
+
 	state, err := GenerateState()
 	if err != nil {
 		return nil, err
@@ -49,6 +53,7 @@ func Login(ctx context.Context, domain string, useDeviceFlow bool) (*oauth2.Toke
 	//
 	// The device flow should be preferred as it gives the user the option to open a browser on their mobile device or their terminal, whereas the redirect flow requires opening a browser on the current machine.
 	if useDeviceFlow && oidc.SupportsDeviceFlow(provider) {
+		// TODO: This flow is not currently exposing ID tokens so it cannot be used to access an SSO account
 		return DeviceAuthorizationFlow(provider, oauthCfg)
 	} else {
 		return RedirectionFlow(ctx, oauthCfg, state, codeChallenge, codeVerifier)

@@ -190,18 +190,19 @@ func RedirectionFlow(ctx context.Context, oauthCfg *oauth2.Config, state, codeCh
 	return oauthCfg.Exchange(ctx, code, oauth2.SetAuthURLParam("code_verifier", codeVerifier))
 }
 
-func ExchangeAccessTokenForWebSSOToken(ctx context.Context, oauthCfg *oauth2.Config, token *oauth2.Token, applicationId string) (*oauth2.Token, error) {
+func ExchangeAccessTokenForWebSSOToken(ctx context.Context, oauthCfg *oauth2.Config, token *TokenSet, applicationId string) (*oauth2.Token, error) {
+	// https://datatracker.ietf.org/doc/html/rfc8693
 	data := url.Values{
-		"client_id":        {oauthCfg.ClientID},
-		"actor_token":      {token.AccessToken},
-		"actor_token_type": {"urn:ietf:params:oauth:token-type:access_token"},
-		// TODO: This may be required. If so, we will need an oidc.Token type.
-		// "subject_token":        {token.IDToken},
-		// "subject_token_type":   {"urn:ietf:params:oauth:token-type:id_token"},
+		"client_id":            {oauthCfg.ClientID},
+		"actor_token":          {token.AccessToken},
+		"actor_token_type":     {"urn:ietf:params:oauth:token-type:access_token"},
+		"subject_token":        {token.IDToken},
+		"subject_token_type":   {"urn:ietf:params:oauth:token-type:id_token"},
 		"grant_type":           {"urn:ietf:params:oauth:grant-type:token-exchange"},
 		"requested_token_type": {"urn:okta:oauth:token-type:web_sso_token"},
 		"audience":             {fmt.Sprintf("urn:okta:apps:%s", applicationId)},
 	}
+	fmt.Printf("%#v", data)
 	body := strings.NewReader(data.Encode())
 	req, err := http.NewRequest(http.MethodPost, oauthCfg.Endpoint.TokenURL, body)
 	if err != nil {
