@@ -3,11 +3,8 @@ package main
 import (
 	"context"
 	"fmt"
-	"net/http"
 	"os"
 
-	"github.com/mdp/qrterminal"
-	"github.com/riotgames/key-conjurer/pkg/oauth2device"
 	"github.com/riotgames/key-conjurer/pkg/oidc"
 	"github.com/spf13/cobra"
 	"golang.org/x/oauth2"
@@ -63,34 +60,8 @@ func Login(ctx context.Context, domain string, useDeviceFlow bool) (*oauth2.Toke
 	//
 	// The device flow should be preferred as it gives the user the option to open a browser on their mobile device or their terminal, whereas the redirect flow requires opening a browser on the current machine.
 	if useDeviceFlow && oidc.SupportsDeviceFlow(provider) {
-		oauthDeviceCfg := oauth2device.Config{
-			Config:         &oauthCfg,
-			DeviceEndpoint: provider.DeviceAuthorizationEndpoint(),
-		}
-
-		code, err := oauth2device.RequestDeviceCode(http.DefaultClient, &oauthDeviceCfg)
-		if err != nil {
-			return nil, err
-		}
-		fmt.Fprintf(os.Stderr, "Scan the following QR code with your phone:\n")
-		qrterminal.Generate(code.VerificationURLComplete, qrterminal.L, os.Stderr)
-
-		return oauth2device.WaitForDeviceAuthorization(http.DefaultClient, &oauthDeviceCfg, code)
+		return DeviceAuthorizationFlow(provider, &oauthCfg)
 	} else {
-		listener := NewOAuth2Listener()
-		go listener.Listen(ctx)
-		oauthCfg.RedirectURL = "http://localhost:8080"
-		url := oauthCfg.AuthCodeURL(state,
-			oauth2.SetAuthURLParam("code_challenge_method", "S256"),
-			oauth2.SetAuthURLParam("code_challenge", codeChallenge),
-		)
-
-		fmt.Printf("Visit the following link in your terminal: %s\n", url)
-		code, err := listener.WaitForAuthorizationCode(ctx, state)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get authorization code: %w", err)
-		}
-
-		return oauthCfg.Exchange(ctx, code, oauth2.SetAuthURLParam("code_verifier", codeVerifier))
+		return RedirectionFlow(ctx, &oauthCfg, state, codeChallenge, codeVerifier)
 	}
 }

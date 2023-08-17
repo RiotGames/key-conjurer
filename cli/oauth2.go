@@ -8,10 +8,14 @@ import (
 	"encoding/base64"
 	"fmt"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
 	rootcerts "github.com/hashicorp/go-rootcerts"
+	"github.com/mdp/qrterminal"
+	"github.com/riotgames/key-conjurer/pkg/oauth2device"
+	"github.com/riotgames/key-conjurer/pkg/oidc"
 	"golang.org/x/oauth2"
 )
 
@@ -133,4 +137,38 @@ func GenerateState() (string, error) {
 	stateBuf := make([]byte, 43)
 	rand.Read(stateBuf)
 	return base64.URLEncoding.EncodeToString([]byte(stateBuf)), nil
+}
+
+func DeviceAuthorizationFlow(provider *oidc.Provider, oauthCfg *oauth2.Config) (*oauth2.Token, error) {
+	oauthDeviceCfg := oauth2device.Config{
+		Config:         oauthCfg,
+		DeviceEndpoint: provider.DeviceAuthorizationEndpoint(),
+	}
+
+	code, err := oauth2device.RequestDeviceCode(http.DefaultClient, &oauthDeviceCfg)
+	if err != nil {
+		return nil, err
+	}
+	fmt.Fprintf(os.Stderr, "Scan the following QR code with your phone:\n")
+	qrterminal.Generate(code.VerificationURLComplete, qrterminal.L, os.Stderr)
+
+	return oauth2device.WaitForDeviceAuthorization(http.DefaultClient, &oauthDeviceCfg, code)
+}
+
+func RedirectionFlow(ctx context.Context, oauthCfg *oauth2.Config, state, codeChallenge, codeVerifier string) (*oauth2.Token, error) {
+	listener := NewOAuth2Listener()
+	go listener.Listen(ctx)
+	oauthCfg.RedirectURL = "http://localhost:8080"
+	url := oauthCfg.AuthCodeURL(state,
+		oauth2.SetAuthURLParam("code_challenge_method", "S256"),
+		oauth2.SetAuthURLParam("code_challenge", codeChallenge),
+	)
+
+	fmt.Printf("Visit the following link in your terminal: %s\n", url)
+	code, err := listener.WaitForAuthorizationCode(ctx, state)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get authorization code: %w", err)
+	}
+
+	return oauthCfg.Exchange(ctx, code, oauth2.SetAuthURLParam("code_verifier", codeVerifier))
 }
