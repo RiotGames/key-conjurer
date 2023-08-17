@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/riotgames/key-conjurer/pkg/oauth2device"
+	"github.com/riotgames/key-conjurer/pkg/oidc"
 	"github.com/spf13/cobra"
 	"golang.org/x/oauth2"
 )
@@ -38,7 +39,7 @@ var loginCmd = &cobra.Command{
 }
 
 func Login(ctx context.Context, domain string, useDeviceFlow bool) (*oauth2.Token, error) {
-	provider, err := DiscoverProvider(ctx, domain)
+	provider, err := oidc.DiscoverProvider(ctx, domain)
 	if err != nil {
 		return nil, fmt.Errorf("couldn't discover OIDC configuration for %s: %w", OktaDomain, err)
 	}
@@ -62,7 +63,7 @@ func Login(ctx context.Context, domain string, useDeviceFlow bool) (*oauth2.Toke
 	// The device flow and the redirect flow are almost indistinguishable from a user point of view.
 	//
 	// The device flow should be preferred as it gives the user the option to open a browser on their mobile device or their terminal, whereas the redirect flow requires opening a browser on the current machine.
-	if useDeviceFlow && SupportsDeviceFlow(provider) {
+	if useDeviceFlow && oidc.SupportsDeviceFlow(provider) {
 		oauthDeviceCfg := oauth2device.Config{
 			Config:         &oauthCfg,
 			DeviceEndpoint: provider.DeviceAuthorizationEndpoint(),

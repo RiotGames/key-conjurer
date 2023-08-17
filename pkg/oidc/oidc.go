@@ -1,4 +1,6 @@
-package main
+// Most of the code in this file has been copied from github.com/coreos/go-oidc/v3/oidc.
+// Added to that code is the support for the Device Authorization endpoint.
+package oidc
 
 import (
 	"context"
@@ -26,8 +28,6 @@ const (
 	EdDSA = "EdDSA" // Ed25519 using SHA-512
 )
 
-// Most of the code in this file has been copied from github.com/coreos/go-oidc/v3/oidc.
-// Added to that code is the support for the Device Authorization endpoint.
 var supportedAlgorithms = map[string]bool{
 	RS256: true,
 	RS384: true,

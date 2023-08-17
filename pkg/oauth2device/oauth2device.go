@@ -1,7 +1,6 @@
 // Thank you to github.com/rjw57/oauth2device for the original code used here.
 //
 // This code has been modified to include verification_url_complete and to change the grant type to the modern grant type for devices.
-
 package oauth2device
 
 import (
