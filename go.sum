@@ -204,6 +204,8 @@ github.com/prometheus/procfs v0.0.0-20190507164030-5867b95ac084/go.mod h1:TjEm7z
 github.com/prometheus/tsdb v0.7.1/go.mod h1:qhTCs0VvXwvX/y3TZrWD7rabWM+ijKTux40TwIPHuXU=
 github.com/riotgames/vault-go-client v0.0.3 h1:O0dpk80kHwaZJzEVSaTpwH6FflshaRmfO/yNzcqX7AM=
 github.com/riotgames/vault-go-client v0.0.3/go.mod h1:ygm6j/P9ITn9vAKiaWd+1SbvUac4EOPigHzb+hmX57k=
+github.com/rjw57/oauth2device v0.0.0-20150109150349-b258d5df36ce h1:mawvp/hpSVVKe7+zlVx6MVWk1Ugovc4OmxnvEHr+irs=
+github.com/rjw57/oauth2device v0.0.0-20150109150349-b258d5df36ce/go.mod h1:J3qGF/QO36QxB6LbaCIXlhgO6MNY9mhavodcN5PMcQg=
 github.com/rnikoopour/onelogin v1.0.1 h1:jvZKWR4acBFz31BHyTmWgAy4RUmSn2claS+wb+eC8nw=
 github.com/rnikoopour/onelogin v1.0.1/go.mod h1:OCpxF6ngbgRyKy+nKKyjtzEnrwjyUeiuSn+c4/5M4N0=
 github.com/rogpeppe/fastuuid v0.0.0-20150106093220-6724a57986af/go.mod h1:XWv6SoW27p1b0cqNHllgS5HIMJraePCO15w5zCzIWYg=
