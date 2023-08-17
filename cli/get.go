@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"strings"
 	"time"
@@ -106,6 +107,17 @@ var getCmd = &cobra.Command{
 			if strings.Contains(account.Name, "Tencent") {
 				cloudFlag = cloudTencent
 			}
+		}
+
+		oauthCfg, _, err := DiscoverOAuth2Config(cmd.Context(), OktaDomain)
+		if err != nil {
+			log.Printf("could not discover oauth2  config: %s", err)
+			return nil
+		}
+
+		_, err = ExchangeAccessTokenForWebSSOToken(cmd.Context(), oauthCfg, config.Tokens, applicationID)
+		if err != nil {
+			log.Printf("%s", err)
 		}
 
 		var credentials CloudCredentials

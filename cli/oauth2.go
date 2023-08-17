@@ -7,7 +7,10 @@ import (
 	"crypto/tls"
 	"encoding/base64"
 	"fmt"
+	"log"
 	"net/http"
+	"net/http/httputil"
+	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -18,6 +21,20 @@ import (
 	"github.com/riotgames/key-conjurer/pkg/oidc"
 	"golang.org/x/oauth2"
 )
+
+func DiscoverOAuth2Config(ctx context.Context, domain string) (*oauth2.Config, *oidc.Provider, error) {
+	provider, err := oidc.DiscoverProvider(ctx, domain)
+	if err != nil {
+		return nil, nil, fmt.Errorf("couldn't discover OIDC configuration for %s: %w", OktaDomain, err)
+	}
+
+	cfg := oauth2.Config{
+		ClientID: ClientID,
+		Endpoint: provider.Endpoint(),
+		Scopes:   []string{"openid", "profile", "offline_access", "okta.apps.read"},
+	}
+	return &cfg, provider, nil
+}
 
 func NewOAuth2Client(ctx context.Context, cfg *oauth2.Config, tok *oauth2.Token) *http.Client {
 	// Some Darwin systems require certs to be loaded from the system certificate store or attempts to verify SSL certs on internal websites may fail.
@@ -171,4 +188,33 @@ func RedirectionFlow(ctx context.Context, oauthCfg *oauth2.Config, state, codeCh
 	}
 
 	return oauthCfg.Exchange(ctx, code, oauth2.SetAuthURLParam("code_verifier", codeVerifier))
+}
+
+func ExchangeAccessTokenForWebSSOToken(ctx context.Context, oauthCfg *oauth2.Config, token *oauth2.Token, applicationId string) (*oauth2.Token, error) {
+	data := url.Values{
+		"client_id":        {oauthCfg.ClientID},
+		"actor_token":      {token.AccessToken},
+		"actor_token_type": {"urn:ietf:params:oauth:token-type:access_token"},
+		// TODO: This may be required. If so, we will need an oidc.Token type.
+		// "subject_token":        {token.IDToken},
+		// "subject_token_type":   {"urn:ietf:params:oauth:token-type:id_token"},
+		"grant_type":           {"urn:ietf:params:oauth:grant-type:token-exchange"},
+		"requested_token_type": {"urn:okta:oauth:token-type:web_sso_token"},
+		"audience":             {fmt.Sprintf("urn:okta:apps:%s", applicationId)},
+	}
+	body := strings.NewReader(data.Encode())
+	req, err := http.NewRequest(http.MethodPost, oauthCfg.Endpoint.TokenURL, body)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Add("Accept", "application/json")
+	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	buf, _ := httputil.DumpResponse(resp, true)
+	log.Printf("%s", buf)
+	return nil, nil
 }
