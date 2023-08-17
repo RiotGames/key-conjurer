@@ -57,10 +57,6 @@ var accountsCmd = &cobra.Command{
 				continue
 			}
 
-			// if app.Name != "amazon_aws" && !strings.Contains(app.Name, "tencent") {
-			// 	continue
-			// }
-
 			entries = append(entries, Account{ID: app.Id, Name: app.Label, Alias: generateDefaultAlias(app.Label)})
 		}
 
