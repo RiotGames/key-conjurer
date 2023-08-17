@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"strings"
@@ -58,12 +57,6 @@ var getCmd = &cobra.Command{
 			return nil
 		}
 
-		ctx := context.Background()
-		client, err := newClient()
-		if err != nil {
-			return err
-		}
-
 		valid := false
 		for _, permitted := range permittedOutputTypes {
 			if outputType == permitted {
@@ -84,11 +77,6 @@ var getCmd = &cobra.Command{
 
 		if !valid {
 			return invalidValueError(shell, permittedShellTypes)
-		}
-
-		creds, err := config.GetCredentials()
-		if err != nil {
-			return err
 		}
 
 		// make sure we enforce limit
@@ -132,18 +120,6 @@ var getCmd = &cobra.Command{
 
 		if ttl == 1 && config.TTL != 0 {
 			ttl = config.TTL
-		}
-
-		credentials, err = client.GetCredentials(ctx, &GetCredentialsOptions{
-			Credentials:            creds,
-			ApplicationID:          applicationID,
-			RoleName:               roleName,
-			TimeoutInHours:         uint8(ttl),
-			AuthenticationProvider: identityProvider,
-		})
-
-		if err != nil {
-			return err
 		}
 
 		account.MostRecentRole = roleName
