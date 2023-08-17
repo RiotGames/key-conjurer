@@ -1,0 +1,11 @@
+This only appears to work for AWS federated applications.
+
+in the okta console for an aws account:
+
+1. Sign On -> "Allowed WEb SSO Client" -> <Okta application ID of the native app>
+
+in the okta console for the native app:
+
+1. Okta API Scopes -> okta.apps.read
+1. Grant Type -> Authorization Code, Device Authorization, Token Exchange, Refresh Token
+2. Refresh Token -> Use persistent token

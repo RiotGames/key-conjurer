@@ -193,15 +193,17 @@ func RedirectionFlow(ctx context.Context, oauthCfg *oauth2.Config, state, codeCh
 func ExchangeAccessTokenForWebSSOToken(ctx context.Context, oauthCfg *oauth2.Config, token *TokenSet, applicationId string) (*oauth2.Token, error) {
 	// https://datatracker.ietf.org/doc/html/rfc8693
 	data := url.Values{
-		"client_id":            {oauthCfg.ClientID},
-		"actor_token":          {token.AccessToken},
-		"actor_token_type":     {"urn:ietf:params:oauth:token-type:access_token"},
-		"subject_token":        {token.IDToken},
-		"subject_token_type":   {"urn:ietf:params:oauth:token-type:id_token"},
-		"grant_type":           {"urn:ietf:params:oauth:grant-type:token-exchange"},
+		"client_id":          {oauthCfg.ClientID},
+		"actor_token":        {token.AccessToken},
+		"actor_token_type":   {"urn:ietf:params:oauth:token-type:access_token"},
+		"subject_token":      {token.IDToken},
+		"subject_token_type": {"urn:ietf:params:oauth:token-type:id_token"},
+		"grant_type":         {"urn:ietf:params:oauth:grant-type:token-exchange"},
+		// https://www.linkedin.com/pulse/oktas-aws-cli-app-mysterious-case-powerful-okta-apis-chaim-sanders/
 		"requested_token_type": {"urn:okta:oauth:token-type:web_sso_token"},
 		"audience":             {fmt.Sprintf("urn:okta:apps:%s", applicationId)},
 	}
+	fmt.Printf("%#v", data)
 	fmt.Printf("%#v", data)
 	body := strings.NewReader(data.Encode())
 	req, err := http.NewRequest(http.MethodPost, oauthCfg.Endpoint.TokenURL, body)
