@@ -20,10 +20,6 @@ var (
 	OktaDomain = os.Getenv("OKTA_DOMAIN")
 )
 
-func WaitForAuthorizationCode(ctx context.Context) (string, error) {
-	return "", nil
-}
-
 func NewOAuth2Client(ctx context.Context, cfg *oauth2.Config, tok *oauth2.Token) *http.Client {
 	// Some Darwin systems require certs to be loaded from the system certificate store or attempts to verify SSL certs on internal websites may fail.
 	transport := http.DefaultTransport
@@ -41,6 +37,84 @@ func NewOAuth2Client(ctx context.Context, cfg *oauth2.Config, tok *oauth2.Token)
 		Transport: &oauth2.Transport{Base: transport, Source: src},
 		Timeout:   time.Second * time.Duration(clientHttpTimeoutSeconds),
 	}
+}
+
+type OAuth2CallbackInfo struct {
+	Code             string
+	State            string
+	Error            string
+	ErrorDescription string
+}
+
+type OAuth2Listener struct {
+	Addr       string
+	errCh      chan error
+	callbackCh chan OAuth2CallbackInfo
+}
+
+func NewOAuth2Listener() OAuth2Listener {
+	return OAuth2Listener{
+		Addr:       ":8080",
+		errCh:      make(chan error),
+		callbackCh: make(chan OAuth2CallbackInfo),
+	}
+}
+
+func ParseCallbackRequest(r *http.Request) (OAuth2CallbackInfo, error) {
+	info := OAuth2CallbackInfo{
+		Error:            r.FormValue("error"),
+		ErrorDescription: r.FormValue("error_description"),
+		State:            r.FormValue("state"),
+	}
+
+	return info, nil
+}
+
+func (o OAuth2Listener) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	info, err := ParseCallbackRequest(r)
+	if err == nil {
+		// The only errors that might occur would be incorreclty formatted requests, which we will silently drop.
+		o.callbackCh <- info
+	}
+}
+
+func (o OAuth2Listener) Listen(ctx context.Context) {
+	server := http.Server{Addr: o.Addr, Handler: o}
+	go func() {
+		<-ctx.Done()
+		server.Close()
+	}()
+
+	if err := server.ListenAndServe(); err != http.ErrServerClosed {
+		o.errCh <- err
+	}
+
+	close(o.callbackCh)
+	close(o.errCh)
+}
+
+func (o OAuth2Listener) WaitForAuthorizationCode(ctx context.Context, state string) (string, error) {
+	select {
+	case info := <-o.callbackCh:
+		if info.Error != "" {
+			return "", OAuth2Error{Reason: info.Error, Description: info.ErrorDescription}
+		}
+
+		return info.Code, nil
+	case err := <-o.errCh:
+		return "", err
+	case <-ctx.Done():
+		return "", ctx.Err()
+	}
+}
+
+type OAuth2Error struct {
+	Reason      string
+	Description string
+}
+
+func (e OAuth2Error) Error() string {
+	return fmt.Sprintf("oauth2 error: %s (%s)", e.Description, e.Reason)
 }
 
 var loginCmd = &cobra.Command{
@@ -71,18 +145,21 @@ var loginCmd = &cobra.Command{
 			oauth2.SetAuthURLParam("code_challenge", codeChallenge),
 		)
 
+		listener := NewOAuth2Listener()
+		go listener.Listen(cmd.Context())
+
 		fmt.Printf("Visit the following link in your terminal: %s\n", url)
 
 		// TODO: Allow cancellation with CTRL+C
 		// Cobra might already do this for us..
-		code, err := WaitForAuthorizationCode(cmd.Context())
+		code, err := listener.WaitForAuthorizationCode(cmd.Context(), state)
 		if err != nil {
 			return fmt.Errorf("failed to get authorization code: %w", err)
 		}
 
 		token, err := oauthCfg.Exchange(cmd.Context(), code, oauth2.SetAuthURLParam("code_verifier", codeVerifier))
 		if err != nil {
-			return fmt.Errorf("Failed to exchange code for token: %w", err)
+			return fmt.Errorf("failed to exchange code for token: %w", err)
 		}
 
 		// TODO: Stash the token somewhere.
