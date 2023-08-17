@@ -31,7 +31,7 @@ func DiscoverOAuth2Config(ctx context.Context, domain string) (*oauth2.Config, *
 	cfg := oauth2.Config{
 		ClientID: ClientID,
 		Endpoint: provider.Endpoint(),
-		Scopes:   []string{"openid", "profile", "offline_access", "okta.apps.read"},
+		Scopes:   []string{"openid", "profile", "offline_access", "okta.apps.read", "okta.apps.sso"},
 	}
 	return &cfg, provider, nil
 }
