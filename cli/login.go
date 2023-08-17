@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"time"
 
 	"github.com/riotgames/key-conjurer/pkg/oauth2device"
 	"github.com/riotgames/key-conjurer/pkg/oidc"
@@ -24,12 +23,8 @@ var loginCmd = &cobra.Command{
 	Long:  "Login to KeyConjurer using OAuth2. You will be required to open the URL printed to the console or scan a QR code.",
 	// Example: appname + " login",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		tok, ok := config.GetOAuthToken()
-		if ok {
-			// A zero-value expiry means the token never expires.
-			if tok.Expiry.After(time.Now()) || tok.Expiry.IsZero() {
-				return nil
-			}
+		if !HasTokenExpired(config.Tokens) {
+			return nil
 		}
 
 		token, err := Login(cmd.Context(), OktaDomain, true)

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"os"
 
 	"github.com/spf13/cobra"
@@ -17,25 +16,12 @@ var accountsCmd = &cobra.Command{
 	Long:  "Prints the list of accounts you have access to.",
 	// Example: appname + " accounts",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		ctx := context.Background()
-		client, err := newClient()
-		if err != nil {
-			return err
+		if HasTokenExpired(config.Tokens) {
+			cmd.PrintErrln("Your session has expired. Please run login again.")
+			return nil
 		}
 
-		creds, err := config.GetCredentials()
-		if err != nil {
-			return err
-		}
-
-		accounts, err := client.ListAccounts(ctx, &ListAccountsOptions{
-			Credentials:            creds,
-			AuthenticationProvider: identityProvider,
-		})
-
-		if err != nil {
-			return err
-		}
+		accounts := []Account{}
 
 		var entries []Account
 		for _, acc := range accounts {

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 	"strconv"
+	"time"
 
 	"strings"
 
@@ -220,6 +221,18 @@ type Config struct {
 
 func (c Config) GetOAuthToken() (*oauth2.Token, bool) {
 	return c.Tokens, c.Tokens != nil
+}
+
+func HasTokenExpired(tok *oauth2.Token) bool {
+	if tok == nil {
+		return true
+	}
+
+	if tok.Expiry.IsZero() {
+		return false
+	}
+
+	return time.Now().After(tok.Expiry)
 }
 
 func (c *Config) SaveOAuthToken(tok *oauth2.Token) error {
