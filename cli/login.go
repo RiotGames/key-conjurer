@@ -135,56 +135,64 @@ var loginCmd = &cobra.Command{
 	Long:  "Login using your AD creds. This stores encrypted credentials on the local system.",
 	// Example: appname + " login",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		provider, err := oidc.NewProvider(cmd.Context(), OktaDomain)
+		tok, err := Login(cmd.Context(), OktaDomain)
 		if err != nil {
-			return fmt.Errorf("couldn't discover OIDC configuration for %s: %w", OktaDomain, err)
-		}
-
-		oauthCfg := oauth2.Config{
-			ClientID: ClientID,
-			Endpoint: provider.Endpoint(),
-			Scopes:   []string{"openid", "email", "okta.apps.read"},
-			// TODO: Only use a redirect URL to localhost if the user has supplied the `--open-browser` flag.
-			// If they don't, the default behavior should be to display a QR code that the user should scan and follow the device authorization flow instead.
-			RedirectURL: "http://localhost:8080",
-		}
-
-		stateBuf := make([]byte, 43)
-		rand.Read(stateBuf)
-		state := base64.URLEncoding.EncodeToString([]byte(stateBuf))
-
-		codeVerifierBuf := make([]byte, 43)
-		rand.Read(codeVerifierBuf)
-		codeVerifier := base64.RawURLEncoding.EncodeToString(codeVerifierBuf)
-
-		codeChallengeHash := sha256.Sum256([]byte(codeVerifier))
-		codeChallenge := base64.RawURLEncoding.EncodeToString(codeChallengeHash[:])
-		url := oauthCfg.AuthCodeURL(state,
-			oauth2.SetAuthURLParam("code_challenge_method", "S256"),
-			oauth2.SetAuthURLParam("code_challenge", codeChallenge),
-		)
-
-		listener := NewOAuth2Listener()
-		go listener.Listen(cmd.Context())
-
-		fmt.Printf("Visit the following link in your terminal: %s\n", url)
-
-		// TODO: Allow cancellation with CTRL+C
-		// Cobra might already do this for us..
-		code, err := listener.WaitForAuthorizationCode(cmd.Context(), state)
-		if err != nil {
-			return fmt.Errorf("failed to get authorization code: %w", err)
-		}
-
-		token, err := oauthCfg.Exchange(cmd.Context(), code, oauth2.SetAuthURLParam("code_verifier", codeVerifier))
-		if err != nil {
-			return fmt.Errorf("failed to exchange code for token: %w", err)
+			return err
 		}
 
 		// TODO: Stash the token somewhere.
-		// TODO: Grab the email from the id token
-		b, _ := json.Marshal(token)
-		fmt.Printf("token: %s", b)
+		blob, _ := json.MarshalIndent(tok, "", "\t")
+		fmt.Printf("%s\n", blob)
 		return nil
 	},
+}
+
+func Login(ctx context.Context, domain string) (*oauth2.Token, error) {
+	provider, err := oidc.NewProvider(ctx, domain)
+	if err != nil {
+		return nil, fmt.Errorf("couldn't discover OIDC configuration for %s: %w", OktaDomain, err)
+	}
+
+	oauthCfg := oauth2.Config{
+		ClientID: ClientID,
+		Endpoint: provider.Endpoint(),
+		Scopes:   []string{"openid", "email", "okta.apps.read"},
+		// TODO: Only use a redirect URL to localhost if the user has supplied the `--open-browser` flag.
+		// If they don't, the default behavior should be to display a QR code that the user should scan and follow the device authorization flow instead.
+		RedirectURL: "http://localhost:8080",
+	}
+
+	stateBuf := make([]byte, 43)
+	rand.Read(stateBuf)
+	state := base64.URLEncoding.EncodeToString([]byte(stateBuf))
+
+	codeVerifierBuf := make([]byte, 43)
+	rand.Read(codeVerifierBuf)
+	codeVerifier := base64.RawURLEncoding.EncodeToString(codeVerifierBuf)
+
+	codeChallengeHash := sha256.Sum256([]byte(codeVerifier))
+	codeChallenge := base64.RawURLEncoding.EncodeToString(codeChallengeHash[:])
+	url := oauthCfg.AuthCodeURL(state,
+		oauth2.SetAuthURLParam("code_challenge_method", "S256"),
+		oauth2.SetAuthURLParam("code_challenge", codeChallenge),
+	)
+
+	listener := NewOAuth2Listener()
+	go listener.Listen(ctx)
+
+	fmt.Printf("Visit the following link in your terminal: %s\n", url)
+
+	// TODO: Allow cancellation with CTRL+C
+	// Cobra might already do this for us..
+	code, err := listener.WaitForAuthorizationCode(ctx, state)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get authorization code: %w", err)
+	}
+
+	token, err := oauthCfg.Exchange(ctx, code, oauth2.SetAuthURLParam("code_verifier", codeVerifier))
+	if err != nil {
+		return nil, fmt.Errorf("failed to exchange code for token: %w", err)
+	}
+
+	return token, nil
 }
