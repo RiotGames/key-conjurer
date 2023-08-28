@@ -1,4 +1,4 @@
-import React, { Component } from "react";
+import React, { Component, type ChangeEvent } from "react";
 import { Message, Form, Card } from "semantic-ui-react";
 import { requestKeys } from "../actions";
 import { subscribe } from "../stores";
@@ -7,7 +7,7 @@ const documentationURL = process.env.REACT_APP_DOCUMENTATION_URL;
 const timeouts = [1, 2, 3, 4, 5, 6, 7, 8];
 
 interface RoleInputProps {
-  onChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
+  onChange: (event: ChangeEvent<HTMLInputElement>) => void;
   value: string;
 }
 
@@ -52,7 +52,7 @@ interface State {
   requestSent: boolean;
 }
 
-class KeyRequestForm extends Component<{}, State> {
+export class KeyRequestForm extends Component<{}, State> {
   state: State = {
     accounts: [],
     keyRequest: false,
@@ -71,17 +71,17 @@ class KeyRequestForm extends Component<{}, State> {
 
   handleChange =
     <K extends keyof State>(name: K) =>
-    (event: React.ChangeEvent<HTMLSelectElement | HTMLInputElement>) => {
-      if (name === "timeout") {
-        localStorage.setItem("timeout", event.currentTarget.value);
-      }
+      (event: ChangeEvent<HTMLSelectElement | HTMLInputElement>) => {
+        if (name === "timeout") {
+          localStorage.setItem("timeout", event.currentTarget.value);
+        }
 
-      this.setState((prevState) => {
-        return { ...prevState, [name]: event.currentTarget.value };
-      });
-    };
+        this.setState((prevState) => {
+          return { ...prevState, [name]: event.currentTarget.value };
+        });
+      };
 
-  setAccount = (event: React.ChangeEvent<HTMLSelectElement>) => {
+  setAccount = (event: ChangeEvent<HTMLSelectElement>) => {
     this.setState({ selectedAccount: event.currentTarget.value });
   };
 
@@ -259,5 +259,3 @@ class KeyRequestForm extends Component<{}, State> {
     );
   }
 }
-
-export default KeyRequestForm;

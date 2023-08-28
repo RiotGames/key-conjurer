@@ -46,5 +46,3 @@ export AWS_SECURITY_TOKEN=$AWS_SESSION_TOKEN`;
     </Card>
   );
 }
-
-export default KeyCard;

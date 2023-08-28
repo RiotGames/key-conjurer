@@ -4,7 +4,7 @@ import keyConjurerLogo from "./../images/KeyConjurer.png";
 
 const binaryName = process.env.REACT_APP_BINARY_NAME;
 
-const History = () => (
+export const History = () => (
   <Card fluid>
     <Image src={keyConjurerLogo} />
     <Card.Content>
@@ -45,5 +45,3 @@ const History = () => (
     </Card.Content>
   </Card>
 );
-
-export default History;

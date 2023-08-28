@@ -16,7 +16,7 @@ interface State {
   errorMessage?: string;
 }
 
-class LoginForm extends Component<{}, State> {
+export class LoginForm extends Component<{}, State> {
   state = {
     username: "",
     password: "",
@@ -68,13 +68,13 @@ class LoginForm extends Component<{}, State> {
 
     const handleTextChange =
       (property: "username" | "password") =>
-      (_event: unknown, data: { value: string }) => {
-        const { username, password } = this.state;
-        updateUserInfo({
-          username: "username" === property ? data.value : username,
-          password: "password" === property ? data.value : password,
-        });
-      };
+        (_event: unknown, data: { value: string }) => {
+          const { username, password } = this.state;
+          updateUserInfo({
+            username: "username" === property ? data.value : username,
+            password: "password" === property ? data.value : password,
+          });
+        };
 
     const handleSubmit = () => {
       const { username, password } = this.state;
@@ -125,5 +125,3 @@ class LoginForm extends Component<{}, State> {
     );
   }
 }
-
-export default LoginForm;

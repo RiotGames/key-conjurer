@@ -1,5 +1,5 @@
 import * as React from "react";
-import KeyRequestForm from "./KeyRequestForm";
+import { KeyRequestForm } from "./KeyRequestForm";
 import { cleanup, render } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { update, resetAllStores } from "../stores";
