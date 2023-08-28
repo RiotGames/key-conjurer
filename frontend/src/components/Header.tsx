@@ -8,4 +8,4 @@ export const Header = () => {
       <Menu.Item position="right">{process.env.REACT_APP_VERSION}</Menu.Item>
     </Menu>
   );
-}
+};
