@@ -1,49 +1,24 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"crypto/tls"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
-	"mime"
 	"net/http"
 	"net/url"
 	"runtime"
-	"strings"
 	"time"
 
 	rootcerts "github.com/hashicorp/go-rootcerts"
-	"github.com/riotgames/key-conjurer/api/core"
-	"github.com/riotgames/key-conjurer/api/keyconjurer"
-	"github.com/riotgames/key-conjurer/providers"
 )
 
-// client and version are injected at compile time, refer to consts.go
-var props keyconjurer.ClientProperties = keyconjurer.ClientProperties{
-	Name:    ClientName,
-	Version: Version,
-}
-
-var (
-	errUnspecifiedServerError = errors.New("unspecified server error")
-	errInvalidJSONResponse    = errors.New("unable to parse JSON from the server")
-)
-
-func createAPIURL(base url.URL, path string) string {
-	base.Path = strings.TrimPrefix(path, "/")
-	return base.String()
-}
-
-// Client is the struct through which all KeyConjurer operations stem.
 type Client struct {
 	baseURL url.URL
 	http    *http.Client
 }
 
-// NewClient creates a new client with the given hostname.
 func NewClient(baseURL url.URL) (Client, error) {
 	certs, err := rootcerts.LoadSystemCAs()
 	if err != nil {
@@ -60,163 +35,6 @@ func NewClient(baseURL url.URL) (Client, error) {
 	}
 
 	return Client{http: httpClient, baseURL: baseURL}, nil
-}
-
-func (c *Client) do(ctx context.Context, path string, r io.Reader, responseStruct interface{}) error {
-	apiURL := createAPIURL(c.baseURL, path)
-	req, err := http.NewRequestWithContext(ctx, "POST", apiURL, r)
-	if err != nil {
-		return err
-	}
-
-	// We use the User Agent header to indicate client versions in newer versions of Key Conjurer because you cannot send bodies with GET
-	req.Header.Set("user-agent", props.UserAgent())
-	req.Header.Set("content-type", "application/json")
-	res, err := c.http.Do(req)
-	if err != nil {
-		return fmt.Errorf("error sending http request: %w", err)
-	}
-
-	if res.StatusCode == http.StatusGatewayTimeout {
-		// This indicates that our Lambda function took too long and our API Gateway gave up.
-		// The user cannot do anything about this.
-		return errors.New("API Gateway Timeout")
-	}
-
-	typ, _, _ := mime.ParseMediaType(res.Header.Get("Content-Type"))
-	if !strings.EqualFold(typ, "application/json") {
-		if res.StatusCode >= 500 {
-			return errUnspecifiedServerError
-		} else {
-			return errInvalidJSONResponse
-		}
-	}
-
-	defer res.Body.Close()
-	var response keyconjurer.Response
-	if err := json.NewDecoder(res.Body).Decode(&response); err != nil {
-		return errInvalidJSONResponse
-	}
-
-	if !response.Success {
-		var responseError keyconjurer.ErrorData
-		if err := response.GetError(&responseError); err != nil {
-			return err
-		}
-
-		return responseError
-	}
-
-	return response.GetPayload(&responseStruct)
-}
-
-type GetCredentialsOptions struct {
-	Credentials            core.Credentials
-	ApplicationID          string
-	TimeoutInHours         uint8
-	RoleName               string
-	AuthenticationProvider string
-}
-
-func (c *Client) encodeJSON(data interface{}) (bytes.Buffer, error) {
-	var b bytes.Buffer
-	enc := json.NewEncoder(&b)
-	// This will prevent certain characters causing problems if they are present in passwords
-	enc.SetEscapeHTML(false)
-	return b, enc.Encode(data)
-}
-
-// GetCredentials requests a set of temporary credentials for the requested AWS account and returns them.
-func (c *Client) GetCredentials(ctx context.Context, opts *GetCredentialsOptions) (CloudCredentials, error) {
-	request := keyconjurer.GetTemporaryCredentialEvent{
-		Credentials:            opts.Credentials,
-		AppID:                  opts.ApplicationID,
-		TimeoutInHours:         opts.TimeoutInHours,
-		RoleName:               opts.RoleName,
-		AuthenticationProvider: opts.AuthenticationProvider,
-	}
-
-	buf, err := c.encodeJSON(request)
-	if err != nil {
-		return CloudCredentials{}, err
-	}
-
-	var response keyconjurer.GetTemporaryCredentialsPayload
-	if err := c.do(ctx, "/get_aws_creds", &buf, &response); err != nil {
-		return CloudCredentials{}, fmt.Errorf("failed to generate temporary session token: %s", err)
-	}
-
-	return CloudCredentials{
-		AccountID:       response.AccountID,
-		AccessKeyID:     response.AccessKeyID,
-		SecretAccessKey: response.SecretAccessKey,
-		SessionToken:    response.SessionToken,
-		Expiration:      response.Expiration,
-	}, nil
-}
-
-type GetUserDataOptions struct {
-	Credentials            core.Credentials
-	AuthenticationProvider string
-}
-
-// GetUserData returns data on the user stored in the API.
-func (c *Client) GetUserData(ctx context.Context, opts *GetUserDataOptions) (keyconjurer.GetUserDataPayload, error) {
-	request := keyconjurer.GetUserDataEvent{
-		Credentials:            opts.Credentials,
-		AuthenticationProvider: opts.AuthenticationProvider,
-	}
-
-	buf, err := c.encodeJSON(request)
-	if err != nil {
-		return keyconjurer.GetUserDataPayload{}, err
-	}
-
-	var data keyconjurer.GetUserDataPayload
-	return data, c.do(ctx, "/get_user_data", &buf, &data)
-}
-
-type ListAccountsOptions struct {
-	AuthenticationProvider string
-	Credentials            core.Credentials
-}
-
-// ListAccounts lists the accounts the user is entitled to access.
-func (c *Client) ListAccounts(ctx context.Context, opts *ListAccountsOptions) ([]core.Application, error) {
-	// HACK: We can re-use the GetUserData endpoint as it returns the applications the user is entitled to view.
-	payload := keyconjurer.GetUserDataEvent{
-		Credentials:            opts.Credentials,
-		AuthenticationProvider: opts.AuthenticationProvider,
-	}
-
-	if opts.AuthenticationProvider == "" {
-		payload.AuthenticationProvider = providers.Okta
-	}
-
-	buf, err := c.encodeJSON(payload)
-	if err != nil {
-		return nil, err
-	}
-
-	var response keyconjurer.GetUserDataPayload
-	if err := c.do(ctx, "/get_user_data", &buf, &response); err != nil {
-		return nil, err
-	}
-
-	return response.Apps, nil
-}
-
-type ListProvidersOptions struct{}
-
-// ListProviders lists the authentication providers that the user may use to authenticate with.
-func (c *Client) ListProviders(ctx context.Context, opts *ListProvidersOptions) ([]keyconjurer.Provider, error) {
-	buf, err := c.encodeJSON(keyconjurer.ListProvidersEvent{})
-	if err != nil {
-		return nil, err
-	}
-
-	var result keyconjurer.ListProvidersPayload
-	return result.Providers, c.do(ctx, "/list_providers", &buf, &result)
 }
 
 func getBinaryName() string {
