@@ -20,14 +20,13 @@ type cloudCliConfigFile struct {
 }
 
 // Intentionally missing the `ini` notation sections,keys, and values
-//  are being handled by the ini library
+//
+//	are being handled by the ini library
 type CloudCliEntry struct {
 	profileName string
 	keyId       string
 	key         string
 	token       string
-	region      string
-	output      string
 }
 
 func NewCloudCliEntry(c CloudCredentials, a *Account) *CloudCliEntry {

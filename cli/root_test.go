@@ -41,18 +41,6 @@ func execute(cmd *cobra.Command, args ...string) (string, error) {
 	return outputbuf.String(), err
 }
 
-func stringContains(t *testing.T, testTarget, shouldBeHere string) {
-	if !strings.Contains(testTarget, shouldBeHere) {
-		t.Errorf("Missing Content:\n   [%v]\nShould have been in here:\n   %v\n", shouldBeHere, testTarget)
-	}
-}
-
-func stringOmits(t *testing.T, testTarget, shouldNotBeHere string) {
-	if strings.Contains(testTarget, shouldNotBeHere) {
-		t.Errorf("Extra Content that should not be found here:\n   [%v]\nBut it was:\n   %v", shouldNotBeHere, testTarget)
-	}
-}
-
 func stringChecks(t *testing.T, testTarget string, shouldBeHere, shouldNotBeHere []string) {
 	t.Helper()
 	expectedTermsMissing := []string{}

@@ -15,7 +15,7 @@ func TestFindAccount(t *testing.T) {
 	assert.Equal(t, "1", account.ID, "account id should be 1")
 	assert.Equal(t, "test account", account.Name, "account name should be %q", "test account")
 
-	account, ok = set.Resolve("testaccount2")
+	_, ok = set.Resolve("testaccount2")
 	assert.False(t, ok, "account shouldn't exist")
 }
 
