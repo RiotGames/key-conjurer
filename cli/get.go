@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"strings"
-	"time"
 
+	"github.com/riotgames/key-conjurer/api/cloud/aws"
+	"github.com/riotgames/key-conjurer/api/core"
 	"github.com/spf13/cobra"
 )
 
@@ -85,29 +85,29 @@ var getCmd = &cobra.Command{
 			ttl = 8
 		}
 
-		var label, applicationID = args[0], args[0]
-		account, ok := config.FindAccount(applicationID)
-		if ok {
-			applicationID = account.ID
-			label = account.Name
-		} else {
-			account = &Account{}
-		}
+		// var label, applicationID = args[0], args[0]
+		// account, ok := config.FindAccount(applicationID)
+		// if ok {
+		// 	applicationID = account.ID
+		// 	label = account.Name
+		// } else {
+		// 	account = &Account{}
+		// }
 
-		if account.MostRecentRole != "" && roleName == "" {
-			roleName = account.MostRecentRole
-		}
+		// if account.MostRecentRole != "" && roleName == "" {
+		// 	roleName = account.MostRecentRole
+		// }
 
 		if config.TimeRemaining != 0 && timeRemaining == DefaultTimeRemaining {
 			timeRemaining = config.TimeRemaining
 		}
 
-		if cloudFlag == "" {
-			cloudFlag = cloudAws
-			if strings.Contains(account.Name, "Tencent") {
-				cloudFlag = cloudTencent
-			}
-		}
+		// if cloudFlag == "" {
+		// 	cloudFlag = cloudAws
+		// 	if strings.Contains(account.Name, "Tencent") {
+		// 		cloudFlag = cloudTencent
+		// 	}
+		// }
 
 		oauthCfg, _, err := DiscoverOAuth2Config(cmd.Context(), OktaDomain)
 		if err != nil {
@@ -115,26 +115,56 @@ var getCmd = &cobra.Command{
 			return nil
 		}
 
-		_, err = ExchangeAccessTokenForWebSSOToken(cmd.Context(), oauthCfg, config.Tokens, applicationID)
+		// tok, err := ExchangeAccessTokenForWebSSOToken(cmd.Context(), oauthCfg, config.Tokens, applicationID)
+		tok, err := ExchangeAccessTokenForWebSSOToken(cmd.Context(), oauthCfg, config.Tokens, args[0])
 		if err != nil {
 			log.Fatalf("Error exchanging token: %s", err)
 		}
 
-		var credentials CloudCredentials
-		credentials.LoadFromEnv(cloudFlag)
-		if credentials.ValidUntil(*account, cloudFlag, time.Duration(timeRemaining)*time.Minute) {
-			return echoCredentials(args[0], args[0], credentials, outputType, cloudFlag)
+		assertionBytes, err := ExchangeWebSSOTokenForSAMLAssertion(cmd.Context(), OktaDomain, tok)
+		if err != nil {
+			log.Fatalf("Failed to fetch SAML assertion: %s", err)
 		}
 
-		if !quiet {
-			fmt.Fprintf(os.Stderr, "sending authentication request for account %q - you may be asked to authenticate with Duo\n", label)
+		assertionStr := string(assertionBytes)
+
+		// TODO: implement principalarn/rolearn finding
+		_, err = core.ParseEncodedResponse(assertionStr)
+		if err != nil {
+			log.Fatalf("could not parse assertion: %s", err)
 		}
 
-		if ttl == 1 && config.TTL != 0 {
-			ttl = config.TTL
+		prov, _ := aws.NewProvider("us-west-2")
+		principalARN := "arn:aws:iam::051466331536:saml-provider/Okta"
+		roleARN := "arn:aws:iam::051466331536:role/GL-Admin"
+
+		resp, err := prov.GetTemporaryCredentialsForUser(cmd.Context(), &principalARN, &roleARN, &assertionStr, 1)
+		if err != nil {
+			log.Fatalf("failed to exchange credentials: %s", err)
 		}
 
-		account.MostRecentRole = roleName
+		credentials := CloudCredentials{
+			AccessKeyID:     *resp.AccessKeyID,
+			Expiration:      resp.Expiration,
+			SecretAccessKey: *resp.SecretAccessKey,
+			SessionToken:    *resp.SessionToken,
+		}
+
+		// var credentials CloudCredentials
+		// credentials.LoadFromEnv(cloudFlag)
+		// if credentials.ValidUntil(*account, cloudFlag, time.Duration(timeRemaining)*time.Minute) {
+		// 	return echoCredentials(args[0], args[0], credentials, outputType, cloudFlag)
+		// }
+
+		// if !quiet {
+		// 	fmt.Fprintf(os.Stderr, "sending authentication request for account %q - you may be asked to authenticate with Duo\n", label)
+		// }
+
+		// if ttl == 1 && config.TTL != 0 {
+		// 	ttl = config.TTL
+		// }
+
+		// account.MostRecentRole = roleName
 		return echoCredentials(args[0], args[0], credentials, outputType, cloudFlag)
 	}}
 

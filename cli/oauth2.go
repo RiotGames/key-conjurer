@@ -7,6 +7,7 @@ import (
 	"crypto/tls"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -16,8 +17,10 @@ import (
 
 	rootcerts "github.com/hashicorp/go-rootcerts"
 	"github.com/mdp/qrterminal"
+	"github.com/riotgames/key-conjurer/pkg/htmlutil"
 	"github.com/riotgames/key-conjurer/pkg/oauth2device"
 	"github.com/riotgames/key-conjurer/pkg/oidc"
+	"golang.org/x/net/html"
 	"golang.org/x/oauth2"
 )
 
@@ -30,7 +33,7 @@ func DiscoverOAuth2Config(ctx context.Context, domain string) (*oauth2.Config, *
 	cfg := oauth2.Config{
 		ClientID: ClientID,
 		Endpoint: provider.Endpoint(),
-		Scopes:   []string{"openid", "profile", "offline_access", "okta.apps.read"},
+		Scopes:   []string{"openid", "profile", "okta.apps.read", "okta.apps.sso"},
 	}
 	return &cfg, provider, nil
 }
@@ -202,8 +205,6 @@ func ExchangeAccessTokenForWebSSOToken(ctx context.Context, oauthCfg *oauth2.Con
 		"requested_token_type": {"urn:okta:oauth:token-type:web_sso_token"},
 		"audience":             {fmt.Sprintf("urn:okta:apps:%s", applicationId)},
 	}
-	fmt.Printf("%#v", data)
-	fmt.Printf("%#v", data)
 	body := strings.NewReader(data.Encode())
 	req, err := http.NewRequest(http.MethodPost, oauthCfg.Endpoint.TokenURL, body)
 	if err != nil {
@@ -211,6 +212,7 @@ func ExchangeAccessTokenForWebSSOToken(ctx context.Context, oauthCfg *oauth2.Con
 	}
 	req.Header.Add("Accept", "application/json")
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+	// TODO: The response can indicate a failure, we should check that for this function
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return nil, err
@@ -218,4 +220,27 @@ func ExchangeAccessTokenForWebSSOToken(ctx context.Context, oauthCfg *oauth2.Con
 
 	var tok oauth2.Token
 	return &tok, json.NewDecoder(resp.Body).Decode(&tok)
+}
+
+// TODO: This is actually an Okta-specific API
+func ExchangeWebSSOTokenForSAMLAssertion(ctx context.Context, issuer string, token *oauth2.Token) ([]byte, error) {
+	data := url.Values{"token": {token.AccessToken}}
+	uri := fmt.Sprintf("%s/login/token/sso?%s", issuer, data.Encode())
+	resp, err := http.Get(uri)
+	if err != nil {
+		return nil, err
+	}
+
+	doc, _ := html.Parse(resp.Body)
+	form, ok := htmlutil.FindFirstForm(doc)
+	if !ok {
+		return nil, errors.New("could not find form")
+	}
+
+	saml, ok := form.Inputs["SAMLResponse"]
+	if !ok {
+		return nil, errors.New("no SAML assertion")
+	}
+
+	return []byte(saml), nil
 }
