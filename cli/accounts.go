@@ -10,10 +10,6 @@ import (
 	"golang.org/x/oauth2"
 )
 
-func init() {
-	accountsCmd.Flags().StringVar(&identityProvider, "identity-provider", defaultIdentityProvider, "The identity provider to use. Refer to `"+appname+" identity-providers` for more info.")
-}
-
 var accountsCmd = &cobra.Command{
 	Use:   "accounts",
 	Short: "Prints the list of accounts you have access to.",

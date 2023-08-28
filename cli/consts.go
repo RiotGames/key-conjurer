@@ -1,7 +1,5 @@
 package main
 
-import "github.com/riotgames/key-conjurer/providers"
-
 // Vars for build time
 var Version string = "TBD"
 var ClientName string = appname
@@ -30,5 +28,3 @@ const DarwinArm64BinaryName string = "keyconjurer-darwin-arm64"
 const DarwinAmd64BinaryName string = "keyconjurer-darwin-amd64"
 
 const appname string = "keyconjurer"
-
-const defaultIdentityProvider = providers.Okta

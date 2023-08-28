@@ -19,8 +19,7 @@ var (
 	// host of the API server. Don't use this. You probably meant to use newClient() instead.
 	host string
 	// This is set by the Makefile during build of the CLI. Don't use this.
-	defaultHost      string
-	identityProvider string
+	defaultHost string
 	// config is a cache-like datastore for this application. It is loaded at app start-up.
 	config                   Config
 	quiet                    bool
