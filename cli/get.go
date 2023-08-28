@@ -117,7 +117,7 @@ var getCmd = &cobra.Command{
 
 		_, err = ExchangeAccessTokenForWebSSOToken(cmd.Context(), oauthCfg, config.Tokens, applicationID)
 		if err != nil {
-			log.Printf("%s", err)
+			log.Fatalf("Error exchanging token: %s", err)
 		}
 
 		var credentials CloudCredentials

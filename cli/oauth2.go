@@ -6,10 +6,9 @@ import (
 	"crypto/sha256"
 	"crypto/tls"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
-	"net/http/httputil"
 	"net/url"
 	"os"
 	"strings"
@@ -31,7 +30,7 @@ func DiscoverOAuth2Config(ctx context.Context, domain string) (*oauth2.Config, *
 	cfg := oauth2.Config{
 		ClientID: ClientID,
 		Endpoint: provider.Endpoint(),
-		Scopes:   []string{"openid", "profile", "offline_access", "okta.apps.read", "okta.apps.sso"},
+		Scopes:   []string{"openid", "profile", "offline_access", "okta.apps.read"},
 	}
 	return &cfg, provider, nil
 }
@@ -70,7 +69,7 @@ type OAuth2Listener struct {
 
 func NewOAuth2Listener() OAuth2Listener {
 	return OAuth2Listener{
-		Addr:       ":8080",
+		Addr:       ":8081",
 		errCh:      make(chan error),
 		callbackCh: make(chan OAuth2CallbackInfo),
 	}
@@ -175,7 +174,7 @@ func DeviceAuthorizationFlow(provider *oidc.Provider, oauthCfg *oauth2.Config) (
 func RedirectionFlow(ctx context.Context, oauthCfg *oauth2.Config, state, codeChallenge, codeVerifier string) (*oauth2.Token, error) {
 	listener := NewOAuth2Listener()
 	go listener.Listen(ctx)
-	oauthCfg.RedirectURL = "http://localhost:8080"
+	oauthCfg.RedirectURL = "http://localhost:8081"
 	url := oauthCfg.AuthCodeURL(state,
 		oauth2.SetAuthURLParam("code_challenge_method", "S256"),
 		oauth2.SetAuthURLParam("code_challenge", codeChallenge),
@@ -217,7 +216,6 @@ func ExchangeAccessTokenForWebSSOToken(ctx context.Context, oauthCfg *oauth2.Con
 		return nil, err
 	}
 
-	buf, _ := httputil.DumpResponse(resp, true)
-	log.Printf("%s", buf)
-	return nil, nil
+	var tok oauth2.Token
+	return &tok, json.NewDecoder(resp.Body).Decode(&tok)
 }
