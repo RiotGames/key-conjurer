@@ -1,13 +1,17 @@
-import React, { Component } from "react";
+import React, { Component, type ChangeEvent } from "react";
 import { Message, Form, Card } from "semantic-ui-react";
-import * as PropTypes from "prop-types";
-import { requestKeys } from "./../actions";
-import { subscribe, update } from "./../stores";
-import { documentationURL } from "../consts";
+import { requestKeys } from "../actions";
+import { subscribe } from "../stores";
 
+const documentationURL = process.env.REACT_APP_DOCUMENTATION_URL;
 const timeouts = [1, 2, 3, 4, 5, 6, 7, 8];
 
-const RoleInput = ({ onChange, value }) => {
+interface RoleInputProps {
+  onChange: (event: ChangeEvent<HTMLInputElement>) => void;
+  value: string;
+}
+
+const RoleInput = ({ onChange, value }: RoleInputProps) => {
   return (
     <>
       <Form.Input
@@ -32,14 +36,30 @@ const RoleInput = ({ onChange, value }) => {
   );
 };
 
-class KeyRequestForm extends Component {
-  state = {
+interface State {
+  accounts: { name: string; id: string }[];
+  password: string;
+  selectedAccount?: string;
+  timeout: number;
+  username: string;
+
+  error: boolean;
+  errorEvent: string;
+  errorMessage?: string;
+  role: string;
+
+  keyRequest: boolean;
+  requestSent: boolean;
+}
+
+export class KeyRequestForm extends Component<{}, State> {
+  state: State = {
     accounts: [],
     keyRequest: false,
     password: "",
     requestSent: false,
     selectedAccount: undefined,
-    timeout: parseInt(localStorage.getItem("timeout") || 1, 10),
+    timeout: parseInt(localStorage.getItem("timeout") ?? "1", 10),
     username: "",
     error: false,
     errorEvent: "",
@@ -47,77 +67,98 @@ class KeyRequestForm extends Component {
     role: "",
   };
 
-  handleChange = (name) => (event) => {
-    if (name === "timeout") {
-      localStorage.setItem("timeout", parseInt(event.currentTarget.value));
-    }
+  subs: (() => void)[] = [];
 
-    this.setState({ [name]: event.currentTarget.value });
-  };
+  handleChange =
+    <K extends keyof State>(name: K) =>
+      (event: ChangeEvent<HTMLSelectElement | HTMLInputElement>) => {
+        if (name === "timeout") {
+          localStorage.setItem("timeout", event.currentTarget.value);
+        }
 
-  setAccount = (event) => {
+        this.setState((prevState) => {
+          return { ...prevState, [name]: event.currentTarget.value };
+        });
+      };
+
+  setAccount = (event: ChangeEvent<HTMLSelectElement>) => {
     this.setState({ selectedAccount: event.currentTarget.value });
   };
 
   componentDidMount() {
-    subscribe("idpInfo", ({ apps: accounts }) => {
-      // when idpInfo is triggered, we may have not selected an account yet, but
-      // the DOM will visually indicate we have selected the first element.
-      // The easiest way to fix this is to update the selected account to the first
-      // available, if one has not already been selected.
-      //
-      // This doesn't get reproduced in tests because the tests can only test the
-      // visual output to the browser, but this is happening within the internal state
-      // of this component. Even when specifying that the browser should use the internal
-      // state value, this still happens, which is very strange.
-      this.setState((prevState) => {
-        if (prevState.selectedAccount !== undefined) {
-          // An account was selected by the user.
-          if (
-            accounts.length > 0 &&
-            accounts.every((acc) => acc.id !== prevState.selectedAccount)
-          ) {
-            // There are no accounts in the new account set that match the users current account, so we should unset.
-            // This is unlikely to ever happen - a user would have to be removed from an account between two button presses.
-            return { accounts, selectedAccount: undefined };
+    this.subs.push(
+      subscribe("idpInfo", ({ apps: accounts }) => {
+        // when idpInfo is triggered, we may have not selected an account yet, but
+        // the DOM will visually indicate we have selected the first element.
+        // The easiest way to fix this is to update the selected account to the first
+        // available, if one has not already been selected.
+        //
+        // This doesn't get reproduced in tests because the tests can only test the
+        // visual output to the browser, but this is happening within the internal state
+        // of this component. Even when specifying that the browser should use the internal
+        // state value, this still happens, which is very strange.
+        this.setState((prevState) => {
+          if (prevState.selectedAccount !== undefined) {
+            // An account was selected by the user.
+            if (
+              accounts.length > 0 &&
+              accounts.every((acc) => acc.id !== prevState.selectedAccount)
+            ) {
+              // There are no accounts in the new account set that match the users current account, so we should unset.
+              // This is unlikely to ever happen - a user would have to be removed from an account between two button presses.
+              return { accounts, selectedAccount: undefined };
+            }
+
+            // The only case left that a user had selected an account, and is still entitled to it.
+            return { accounts, selectedAccount: prevState.selectedAccount };
           }
 
-          // The only case left that a user had selected an account, and is still entitled to it.
-          return { accounts, selectedAccount: prevState.selectedAccount };
+          if (accounts.length > 0 && prevState.accounts.length === 0) {
+            // The user was not entitled to any accounts, and now they are - we should pick the first one.
+            // This resolves #18.
+            return { accounts, selectedAccount: accounts[0].id };
+          }
+
+          // The user had no account preference, and there are no special cases for the accounts list,
+          // so preserve the current selection.
+          return { accounts };
+        });
+      })
+    );
+
+    this.subs.push(
+      subscribe("userInfo", ({ username, password }) => {
+        this.setState({
+          username,
+          password,
+        });
+      })
+    );
+
+    this.subs.push(
+      subscribe("request", ({ requestSent }) => {
+        this.setState({
+          requestSent,
+          keyRequest: requestSent && this.state.keyRequest,
+        });
+      })
+    );
+    this.subs.push(
+      subscribe("errors", ({ error, event, message: errorMessage }) => {
+        if (event === "keyRequest") {
+          this.setState({ error, errorMessage, errorEvent: event });
         }
-
-        if (accounts.length > 0 && prevState.accounts.length === 0) {
-          // The user was not entitled to any accounts, and now they are - we should pick the first one.
-          // This resolves #18.
-          return { accounts, selectedAccount: accounts[0].id };
-        }
-
-        // The user had no account preference, and there are no special cases for the accounts list,
-        // so preserve the current selection.
-        return { accounts };
-      });
-    });
-
-    subscribe("userInfo", ({ username, password }) => {
-      this.setState({
-        username,
-        password,
-      });
-    });
-    subscribe("request", ({ requestSent }) => {
-      this.setState({
-        requestSent,
-        keyRequest: requestSent && this.state.keyRequest,
-      });
-    });
-    subscribe("errors", ({ error, event, message: errorMessage }) => {
-      if (event === "keyRequest") {
-        this.setState({ error, errorMessage, errorEvent: event });
-      }
-    });
+      })
+    );
   }
 
-  handleSubmit = (_event) => {
+  componentWillUnmount(): void {
+    for (const unsub of this.subs) {
+      unsub();
+    }
+  }
+
+  handleSubmit = (event: unknown) => {
     const { username, password, selectedAccount, timeout, role } = this.state;
     this.setState({
       keyRequest: true,
@@ -129,9 +170,8 @@ class KeyRequestForm extends Component {
     requestKeys({
       username,
       password,
-      selectedAccount,
+      selectedAccount: selectedAccount!,
       timeout,
-      idp: this.props.idp,
       role,
     });
   };
@@ -219,9 +259,3 @@ class KeyRequestForm extends Component {
     );
   }
 }
-
-KeyRequestForm.propTypes = {
-  idp: PropTypes.string.isRequired,
-};
-
-export default KeyRequestForm;

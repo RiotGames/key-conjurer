@@ -1,10 +1,22 @@
 import React, { Component } from "react";
 import { Form, Card, Message } from "semantic-ui-react";
-import { authenticate, updateUserInfo } from "./../actions";
-import { subscribe } from "./../stores";
-import * as PropTypes from "prop-types";
+import { authenticate, updateUserInfo } from "../actions";
+import { subscribe } from "../stores";
 
-class LoginForm extends Component {
+interface State {
+  username: string;
+  password: string;
+
+  requestSent: boolean;
+  loginRequest: boolean;
+  encryptCreds: boolean;
+
+  error: boolean;
+  errorEvent: string;
+  errorMessage?: string;
+}
+
+export class LoginForm extends Component<{}, State> {
   state = {
     username: "",
     password: "",
@@ -14,14 +26,6 @@ class LoginForm extends Component {
     error: false,
     errorEvent: "",
     errorMessage: "",
-  };
-
-  handleTextChange = (property) => (_event, data) => {
-    const { username, password } = this.state;
-    updateUserInfo({
-      username: "username" === property ? data.value : username,
-      password: "password" === property ? data.value : password,
-    });
   };
 
   componentDidMount() {
@@ -58,37 +62,43 @@ class LoginForm extends Component {
     });
   }
 
-  authUser = (_event) => {
-    const { username, password } = this.state;
-    this.setState({
-      loginRequest: true,
-      error: false,
-      errorMessage: "",
-    });
-    authenticate(username, password, this.props.idp);
-  };
-
-  handleSubmit = () => {
-    this.authUser();
-  };
-
   render() {
     const { username, password, requestSent, error, errorEvent, errorMessage } =
       this.state;
+
+    const handleTextChange =
+      (property: "username" | "password") =>
+        (_event: unknown, data: { value: string }) => {
+          const { username, password } = this.state;
+          updateUserInfo({
+            username: "username" === property ? data.value : username,
+            password: "password" === property ? data.value : password,
+          });
+        };
+
+    const handleSubmit = () => {
+      const { username, password } = this.state;
+      this.setState({
+        loginRequest: true,
+        error: false,
+        errorMessage: "",
+      });
+      authenticate(username, password);
+    };
 
     return (
       <Card fluid>
         <Card.Content>
           <Card.Header>Auth</Card.Header>
           <Card.Description>
-            <Form loading={requestSent} onSubmit={this.handleSubmit}>
+            <Form loading={requestSent} onSubmit={handleSubmit}>
               <Form.Group widths="equal" inline>
                 <Form.Input
                   fluid
                   label="Username"
                   placeholder="Username"
                   value={username}
-                  onChange={this.handleTextChange("username")}
+                  onChange={handleTextChange("username")}
                   autoFocus
                   autoComplete="off"
                 />
@@ -98,7 +108,7 @@ class LoginForm extends Component {
                   label="Password"
                   placeholder="Password"
                   value={password}
-                  onChange={this.handleTextChange("password")}
+                  onChange={handleTextChange("password")}
                   autoComplete="off"
                 />
               </Form.Group>
@@ -115,9 +125,3 @@ class LoginForm extends Component {
     );
   }
 }
-
-export default LoginForm;
-
-LoginForm.propTypes = {
-  idp: PropTypes.string.isRequired,
-};

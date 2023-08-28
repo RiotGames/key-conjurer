@@ -1,13 +1,34 @@
 import { update, save, resetStores } from "./stores";
-import { keyConjurerApiUrl, client } from "./consts";
-import { version as clientVersion } from "./version";
 
-export async function authenticate(username, password, idp) {
+const apiURL = process.env.REACT_APP_API_URL;
+const client = process.env.REACT_APP_CLIENT;
+const clientVersion = process.env.REACT_APP_VERSION;
+
+interface SuccessfulResponse<T> {
+  Success: boolean;
+  Message?: string;
+  Data: T;
+}
+
+type Response<T> = SuccessfulResponse<T>;
+
+interface ApplicationDto {
+  "@id": string;
+  name: string;
+}
+
+interface AuthenticateResponse {
+  creds: string;
+
+  apps: ApplicationDto[];
+}
+
+export async function authenticate(username: string, password: string) {
   resetStores(["idpInfo", "awsKeys"]);
   update("request", { requestSent: true });
 
   try {
-    const response = await fetch(`${keyConjurerApiUrl}/get_user_data`, {
+    const response = await fetch(`${apiURL}/get_user_data`, {
       method: "POST",
       mode: "cors",
       headers: {
@@ -18,11 +39,12 @@ export async function authenticate(username, password, idp) {
         password,
         client,
         clientVersion,
-        authentication_provider: idp,
+        authentication_provider: "okta",
       }),
     });
 
-    const { Success, Message, Data } = await response.json();
+    const { Success, Message, Data } =
+      (await response.json()) as Response<AuthenticateResponse>;
     if (!Success) {
       throw Error(Message);
     }
@@ -43,7 +65,7 @@ export async function authenticate(username, password, idp) {
     });
 
     update("idpInfo", { apps });
-  } catch (error) {
+  } catch (error: any) {
     update("errors", {
       message: error.message,
       error: true,
@@ -54,14 +76,21 @@ export async function authenticate(username, password, idp) {
   }
 }
 
+interface KeyRequest {
+  username: string;
+  password: string;
+  selectedAccount: string;
+  timeout: number;
+  role: string;
+}
+
 export async function requestKeys({
   username,
   password,
   selectedAccount,
   timeout,
-  idp,
   role,
-}) {
+}: KeyRequest) {
   resetStores(["awsKeys"]);
   update("request", { requestSent: true });
 
@@ -72,17 +101,12 @@ export async function requestKeys({
     clientVersion,
     appId: selectedAccount,
     timeoutInHours: timeout,
-    authentication_provider: idp,
+    authentication_provider: "okta",
     roleName: role,
   };
 
-  // OneLogin does not require roles
-  if (idp === "onelogin") {
-    delete body.roleName;
-  }
-
   try {
-    const response = await fetch(`${keyConjurerApiUrl}/get_aws_creds`, {
+    const response = await fetch(`${apiURL}/get_aws_creds`, {
       method: "POST",
       mode: "cors",
       headers: {
@@ -102,7 +126,7 @@ export async function requestKeys({
       sessionToken: Data.SessionToken,
       expiration: Data.Expiration,
     });
-  } catch (error) {
+  } catch (error: any) {
     update("errors", {
       message: error.message,
       error: true,
@@ -113,6 +137,11 @@ export async function requestKeys({
   }
 }
 
-export function updateUserInfo({ username, password }) {
+interface UserInfoRequest {
+  username: string;
+  password: string;
+}
+
+export function updateUserInfo({ username, password }: UserInfoRequest) {
   update("userInfo", { username, password });
 }

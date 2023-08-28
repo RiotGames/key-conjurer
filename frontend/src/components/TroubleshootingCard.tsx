@@ -1,7 +1,7 @@
 import React from "react";
 import { Card } from "semantic-ui-react";
 
-const TroubleshootingCard = () => {
+export const TroubleshootingCard = () => {
   return (
     <Card fluid>
       <Card.Content>
@@ -14,5 +14,3 @@ const TroubleshootingCard = () => {
     </Card>
   );
 };
-
-export default TroubleshootingCard;

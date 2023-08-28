@@ -36,7 +36,6 @@ jobs:
         with:
           node-version: "16.17.0"
       # Tests just need the file to exist with the appropriate exports - the values do not matter.
-      - run: cp frontend/src/consts.template.js frontend/src/consts.js
       - run: cd frontend && npm install && npm test
   api-test:
     runs-on: ubuntu-latest

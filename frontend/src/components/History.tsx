@@ -1,9 +1,10 @@
 import React from "react";
 import { Card, Image, Divider } from "semantic-ui-react";
-import { binaryName } from "./../consts";
 import keyConjurerLogo from "./../images/KeyConjurer.png";
 
-const History = () => (
+const binaryName = process.env.REACT_APP_BINARY_NAME;
+
+export const History = () => (
   <Card fluid>
     <Image src={keyConjurerLogo} />
     <Card.Content>
@@ -44,5 +45,3 @@ const History = () => (
     </Card.Content>
   </Card>
 );
-
-export default History;

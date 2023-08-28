@@ -1,17 +1,17 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { Grid } from "semantic-ui-react";
-import Header from "./components/header";
-import History from "./components/history";
-import KeyCard from "./components/keyCard";
-import KeyRequestForm from "./components/keyRequestForm";
-import LoginForm from "./components/loginForm";
-import TroubleshootingCard from "./components/troubleshootingCard";
+import { Header } from "./components/Header";
+import { History } from "./components/History";
+import { KeyCard } from "./components/KeyCard";
+import { KeyRequestForm } from "./components/KeyRequestForm";
+import { LoginForm } from "./components/LoginForm";
+import { TroubleshootingCard } from "./components/TroubleshootingCard";
 import { updateUserInfo } from "./actions";
 
-const App = () => {
-  React.useEffect(() => {
-    if (localStorage.getItem("provider") === "onelogin") {
-      // Force a user to log out if they are using OneLogin as their provider
+export const App = () => {
+  useEffect(() => {
+    // We used to support OneLogin as a provider; this ensures it isn't kept around.
+    if (localStorage.getItem("provider") !== "okta") {
       updateUserInfo({ username: "", password: "" });
       localStorage.removeItem("provider");
     }
@@ -28,8 +28,8 @@ const App = () => {
             <History />
           </Grid.Column>
           <Grid.Column width={8}>
-            <LoginForm idp="okta" />
-            <KeyRequestForm idp="okta" />
+            <LoginForm />
+            <KeyRequestForm />
             <KeyCard />
             <TroubleshootingCard />
           </Grid.Column>
@@ -39,5 +39,3 @@ const App = () => {
     </div>
   );
 };
-
-export default App;

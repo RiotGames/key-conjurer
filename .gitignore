@@ -3,7 +3,6 @@
 dev.env
 prod.env
 shared.env
-frontend/src/consts.js
 frontend/build/**
 **/builds/**
 api/lambdas/get_aws_creds/get_aws_creds
