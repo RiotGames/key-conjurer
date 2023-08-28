@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"time"
 
 	"github.com/RobotsAndPencils/go-saml"
 	"github.com/riotgames/key-conjurer/internal/aws"
@@ -143,8 +144,8 @@ var getCmd = &cobra.Command{
 		}
 
 		credentials := CloudCredentials{
-			AccessKeyID:     *resp.AccessKeyID,
-			Expiration:      resp.Expiration,
+			AccessKeyID:     *resp.AccessKeyId,
+			Expiration:      resp.Expiration.Format(time.RFC3339),
 			SecretAccessKey: *resp.SecretAccessKey,
 			SessionToken:    *resp.SessionToken,
 		}

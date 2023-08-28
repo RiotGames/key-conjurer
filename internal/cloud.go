@@ -5,11 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/RobotsAndPencils/go-saml"
 	"github.com/riotgames/key-conjurer/api/core"
 	"github.com/riotgames/key-conjurer/internal/aws"
-	"github.com/riotgames/key-conjurer/internal/base"
 	"github.com/riotgames/key-conjurer/internal/tencent"
 )
 
@@ -114,18 +114,47 @@ func getARN(value string) roleProviderPair {
 	return p
 }
 
-func (p *Provider) GetTemporaryCredentialsForUser(ctx context.Context, roleName string, response *core.SAMLResponse, ttlInHours int) (int, base.STSTokenResponse, error) {
+type STSTokenResponse struct {
+	AccessKeyID     *string `json:"accessKeyId"`
+	SecretAccessKey *string `json:"secretAccessKey"`
+	SessionToken    *string `json:"sessionToken"`
+	Expiration      string  `json:"expiration"`
+}
+
+func (p *Provider) GetTemporaryCredentialsForUser(ctx context.Context, roleName string, response *core.SAMLResponse, ttlInHours int) (STSTokenResponse, error) {
 	principalARN, roleARN, cloud, err := getRole(roleName, &response.Response)
 	if err != nil {
-		return 0, base.STSTokenResponse{}, err
+		return STSTokenResponse{}, err
 	}
+
 	switch cloud {
 	case awsFlag:
 		rsp, err := p.Aws.GetTemporaryCredentialsForUser(ctx, &principalARN, &roleARN, response.GetBase64Encoded(), ttlInHours)
-		return awsFlag, rsp, err
+		creds := STSTokenResponse{
+			AccessKeyID:     rsp.AccessKeyId,
+			SecretAccessKey: rsp.SecretAccessKey,
+			SessionToken:    rsp.SessionToken,
+			Expiration:      rsp.Expiration.Format(time.RFC3339),
+		}
+		if err != nil {
+			return STSTokenResponse{}, err
+		}
+
+		return creds, err
 	case tencentFlag:
-		rsp, err := p.Tencent.GetTemporaryCredentialsForUser(ctx, &principalARN, &roleARN, response.GetBase64Encoded(), ttlInHours, roleName)
-		return tencentFlag, rsp, err
+		rsp, exp, err := p.Tencent.GetTemporaryCredentialsForUser(ctx, &principalARN, &roleARN, response.GetBase64Encoded(), ttlInHours, roleName)
+		if err != nil {
+			return STSTokenResponse{}, err
+		}
+
+		creds := STSTokenResponse{
+			AccessKeyID:     rsp.TmpSecretId,
+			SecretAccessKey: rsp.TmpSecretKey,
+			SessionToken:    rsp.Token,
+			Expiration:      *exp,
+		}
+		return creds, err
 	}
-	return 0, base.STSTokenResponse{}, fmt.Errorf("can't find cloud vendors")
+
+	return STSTokenResponse{}, errors.New("unsupported cloud provider")
 }

@@ -166,7 +166,6 @@ type GetTemporaryCredentialsPayload struct {
 	SecretAccessKey string `json:"SecretAccessKey"`
 	SessionToken    string `json:"SessionToken"`
 	Expiration      string `json:"Expiration"`
-	Cloud           int    `json:"Cloud"` // 0:aws,1:tencent
 }
 
 // GetTemporaryCredentialEventHandler issues temporary credentials for the current user.
@@ -214,7 +213,7 @@ func (h *Handler) GetTemporaryCredentialEventHandler(ctx context.Context, req *e
 		return ErrorResponse(getErrorCode(err), "Unable to authenticate. Your credentials may be incorrect. Please contact your system administrators if you're unsure of what to do.")
 	}
 
-	cloudFlag, sts, err := h.cloud.GetTemporaryCredentialsForUser(ctx, event.RoleName, response, int(event.TimeoutInHours))
+	sts, err := h.cloud.GetTemporaryCredentialsForUser(ctx, event.RoleName, response, int(event.TimeoutInHours))
 	if err != nil {
 		var errRoleNotFound internal.ErrRoleNotFound
 		if errors.As(err, &errRoleNotFound) {
@@ -233,7 +232,6 @@ func (h *Handler) GetTemporaryCredentialEventHandler(ctx context.Context, req *e
 		SecretAccessKey: *sts.SecretAccessKey,
 		SessionToken:    *sts.SessionToken,
 		Expiration:      sts.Expiration,
-		Cloud:           cloudFlag,
 	})
 }
 

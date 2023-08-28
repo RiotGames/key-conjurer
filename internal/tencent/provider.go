@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/riotgames/key-conjurer/internal/base"
 	cam "github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/cam/v20190116"
 	"github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/common"
 	tcerr "github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/common/errors"
@@ -25,7 +24,7 @@ func NewProvider(region string) (*Provider, error) {
 	return &Provider{stsClient: client}, nil
 }
 
-func (p *Provider) GetTemporaryCredentialsForUser(ctx context.Context, principalARN, roleARN, sAMLAssertion *string, ttlInHours int, roleName string) (base.STSTokenResponse, error) {
+func (p *Provider) GetTemporaryCredentialsForUser(ctx context.Context, principalARN, roleARN, sAMLAssertion *string, ttlInHours int, roleName string) (*sts.Credentials, *string, error) {
 	timeoutInSeconds := int64(3600 * ttlInHours)
 	req := sts.NewAssumeRoleWithSAMLRequest()
 	req.RoleSessionName = common.StringPtr(fmt.Sprintf("riot-keyConjurer-%s", roleName))
@@ -34,18 +33,11 @@ func (p *Provider) GetTemporaryCredentialsForUser(ctx context.Context, principal
 	req.RoleArn = roleARN
 	req.SAMLAssertion = sAMLAssertion
 	resp, err := p.stsClient.AssumeRoleWithSAMLWithContext(ctx, req)
-
 	if err != nil {
-		return base.STSTokenResponse{}, err
+		return nil, nil, err
 	}
 
-	credentials := resp.Response.Credentials
-	return base.STSTokenResponse{
-		AccessKeyID:     credentials.TmpSecretId,
-		SecretAccessKey: credentials.TmpSecretKey,
-		SessionToken:    credentials.Token,
-		Expiration:      *(resp.Response.Expiration),
-	}, nil
+	return resp.Response.Credentials, resp.Response.Expiration, nil
 }
 
 // STS Client

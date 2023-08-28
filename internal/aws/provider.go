@@ -2,12 +2,10 @@ package aws
 
 import (
 	"context"
-	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/sts"
-	"github.com/riotgames/key-conjurer/internal/base"
 )
 
 type Provider struct {
@@ -22,7 +20,7 @@ func NewProvider(region string) (*Provider, error) {
 	return &Provider{stsClient: sts.New(config)}, nil
 }
 
-func (p *Provider) GetTemporaryCredentialsForUser(ctx context.Context, principalARN, roleARN, sAMLAssertion *string, ttlInHours int) (base.STSTokenResponse, error) {
+func (p *Provider) GetTemporaryCredentialsForUser(ctx context.Context, principalARN, roleARN, sAMLAssertion *string, ttlInHours int) (*sts.Credentials, error) {
 	timeoutInSeconds := int64(3600 * ttlInHours)
 	resp, err := p.stsClient.AssumeRoleWithSAMLWithContext(ctx, &sts.AssumeRoleWithSAMLInput{
 		DurationSeconds: &timeoutInSeconds,
@@ -30,14 +28,10 @@ func (p *Provider) GetTemporaryCredentialsForUser(ctx context.Context, principal
 		RoleArn:         roleARN,
 		SAMLAssertion:   sAMLAssertion,
 	})
+
 	if err != nil {
-		return base.STSTokenResponse{}, err
+		return nil, err
 	}
-	credentials := resp.Credentials
-	return base.STSTokenResponse{
-		AccessKeyID:     credentials.AccessKeyId,
-		SecretAccessKey: credentials.SecretAccessKey,
-		SessionToken:    credentials.SessionToken,
-		Expiration:      credentials.Expiration.Format(time.RFC3339),
-	}, nil
+
+	return resp.Credentials, nil
 }
