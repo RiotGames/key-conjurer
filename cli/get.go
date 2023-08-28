@@ -5,7 +5,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/riotgames/key-conjurer/api/core"
+	"github.com/RobotsAndPencils/go-saml"
 	"github.com/riotgames/key-conjurer/internal/aws"
 	"github.com/spf13/cobra"
 )
@@ -129,7 +129,7 @@ var getCmd = &cobra.Command{
 		assertionStr := string(assertionBytes)
 
 		// TODO: implement principalarn/rolearn finding
-		_, err = core.ParseEncodedResponse(assertionStr)
+		_, err = saml.ParseEncodedResponse(assertionStr)
 		if err != nil {
 			log.Fatalf("could not parse assertion: %s", err)
 		}

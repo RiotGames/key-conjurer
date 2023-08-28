@@ -10,7 +10,6 @@ import (
 	"strings"
 
 	"github.com/olekukonko/tablewriter"
-	"github.com/riotgames/key-conjurer/api/core"
 	"golang.org/x/oauth2"
 )
 
@@ -255,15 +254,6 @@ func (c *Config) SaveOAuthToken(tok *oauth2.Token) error {
 
 	c.Tokens = &tok2
 	return nil
-}
-
-func (c *Config) GetCredentials() (core.Credentials, error) {
-	if c.Creds == "" {
-		// No credentials have been saved (or they have been cleared recently)
-		return core.Credentials{}, ErrNoCredentials
-	}
-
-	return core.Credentials{Username: "encrypted", Password: c.Creds}, nil
 }
 
 // Write writes the config to the file provided overwriting the file if it exists
