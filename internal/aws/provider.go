@@ -7,7 +7,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/sts"
-	"github.com/riotgames/key-conjurer/api/cloud/base"
+	"github.com/riotgames/key-conjurer/internal/base"
 )
 
 type Provider struct {

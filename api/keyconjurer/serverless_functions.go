@@ -8,10 +8,10 @@ import (
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/riotgames/key-conjurer/api/cloud"
 	"github.com/riotgames/key-conjurer/api/consts"
 	"github.com/riotgames/key-conjurer/api/core"
 	"github.com/riotgames/key-conjurer/api/settings"
+	"github.com/riotgames/key-conjurer/internal"
 	"github.com/riotgames/key-conjurer/providers"
 	"github.com/riotgames/key-conjurer/providers/okta"
 	"github.com/sirupsen/logrus"
@@ -20,12 +20,12 @@ import (
 type Handler struct {
 	crypt core.Crypto
 	cfg   *settings.Settings
-	cloud *cloud.Provider
+	cloud *internal.Provider
 	log   *logrus.Entry
 }
 
 func NewHandler(cfg *settings.Settings) Handler {
-	client, err := cloud.NewProvider(cfg.AwsRegion, cfg.TencentRegion)
+	client, err := internal.NewProvider(cfg.AwsRegion, cfg.TencentRegion)
 	if err != nil {
 		panic(err)
 	}
@@ -216,7 +216,7 @@ func (h *Handler) GetTemporaryCredentialEventHandler(ctx context.Context, req *e
 
 	cloudFlag, sts, err := h.cloud.GetTemporaryCredentialsForUser(ctx, event.RoleName, response, int(event.TimeoutInHours))
 	if err != nil {
-		var errRoleNotFound cloud.ErrRoleNotFound
+		var errRoleNotFound internal.ErrRoleNotFound
 		if errors.As(err, &errRoleNotFound) {
 			log.Infof("role %q either does not exist or the user is not entitled to it", event.RoleName)
 			return ErrorResponse(ErrCodeBadRequest, errRoleNotFound.Error())

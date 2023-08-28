@@ -7,12 +7,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/riotgames/key-conjurer/api/cloud/tencent"
-
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/arn"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/sts"
+	"github.com/riotgames/key-conjurer/internal/tencent"
 	"github.com/spf13/cobra"
 )
 

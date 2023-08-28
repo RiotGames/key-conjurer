@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/riotgames/key-conjurer/api/cloud/base"
+	"github.com/riotgames/key-conjurer/internal/base"
 	cam "github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/cam/v20190116"
 	"github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/common"
 	tcerr "github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/common/errors"

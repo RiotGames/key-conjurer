@@ -1,4 +1,4 @@
-package cloud
+package internal
 
 import (
 	"context"
@@ -7,10 +7,10 @@ import (
 	"strings"
 
 	"github.com/RobotsAndPencils/go-saml"
-	"github.com/riotgames/key-conjurer/api/cloud/aws"
-	"github.com/riotgames/key-conjurer/api/cloud/base"
-	"github.com/riotgames/key-conjurer/api/cloud/tencent"
 	"github.com/riotgames/key-conjurer/api/core"
+	"github.com/riotgames/key-conjurer/internal/aws"
+	"github.com/riotgames/key-conjurer/internal/base"
+	"github.com/riotgames/key-conjurer/internal/tencent"
 )
 
 type Provider struct {

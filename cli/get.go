@@ -5,8 +5,8 @@ import (
 	"log"
 	"os"
 
-	"github.com/riotgames/key-conjurer/api/cloud/aws"
 	"github.com/riotgames/key-conjurer/api/core"
+	"github.com/riotgames/key-conjurer/internal/aws"
 	"github.com/spf13/cobra"
 )
 
