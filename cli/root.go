@@ -46,7 +46,6 @@ func init() {
 	rootCmd.AddCommand(&switchCmd)
 	rootCmd.AddCommand(&aliasCmd)
 	rootCmd.AddCommand(&unaliasCmd)
-	rootCmd.AddCommand(&rolesCmd)
 	rootCmd.Flags().BoolVarP(&cmdShortVersionFlag, "short-version", "s", false, "version for "+appname+" (short format)")
 	rootCmd.Flags().BoolVarP(&cmdOneLineVersionFlag, "oneline-version", "1", false, "version for "+appname+" (single line format)")
 }
