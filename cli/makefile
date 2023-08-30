@@ -6,15 +6,14 @@ build_date =  $(shell date -u +'%Y-%m-%d')
 build_time =  $(shell date -u +'%H:%M:%S')
 build_timezone = UTC
 
-# TODO: add client id and domain
-ifndef API_URL
-$(error API_URL is not set)
-endif
-ifndef FRONTEND_URL
-$(err FRONTEND_URL is not set)
-endif
 ifndef RELEASE
 $(error RELEASE is not set)
+endif
+ifndef CLIENT_ID
+$(error CLIENT_ID is not set)
+endif
+ifndef OIDC_DOMAIN
+$(error OIDC_DOMAIN is not set)
 endif
 
 .PHONY: all build dir test build_requirements
@@ -48,7 +47,7 @@ dir:
 
 build: dir
 	go build \
-		-ldflags "-X main.Version=$(version)-$(RELEASE) -X main.ClientName=keyconjurer-$(GOOS) -X main.defaultHost=$(API_URL) -X main.DownloadURL=$(FRONTEND_URL) -X main.BuildDate=$(build_date) -X main.BuildTime=$(build_time) -X main.BuildTimeZone=$(build_timezone)" \
+		-ldflags "-X main.Version=$(version)-$(RELEASE) -X main.ClientName=keyconjurer-$(GOOS) -X main.ClientID=$(CLIENT_ID) -X main.OIDCDomain=$(OIDC_DOMAIN) -X main.BuildDate=$(build_date) -X main.BuildTime=$(build_time) -X main.BuildTimeZone=$(build_timezone)" \
 		-o ../builds/$(RELEASE)/cli/$(BUILD_TARGET)
 
 test: dir
