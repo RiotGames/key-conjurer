@@ -28,17 +28,11 @@ var accountsCmd = &cobra.Command{
 			TokenType:    config.Tokens.TokenType,
 		}
 
-		httpClient := http.Client{
-			Transport: &oauth2.Transport{
-				Base:   http.DefaultTransport,
-				Source: oauth2.StaticTokenSource(&tok),
-			},
-		}
-
+		httpClient := NewOAuth2Client(cmd.Context(), oauth2.StaticTokenSource(&tok))
 		_, client, err := okta.NewClient(
 			cmd.Context(),
 			okta.WithOrgUrl(OktaDomain),
-			okta.WithHttpClient(httpClient),
+			okta.WithHttpClient(*httpClient),
 			// This is not used - the http client overwrites the tokens when a request is made.
 			// It must be specified to satisfy the Okta SDK.
 			okta.WithToken("dummy text"),

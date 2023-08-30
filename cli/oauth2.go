@@ -9,9 +9,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 	"net/http"
-	"net/http/httputil"
 	"net/url"
 	"os"
 	"strings"
@@ -20,7 +18,7 @@ import (
 	rootcerts "github.com/hashicorp/go-rootcerts"
 	"github.com/mdp/qrterminal"
 	"github.com/riotgames/key-conjurer/pkg/htmlutil"
-	httputil2 "github.com/riotgames/key-conjurer/pkg/httputil"
+	"github.com/riotgames/key-conjurer/pkg/httputil"
 	"github.com/riotgames/key-conjurer/pkg/oauth2device"
 	"github.com/riotgames/key-conjurer/pkg/oidc"
 	"golang.org/x/net/html"
@@ -43,7 +41,7 @@ func NewHTTPClient() *http.Client {
 
 func NewHTTPClientWithRoundTripper(rt http.RoundTripper) *http.Client {
 	return &http.Client{
-		Transport: httputil2.LogRoundTripper(rt),
+		Transport: httputil.LogRoundTripper(rt),
 		Timeout:   time.Second * time.Duration(clientHttpTimeoutSeconds),
 	}
 }
@@ -59,13 +57,14 @@ func DiscoverOAuth2Config(ctx context.Context, domain string) (*oauth2.Config, *
 		Endpoint: provider.Endpoint(),
 		Scopes:   []string{"openid", "profile", "okta.apps.read", "okta.apps.sso"},
 	}
+
 	return &cfg, provider, nil
 }
 
-func NewOAuth2Client(ctx context.Context, cfg *oauth2.Config, tok *oauth2.Token) *http.Client {
+func NewOAuth2Client(ctx context.Context, ts oauth2.TokenSource) *http.Client {
 	// The following Oauth2 code is copied from the OAuth2 package
-	src := oauth2.ReuseTokenSource(tok, cfg.TokenSource(ctx, tok))
-	rt := oauth2.Transport{Base: http.DefaultTransport, Source: src}
+	// src := oauth2.ReuseTokenSource(tok, cfg.TokenSource(ctx, tok))
+	rt := oauth2.Transport{Base: http.DefaultTransport, Source: ts}
 	return NewHTTPClientWithRoundTripper(&rt)
 }
 
@@ -242,9 +241,6 @@ func ExchangeWebSSOTokenForSAMLAssertion(ctx context.Context, issuer string, tok
 	if err != nil {
 		return nil, err
 	}
-
-	buf, _ := httputil.DumpResponse(resp, true)
-	log.Printf("%s", buf)
 
 	doc, _ := html.Parse(resp.Body)
 	form, ok := htmlutil.FindFirstForm(doc)
