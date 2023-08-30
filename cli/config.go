@@ -220,7 +220,6 @@ func (s accountSet) WriteTable(w io.Writer) {
 // Config stores all information related to the user
 type Config struct {
 	Accounts      *accountSet `json:"accounts"`
-	Creds         string      `json:"creds"`
 	TTL           uint        `json:"ttl"`
 	TimeRemaining uint        `json:"time_remaining"`
 	Tokens        *TokenSet   `json:"tokens"`

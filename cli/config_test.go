@@ -57,8 +57,6 @@ func TestUnmarshalJSON(t *testing.T) {
 
 	assert.Equal(t, uint(0), c.TimeRemaining)
 	assert.Equal(t, uint(1), c.TTL)
-
-	assert.Equal(t, "eyJ1c2VybmFtZSI6InVzZXJuYW1lIiwicGFzc3dvcmQiOiJwYXNzd29yZCJ9", c.Creds)
 }
 
 func TestLegacyUnmarshalJSON(t *testing.T) {
@@ -75,8 +73,6 @@ func TestLegacyUnmarshalJSON(t *testing.T) {
 
 	assert.Equal(t, uint(0), c.TimeRemaining)
 	assert.Equal(t, uint(1), c.TTL)
-
-	assert.Equal(t, "eyJ1c2VybmFtZSI6InVzZXJuYW1lIiwicGFzc3dvcmQiOiJwYXNzd29yZCJ9", c.Creds)
 }
 
 func TestConfigAliasesWork(t *testing.T) {
