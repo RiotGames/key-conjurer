@@ -50,6 +50,29 @@ const (
 	tencentFlag    = 1
 )
 
+func ListRoles(response *saml.Response) []string {
+	if response == nil {
+		return nil
+	}
+
+	roleUrl := awsRoleUrl
+	roleSubstr := "role/"
+	if response.GetAttribute(roleUrl) == "" {
+		roleUrl = tencentRoleUrl
+		roleSubstr = "roleName/"
+	}
+
+	var names []string
+	for _, v := range response.GetAttributeValues(roleUrl) {
+		p := getARN(v)
+		idx := strings.Index(p.RoleARN, roleSubstr)
+		parts := strings.Split(p.RoleARN[idx:], "/")
+		names = append(names, parts[1])
+	}
+
+	return names
+}
+
 func FindRole(roleName string, response *saml.Response) (RoleProviderPair, int, bool) {
 	if response == nil {
 		return RoleProviderPair{}, 0, false
