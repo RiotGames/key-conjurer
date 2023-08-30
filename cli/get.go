@@ -57,6 +57,7 @@ var getCmd = &cobra.Command{
 			cmd.PrintErrln("Your session has expired. Please login again.")
 			return nil
 		}
+		client := NewHTTPClient()
 
 		valid := false
 		for _, permitted := range permittedOutputTypes {
@@ -109,19 +110,19 @@ var getCmd = &cobra.Command{
 		// 	}
 		// }
 
-		oauthCfg, _, err := DiscoverOAuth2Config(cmd.Context(), OktaDomain)
+		oauthCfg, _, err := DiscoverOAuth2Config(cmd.Context(), client, OktaDomain)
 		if err != nil {
 			log.Printf("could not discover oauth2  config: %s", err)
 			return nil
 		}
 
 		// tok, err := ExchangeAccessTokenForWebSSOToken(cmd.Context(), oauthCfg, config.Tokens, applicationID)
-		tok, err := ExchangeAccessTokenForWebSSOToken(cmd.Context(), oauthCfg, config.Tokens, args[0])
+		tok, err := ExchangeAccessTokenForWebSSOToken(cmd.Context(), client, oauthCfg, config.Tokens, args[0])
 		if err != nil {
 			log.Fatalf("Error exchanging token: %s", err)
 		}
 
-		assertionBytes, err := ExchangeWebSSOTokenForSAMLAssertion(cmd.Context(), OktaDomain, tok)
+		assertionBytes, err := ExchangeWebSSOTokenForSAMLAssertion(cmd.Context(), client, OktaDomain, tok)
 		if err != nil {
 			log.Fatalf("Failed to fetch SAML assertion: %s", err)
 		}

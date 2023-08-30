@@ -46,8 +46,8 @@ func NewHTTPClientWithRoundTripper(rt http.RoundTripper) *http.Client {
 	}
 }
 
-func DiscoverOAuth2Config(ctx context.Context, domain string) (*oauth2.Config, *oidc.Provider, error) {
-	provider, err := oidc.DiscoverProvider(ctx, domain)
+func DiscoverOAuth2Config(ctx context.Context, client *http.Client, domain string) (*oauth2.Config, *oidc.Provider, error) {
+	provider, err := oidc.DiscoverProvider(ctx, client, domain)
 	if err != nil {
 		return nil, nil, fmt.Errorf("couldn't discover OIDC configuration for %s: %w", OktaDomain, err)
 	}
@@ -203,7 +203,10 @@ func RedirectionFlow(ctx context.Context, oauthCfg *oauth2.Config, state, codeCh
 	return oauthCfg.Exchange(ctx, code, oauth2.SetAuthURLParam("code_verifier", codeVerifier))
 }
 
-func ExchangeAccessTokenForWebSSOToken(ctx context.Context, oauthCfg *oauth2.Config, token *TokenSet, applicationId string) (*oauth2.Token, error) {
+func ExchangeAccessTokenForWebSSOToken(ctx context.Context, client *http.Client, oauthCfg *oauth2.Config, token *TokenSet, applicationId string) (*oauth2.Token, error) {
+	if client == nil {
+		client = http.DefaultClient
+	}
 	// https://datatracker.ietf.org/doc/html/rfc8693
 	data := url.Values{
 		"client_id":          {oauthCfg.ClientID},
@@ -217,14 +220,14 @@ func ExchangeAccessTokenForWebSSOToken(ctx context.Context, oauthCfg *oauth2.Con
 		"audience":             {fmt.Sprintf("urn:okta:apps:%s", applicationId)},
 	}
 	body := strings.NewReader(data.Encode())
-	req, err := http.NewRequest(http.MethodPost, oauthCfg.Endpoint.TokenURL, body)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, oauthCfg.Endpoint.TokenURL, body)
 	if err != nil {
 		return nil, err
 	}
 	req.Header.Add("Accept", "application/json")
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 	// TODO: The response can indicate a failure, we should check that for this function
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -234,10 +237,14 @@ func ExchangeAccessTokenForWebSSOToken(ctx context.Context, oauthCfg *oauth2.Con
 }
 
 // TODO: This is actually an Okta-specific API
-func ExchangeWebSSOTokenForSAMLAssertion(ctx context.Context, issuer string, token *oauth2.Token) ([]byte, error) {
+func ExchangeWebSSOTokenForSAMLAssertion(ctx context.Context, client *http.Client, issuer string, token *oauth2.Token) ([]byte, error) {
+	if client == nil {
+		client = http.DefaultClient
+	}
+
 	data := url.Values{"token": {token.AccessToken}}
 	uri := fmt.Sprintf("%s/login/token/sso?%s", issuer, data.Encode())
-	resp, err := http.Get(uri)
+	resp, err := client.Get(uri)
 	if err != nil {
 		return nil, err
 	}

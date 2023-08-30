@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"net/http"
 	"os"
 
 	"github.com/riotgames/key-conjurer/pkg/oidc"
@@ -24,7 +25,7 @@ var loginCmd = &cobra.Command{
 			return nil
 		}
 
-		token, err := Login(cmd.Context(), OktaDomain, false)
+		token, err := Login(cmd.Context(), NewHTTPClient(), OktaDomain, false)
 		if err != nil {
 			return err
 		}
@@ -33,8 +34,8 @@ var loginCmd = &cobra.Command{
 	},
 }
 
-func Login(ctx context.Context, domain string, useDeviceFlow bool) (*oauth2.Token, error) {
-	oauthCfg, provider, err := DiscoverOAuth2Config(ctx, domain)
+func Login(ctx context.Context, client *http.Client, domain string, useDeviceFlow bool) (*oauth2.Token, error) {
+	oauthCfg, provider, err := DiscoverOAuth2Config(ctx, client, domain)
 	if err != nil {
 		return nil, err
 	}

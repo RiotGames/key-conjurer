@@ -82,13 +82,17 @@ func unmarshalResp(r *http.Response, body []byte, v interface{}) error {
 }
 
 // DiscoverProvider functions similarly to oidc.NewProvider, but includes additional properties that oidc.NewProvider does not support.
-func DiscoverProvider(ctx context.Context, issuer string) (*Provider, error) {
+func DiscoverProvider(ctx context.Context, client *http.Client, issuer string) (*Provider, error) {
+	if client == nil {
+		client = http.DefaultClient
+	}
+
 	wellKnown := strings.TrimSuffix(issuer, "/") + "/.well-known/openid-configuration"
 	req, err := http.NewRequestWithContext(ctx, "GET", wellKnown, nil)
 	if err != nil {
 		return nil, err
 	}
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
 	}
