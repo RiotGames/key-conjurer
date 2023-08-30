@@ -6,6 +6,7 @@ build_date =  $(shell date -u +'%Y-%m-%d')
 build_time =  $(shell date -u +'%H:%M:%S')
 build_timezone = UTC
 
+# TODO: add client id and domain
 ifndef API_URL
 $(error API_URL is not set)
 endif

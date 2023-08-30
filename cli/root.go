@@ -3,11 +3,8 @@ package main
 import (
 	"errors"
 	"fmt"
-	"net"
-	"net/url"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
@@ -128,60 +125,3 @@ To get started run the following commands:
 }
 
 var errHostnameCannotContainPath = errors.New("hostname must not contain a path")
-
-func ParseAddress(addr string) (url.URL, error) {
-	uri, err := url.Parse(addr)
-	// Sometimes url.Parse is not smart enough to return an error but fails parsing all the same.
-	// This enables us to self-heal if the user passes something like "idp.example.com" or "idp.example.com:4000"
-	if err != nil {
-		// url.Parse may fail parsing if we received an ip address and port, which should still be valid.
-		_, _, err2 := net.SplitHostPort(addr)
-		if err2 != nil {
-			// Just looks like a completely invalid string
-			return url.URL{}, err
-		}
-
-		return url.URL{
-			Scheme: "http",
-			Host:   addr,
-		}, nil
-	}
-
-	// This indicate the user passed a URL with a path & a port *or* a hostname with a path and neither specified scheme.
-	if strings.Contains(uri.Opaque, "/") || strings.Contains(uri.Path, "/") {
-		return url.URL{}, errHostnameCannotContainPath
-	}
-
-	// If the user passes something like foo.example.com, this will all be dumped inside the Path
-	if uri.Host == "" && uri.Path != "" {
-		uri.Scheme = "http"
-		uri.Host = uri.Path
-		uri.Path = ""
-	}
-
-	// If the user passes something that has the format %s:%d, Go is going to interpret %s as being the scheme and %d being the opaque portion.
-	if uri.Opaque != "" && uri.Host == "" {
-		uri.Host = net.JoinHostPort(uri.Scheme, uri.Opaque)
-		uri.Scheme = "http"
-		uri.Opaque = ""
-	}
-
-	if uri.Host == "" || err != nil {
-		return url.URL{}, err
-	}
-
-	if uri.Path != "" && uri.Path != "/" {
-		return url.URL{}, errHostnameCannotContainPath
-	}
-
-	return *uri, nil
-}
-
-func newClient() (Client, error) {
-	url, err := ParseAddress(host)
-	if err != nil {
-		return Client{}, fmt.Errorf("invalid address: %w", err)
-	}
-
-	return NewClient(url)
-}
