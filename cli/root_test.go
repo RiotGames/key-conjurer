@@ -137,7 +137,7 @@ func TestVersionFlag(t *testing.T) {
 	}
 
 	stringChecks(t, output,
-		[]string{"Version:", "Build Timestamp:", "Client:", "Default Hostname:", "Upgrade URL:", appname, Version, DownloadURL},
+		[]string{"Version:", "Build Timestamp:", "Client:", "Upgrade URL:", appname, Version, DownloadURL},
 		[]string{})
 }
 
@@ -151,7 +151,7 @@ func TestVersionShortFlag(t *testing.T) {
 	}
 
 	stringChecks(t, output,
-		[]string{"Version:", "Build Timestamp:", "Client:", "Default Hostname:", "Upgrade URL:", appname, Version, DownloadURL},
+		[]string{"Version:", "Build Timestamp:", "Client:", "Upgrade URL:", appname, Version, DownloadURL},
 		[]string{})
 }
 
@@ -166,7 +166,7 @@ func TestOneLineVersionFlag(t *testing.T) {
 
 	stringChecks(t, output,
 		[]string{appname, Version, "Client:", "(Build Timestamp:"},
-		[]string{"Version:", "Default Hostname:", "Upgrade URL:", DownloadURL})
+		[]string{"Version:", "Upgrade URL:", DownloadURL})
 }
 
 func TestOneLineVersionShortFlag(t *testing.T) {
@@ -180,7 +180,7 @@ func TestOneLineVersionShortFlag(t *testing.T) {
 
 	stringChecks(t, output,
 		[]string{appname, Version, "Client:", "(Build Timestamp:"},
-		[]string{"Version:", "Default Hostname:", "Upgrade URL:", DownloadURL})
+		[]string{"Version:", "Upgrade URL:", DownloadURL})
 }
 
 func TestShortVersionFlag(t *testing.T) {
@@ -194,7 +194,7 @@ func TestShortVersionFlag(t *testing.T) {
 
 	stringChecks(t, output,
 		[]string{appname, Version},
-		[]string{"Version:", "Build Timestamp:", "Client:", "Default Hostname:", "Upgrade URL:", DownloadURL})
+		[]string{"Version:", "Build Timestamp:", "Client:", "Upgrade URL:", DownloadURL})
 }
 
 func TestShortVersionShortFlag(t *testing.T) {
@@ -208,7 +208,7 @@ func TestShortVersionShortFlag(t *testing.T) {
 
 	stringChecks(t, output,
 		[]string{appname, Version},
-		[]string{"Version:", "Build Timestamp:", "Client:", "Default Hostname:", "Upgrade URL:", DownloadURL})
+		[]string{"Version:", "Build Timestamp:", "Client:", "Upgrade URL:", DownloadURL})
 }
 
 func TestShortVersionLongInvalidArgs(t *testing.T) {

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -13,10 +12,6 @@ import (
 var (
 	//  Config json storage location
 	keyConjurerRcPath string
-	// host of the API server. Don't use this. You probably meant to use newClient() instead.
-	host string
-	// This is set by the Makefile during build of the CLI. Don't use this.
-	defaultHost string
 	// config is a cache-like datastore for this application. It is loaded at app start-up.
 	config                   Config
 	quiet                    bool
@@ -35,7 +30,6 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&clientID, "client-id", ClientID, "The OAuth2 Client ID for the application registered with your OIDC server")
 	rootCmd.PersistentFlags().IntVar(&clientHttpTimeoutSeconds, "http-timeout", 120, "the amount of time in seconds to wait for keyconjurer to respond")
 	rootCmd.PersistentFlags().StringVar(&keyConjurerRcPath, "keyconjurer-rc-path", "~/.keyconjurerrc", "path to .keyconjurerrc file")
-	rootCmd.PersistentFlags().StringVar(&host, "host", defaultHost, "The host of the KeyConjurer API")
 	rootCmd.PersistentFlags().BoolVar(&quiet, "quiet", false, "tells the CLI to be quiet; stdout will not contain human-readable informational messages")
 	rootCmd.SetVersionTemplate(`{{printf "%s" .Version}}`)
 	rootCmd.AddCommand(loginCmd)
@@ -56,7 +50,6 @@ const versionString string = "" +
 	"	Version: 		%s\n" +
 	"	Build Timestamp:	%s\n" +
 	"	Client: 		%s\n" +
-	"	Default Hostname:	%s\n" +
 	"	Upgrade URL:		%s\n"
 
 func alternateVersions(cmd *cobra.Command, short, oneline bool) {
@@ -70,7 +63,7 @@ func alternateVersions(cmd *cobra.Command, short, oneline bool) {
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:     appname,
-	Version: fmt.Sprintf(versionString, Version, buildTimestamp, ClientName, defaultHost, DownloadURL),
+	Version: fmt.Sprintf(versionString, Version, buildTimestamp, ClientName, DownloadURL),
 	Short:   "Retrieve temporary cloud credentials.",
 	Long: `Key Conjurer retrieves temporary credentials from the Key Conjurer API.
 
@@ -127,5 +120,3 @@ To get started run the following commands:
 		return config.Write(file)
 	},
 }
-
-var errHostnameCannotContainPath = errors.New("hostname must not contain a path")
