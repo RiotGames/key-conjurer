@@ -9,7 +9,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
+	"net/http/httputil"
 	"net/url"
 	"os"
 	"strings"
@@ -18,11 +20,33 @@ import (
 	rootcerts "github.com/hashicorp/go-rootcerts"
 	"github.com/mdp/qrterminal"
 	"github.com/riotgames/key-conjurer/pkg/htmlutil"
+	httputil2 "github.com/riotgames/key-conjurer/pkg/httputil"
 	"github.com/riotgames/key-conjurer/pkg/oauth2device"
 	"github.com/riotgames/key-conjurer/pkg/oidc"
 	"golang.org/x/net/html"
 	"golang.org/x/oauth2"
 )
+
+func NewHTTPClient() *http.Client {
+	// Some Darwin systems require certs to be loaded from the system certificate store or attempts to verify SSL certs on internal websites may fail.
+	transport := http.DefaultTransport
+	if certs, err := rootcerts.LoadSystemCAs(); err == nil {
+		transport = &http.Transport{
+			TLSClientConfig: &tls.Config{
+				RootCAs: certs,
+			},
+		}
+	}
+
+	return NewHTTPClientWithRoundTripper(transport)
+}
+
+func NewHTTPClientWithRoundTripper(rt http.RoundTripper) *http.Client {
+	return &http.Client{
+		Transport: httputil2.LogRoundTripper(rt),
+		Timeout:   time.Second * time.Duration(clientHttpTimeoutSeconds),
+	}
+}
 
 func DiscoverOAuth2Config(ctx context.Context, domain string) (*oauth2.Config, *oidc.Provider, error) {
 	provider, err := oidc.DiscoverProvider(ctx, domain)
@@ -39,22 +63,10 @@ func DiscoverOAuth2Config(ctx context.Context, domain string) (*oauth2.Config, *
 }
 
 func NewOAuth2Client(ctx context.Context, cfg *oauth2.Config, tok *oauth2.Token) *http.Client {
-	// Some Darwin systems require certs to be loaded from the system certificate store or attempts to verify SSL certs on internal websites may fail.
-	transport := http.DefaultTransport
-	if certs, err := rootcerts.LoadSystemCAs(); err == nil {
-		transport = &http.Transport{
-			TLSClientConfig: &tls.Config{
-				RootCAs: certs,
-			},
-		}
-	}
-
-	// The following Oauth2 code is copied from the OAuth2 package with modifications to allow us to use our custom transport with root CAs on Darwin systems.
+	// The following Oauth2 code is copied from the OAuth2 package
 	src := oauth2.ReuseTokenSource(tok, cfg.TokenSource(ctx, tok))
-	return &http.Client{
-		Transport: &oauth2.Transport{Base: transport, Source: src},
-		Timeout:   time.Second * time.Duration(clientHttpTimeoutSeconds),
-	}
+	rt := oauth2.Transport{Base: http.DefaultTransport, Source: src}
+	return NewHTTPClientWithRoundTripper(&rt)
 }
 
 type OAuth2CallbackInfo struct {
@@ -230,6 +242,9 @@ func ExchangeWebSSOTokenForSAMLAssertion(ctx context.Context, issuer string, tok
 	if err != nil {
 		return nil, err
 	}
+
+	buf, _ := httputil.DumpResponse(resp, true)
+	log.Printf("%s", buf)
 
 	doc, _ := html.Parse(resp.Body)
 	form, ok := htmlutil.FindFirstForm(doc)
