@@ -3,16 +3,10 @@ package main
 import (
 	"context"
 	"net/http"
-	"os"
 
 	"github.com/riotgames/key-conjurer/pkg/oidc"
 	"github.com/spf13/cobra"
 	"golang.org/x/oauth2"
-)
-
-var (
-	ClientID   = os.Getenv("OKTA_CLIENT_ID")
-	OktaDomain = os.Getenv("OKTA_DOMAIN")
 )
 
 var loginCmd = &cobra.Command{
@@ -25,7 +19,7 @@ var loginCmd = &cobra.Command{
 			return nil
 		}
 
-		token, err := Login(cmd.Context(), NewHTTPClient(), OktaDomain, false)
+		token, err := Login(cmd.Context(), NewHTTPClient(), oidcDomain, false)
 		if err != nil {
 			return err
 		}

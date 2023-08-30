@@ -49,11 +49,11 @@ func NewHTTPClientWithRoundTripper(rt http.RoundTripper) *http.Client {
 func DiscoverOAuth2Config(ctx context.Context, client *http.Client, domain string) (*oauth2.Config, *oidc.Provider, error) {
 	provider, err := oidc.DiscoverProvider(ctx, client, domain)
 	if err != nil {
-		return nil, nil, fmt.Errorf("couldn't discover OIDC configuration for %s: %w", OktaDomain, err)
+		return nil, nil, fmt.Errorf("couldn't discover OIDC configuration for %s: %w", oidcDomain, err)
 	}
 
 	cfg := oauth2.Config{
-		ClientID: ClientID,
+		ClientID: clientID,
 		Endpoint: provider.Endpoint(),
 		Scopes:   []string{"openid", "profile", "okta.apps.read", "okta.apps.sso"},
 	}

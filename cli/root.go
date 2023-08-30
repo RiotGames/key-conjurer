@@ -26,9 +26,13 @@ var (
 	cloudAws                        = "aws"
 	cloudTencent                    = "tencent"
 	clientHttpTimeoutSeconds int    = 120
+	oidcDomain               string
+	clientID                 string
 )
 
 func init() {
+	rootCmd.PersistentFlags().StringVar(&oidcDomain, "oidc-domain", OIDCDomain, "The domain name of your OIDC server")
+	rootCmd.PersistentFlags().StringVar(&clientID, "client-id", ClientID, "The OAuth2 Client ID for the application registered with your OIDC server")
 	rootCmd.PersistentFlags().IntVar(&clientHttpTimeoutSeconds, "http-timeout", 120, "the amount of time in seconds to wait for keyconjurer to respond")
 	rootCmd.PersistentFlags().StringVar(&keyConjurerRcPath, "keyconjurer-rc-path", "~/.keyconjurerrc", "path to .keyconjurerrc file")
 	rootCmd.PersistentFlags().StringVar(&host, "host", defaultHost, "The host of the KeyConjurer API")

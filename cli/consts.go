@@ -3,6 +3,8 @@ package main
 // Vars for build time
 var Version string = "TBD"
 var ClientName string = appname
+var ClientID string
+var OIDCDomain string
 
 var BuildDate string = "date not set"
 var BuildTime string = "time not set"

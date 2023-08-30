@@ -111,7 +111,7 @@ var getCmd = &cobra.Command{
 			return echoCredentials(args[0], args[0], credentials, outputType, cloudFlag)
 		}
 
-		oauthCfg, _, err := DiscoverOAuth2Config(cmd.Context(), client, OktaDomain)
+		oauthCfg, _, err := DiscoverOAuth2Config(cmd.Context(), client, oidcDomain)
 		if err != nil {
 			cmd.PrintErrf("could not discover oauth2  config: %s\n", err)
 			return nil
@@ -123,14 +123,13 @@ var getCmd = &cobra.Command{
 			return nil
 		}
 
-		assertionBytes, err := ExchangeWebSSOTokenForSAMLAssertion(cmd.Context(), client, OktaDomain, tok)
+		assertionBytes, err := ExchangeWebSSOTokenForSAMLAssertion(cmd.Context(), client, oidcDomain, tok)
 		if err != nil {
 			cmd.PrintErrf("failed to fetch SAML assertion: %s\n", err)
 			return nil
 		}
 
 		assertionStr := string(assertionBytes)
-
 		samlResponse, err := saml.ParseEncodedResponse(assertionStr)
 		if err != nil {
 			cmd.PrintErrf("could not parse assertion: %s\n", err)
