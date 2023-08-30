@@ -2,11 +2,11 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"time"
 
 	"github.com/RobotsAndPencils/go-saml"
+	"github.com/riotgames/key-conjurer/internal"
 	"github.com/riotgames/key-conjurer/internal/aws"
 	"github.com/spf13/cobra"
 )
@@ -100,6 +100,11 @@ var getCmd = &cobra.Command{
 			timeRemaining = config.TimeRemaining
 		}
 
+		if roleName == "" {
+			cmd.PrintErrln("You must specify the --role flag with this command")
+			return nil
+		}
+
 		var credentials CloudCredentials
 		credentials.LoadFromEnv(cloudFlag)
 		if credentials.ValidUntil(*account, cloudFlag, time.Duration(timeRemaining)*time.Minute) {
@@ -108,35 +113,41 @@ var getCmd = &cobra.Command{
 
 		oauthCfg, _, err := DiscoverOAuth2Config(cmd.Context(), client, OktaDomain)
 		if err != nil {
-			log.Printf("could not discover oauth2  config: %s", err)
+			cmd.PrintErrf("could not discover oauth2  config: %s\n", err)
 			return nil
 		}
 
 		tok, err := ExchangeAccessTokenForWebSSOToken(cmd.Context(), client, oauthCfg, config.Tokens, applicationID)
 		if err != nil {
-			log.Fatalf("Error exchanging token: %s", err)
+			cmd.PrintErrf("error exchanging token: %s\n", err)
+			return nil
 		}
 
 		assertionBytes, err := ExchangeWebSSOTokenForSAMLAssertion(cmd.Context(), client, OktaDomain, tok)
 		if err != nil {
-			log.Fatalf("Failed to fetch SAML assertion: %s", err)
+			cmd.PrintErrf("failed to fetch SAML assertion: %s\n", err)
+			return nil
 		}
 
 		assertionStr := string(assertionBytes)
 
-		// TODO: implement principalarn/rolearn finding
-		_, err = saml.ParseEncodedResponse(assertionStr)
+		samlResponse, err := saml.ParseEncodedResponse(assertionStr)
 		if err != nil {
-			log.Fatalf("could not parse assertion: %s", err)
+			cmd.PrintErrf("could not parse assertion: %s\n", err)
+			return nil
 		}
 
 		prov, _ := aws.NewProvider("us-west-2")
-		principalARN := "arn:aws:iam::051466331536:saml-provider/Okta"
-		roleARN := "arn:aws:iam::051466331536:role/GL-Admin"
+		pair, _, ok := internal.FindRole(roleName, samlResponse)
+		if !ok {
+			cmd.PrintErrf("you do not have access to the role %s on application %s\n", roleName, args[0])
+			return nil
+		}
 
-		resp, err := prov.GetTemporaryCredentialsForUser(cmd.Context(), &principalARN, &roleARN, &assertionStr, 1)
+		resp, err := prov.GetTemporaryCredentialsForUser(cmd.Context(), &pair.ProviderARN, &pair.RoleARN, &assertionStr, 1)
 		if err != nil {
-			log.Fatalf("failed to exchange credentials: %s", err)
+			cmd.PrintErrf("failed to exchange credentials: %s", err)
+			return nil
 		}
 
 		credentials = CloudCredentials{

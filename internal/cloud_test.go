@@ -7,26 +7,26 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestAwsGetRoleDoesntBreakIfYouHaveMultipleRoles(t *testing.T) {
+func TestAwsFindRoleDoesntBreakIfYouHaveMultipleRoles(t *testing.T) {
 	resp := saml.Response{}
 	resp.AddAttribute("https://aws.amazon.com/SAML/Attributes/Role", "arn:cloud:iam::1234:saml-provider/Okta,arn:cloud:iam::1234:role/Admin")
 	resp.AddAttribute("https://aws.amazon.com/SAML/Attributes/Role", "arn:cloud:iam::1234:saml-provider/Okta,arn:cloud:iam::1234:role/Power")
-	providerARN, roleARN, _, err := getRole("Power", &resp)
-	require.NoError(t, err)
-	require.Equal(t, "arn:cloud:iam::1234:saml-provider/Okta", providerARN)
-	require.Equal(t, "arn:cloud:iam::1234:role/Power", roleARN)
-	providerARN, roleARN, _, err = getRole("Admin", &resp)
-	require.NoError(t, err)
-	require.Equal(t, "arn:cloud:iam::1234:saml-provider/Okta", providerARN)
-	require.Equal(t, "arn:cloud:iam::1234:role/Admin", roleARN)
+	pair, _, err := FindRole("Power", &resp)
+	require.True(t, err)
+	require.Equal(t, "arn:cloud:iam::1234:saml-provider/Okta", pair.ProviderARN)
+	require.Equal(t, "arn:cloud:iam::1234:role/Power", pair.RoleARN)
+	pair, _, err = FindRole("Admin", &resp)
+	require.True(t, err)
+	require.Equal(t, "arn:cloud:iam::1234:saml-provider/Okta", pair.ProviderARN)
+	require.Equal(t, "arn:cloud:iam::1234:role/Admin", pair.RoleARN)
 }
 
-func TestAwsGetRoleWorksWithOneLoginAssertions(t *testing.T) {
+func TestAwsFindRoleWorksWithOneLoginAssertions(t *testing.T) {
 	resp := saml.Response{}
 	// For some reason, this is reversed in OneLogin.
 	resp.AddAttribute("https://aws.amazon.com/SAML/Attributes/Role", "arn:cloud:iam::1234:role/Admin,arn:cloud:iam::1234:saml-provider/Onelogin")
-	providerARN, roleARN, _, err := getRole("", &resp)
-	require.NoError(t, err)
-	require.Equal(t, "arn:cloud:iam::1234:saml-provider/Onelogin", providerARN)
-	require.Equal(t, "arn:cloud:iam::1234:role/Admin", roleARN)
+	pair, _, err := FindRole("", &resp)
+	require.True(t, err)
+	require.Equal(t, "arn:cloud:iam::1234:saml-provider/Onelogin", pair.ProviderARN)
+	require.Equal(t, "arn:cloud:iam::1234:role/Admin", pair.RoleARN)
 }

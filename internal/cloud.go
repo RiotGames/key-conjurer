@@ -38,7 +38,7 @@ func (e ErrRoleNotFound) Error() string {
 	return fmt.Sprintf("role %s was not found or you do not have access to it", e.Name)
 }
 
-type roleProviderPair struct {
+type RoleProviderPair struct {
 	RoleARN     string
 	ProviderARN string
 }
@@ -50,10 +50,11 @@ const (
 	tencentFlag    = 1
 )
 
-func getRole(roleName string, response *saml.Response) (string, string, int, error) {
+func FindRole(roleName string, response *saml.Response) (RoleProviderPair, int, bool) {
 	if response == nil {
-		return "", "", 0, errors.New("unable to get SAML assertion")
+		return RoleProviderPair{}, 0, false
 	}
+
 	cloud := awsFlag
 	roleUrl := awsRoleUrl
 	roleSubstr := "role/"
@@ -71,19 +72,19 @@ func getRole(roleName string, response *saml.Response) (string, string, int, err
 		//       arn:cloud:iam::[account-id]:saml-provider/[saml-provider]
 		// If we get weird breakages with Key Conjurer when it's deployed alongside legacy clients, this is almost certainly a culprit!
 		pair := getARN(response.GetAttribute(roleUrl))
-		return pair.ProviderARN, pair.RoleARN, cloud, nil
+		return pair, cloud, false
 	}
 
-	var pairs []roleProviderPair
+	var pairs []RoleProviderPair
 	for _, v := range response.GetAttributeValues(roleUrl) {
 		pairs = append(pairs, getARN(v))
 	}
 
 	if len(pairs) == 0 {
-		return "", "", cloud, ErrNoEntitlements
+		return RoleProviderPair{}, cloud, false
 	}
 
-	var pair roleProviderPair
+	var pair RoleProviderPair
 	for _, p := range pairs {
 		idx := strings.Index(p.RoleARN, roleSubstr)
 		parts := strings.Split(p.RoleARN[idx:], "/")
@@ -93,14 +94,14 @@ func getRole(roleName string, response *saml.Response) (string, string, int, err
 	}
 
 	if pair.RoleARN == "" {
-		return "", "", cloud, ErrRoleNotFound{Name: roleName}
+		return RoleProviderPair{}, cloud, false
 	}
 
-	return pair.ProviderARN, pair.RoleARN, cloud, nil
+	return pair, cloud, true
 }
 
-func getARN(value string) roleProviderPair {
-	p := roleProviderPair{}
+func getARN(value string) RoleProviderPair {
+	p := RoleProviderPair{}
 	roles := strings.Split(value, ",")
 	if len(roles) >= 2 {
 		if strings.Contains(roles[0], "saml-provider/") {
@@ -122,14 +123,14 @@ type STSTokenResponse struct {
 }
 
 func (p *Provider) GetTemporaryCredentialsForUser(ctx context.Context, roleName string, response *core.SAMLResponse, ttlInHours int) (STSTokenResponse, error) {
-	principalARN, roleARN, cloud, err := getRole(roleName, &response.Response)
-	if err != nil {
-		return STSTokenResponse{}, err
+	pair, cloud, ok := FindRole(roleName, &response.Response)
+	if !ok {
+		return STSTokenResponse{}, errors.New("role not found")
 	}
 
 	switch cloud {
 	case awsFlag:
-		rsp, err := p.Aws.GetTemporaryCredentialsForUser(ctx, &principalARN, &roleARN, response.GetBase64Encoded(), ttlInHours)
+		rsp, err := p.Aws.GetTemporaryCredentialsForUser(ctx, &pair.ProviderARN, &pair.RoleARN, response.GetBase64Encoded(), ttlInHours)
 		creds := STSTokenResponse{
 			AccessKeyID:     rsp.AccessKeyId,
 			SecretAccessKey: rsp.SecretAccessKey,
@@ -142,7 +143,7 @@ func (p *Provider) GetTemporaryCredentialsForUser(ctx context.Context, roleName 
 
 		return creds, err
 	case tencentFlag:
-		rsp, exp, err := p.Tencent.GetTemporaryCredentialsForUser(ctx, &principalARN, &roleARN, response.GetBase64Encoded(), ttlInHours, roleName)
+		rsp, exp, err := p.Tencent.GetTemporaryCredentialsForUser(ctx, &pair.ProviderARN, &pair.RoleARN, response.GetBase64Encoded(), ttlInHours, roleName)
 		if err != nil {
 			return STSTokenResponse{}, err
 		}
