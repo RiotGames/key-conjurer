@@ -86,29 +86,25 @@ var getCmd = &cobra.Command{
 			ttl = 8
 		}
 
-		// var label, applicationID = args[0], args[0]
-		// account, ok := config.FindAccount(applicationID)
-		// if ok {
-		// 	applicationID = account.ID
-		// 	label = account.Name
-		// } else {
-		// 	account = &Account{}
-		// }
+		var applicationID = args[0]
+		account, ok := config.FindAccount(applicationID)
+		if ok {
+			applicationID = account.ID
+		}
 
-		// if account.MostRecentRole != "" && roleName == "" {
-		// 	roleName = account.MostRecentRole
-		// }
+		if account.MostRecentRole != "" && roleName == "" {
+			roleName = account.MostRecentRole
+		}
 
 		if config.TimeRemaining != 0 && timeRemaining == DefaultTimeRemaining {
 			timeRemaining = config.TimeRemaining
 		}
 
-		// if cloudFlag == "" {
-		// 	cloudFlag = cloudAws
-		// 	if strings.Contains(account.Name, "Tencent") {
-		// 		cloudFlag = cloudTencent
-		// 	}
-		// }
+		var credentials CloudCredentials
+		credentials.LoadFromEnv(cloudFlag)
+		if credentials.ValidUntil(*account, cloudFlag, time.Duration(timeRemaining)*time.Minute) {
+			return echoCredentials(args[0], args[0], credentials, outputType, cloudFlag)
+		}
 
 		oauthCfg, _, err := DiscoverOAuth2Config(cmd.Context(), client, OktaDomain)
 		if err != nil {
@@ -116,8 +112,7 @@ var getCmd = &cobra.Command{
 			return nil
 		}
 
-		// tok, err := ExchangeAccessTokenForWebSSOToken(cmd.Context(), oauthCfg, config.Tokens, applicationID)
-		tok, err := ExchangeAccessTokenForWebSSOToken(cmd.Context(), client, oauthCfg, config.Tokens, args[0])
+		tok, err := ExchangeAccessTokenForWebSSOToken(cmd.Context(), client, oauthCfg, config.Tokens, applicationID)
 		if err != nil {
 			log.Fatalf("Error exchanging token: %s", err)
 		}
@@ -144,28 +139,18 @@ var getCmd = &cobra.Command{
 			log.Fatalf("failed to exchange credentials: %s", err)
 		}
 
-		credentials := CloudCredentials{
+		credentials = CloudCredentials{
 			AccessKeyID:     *resp.AccessKeyId,
 			Expiration:      resp.Expiration.Format(time.RFC3339),
 			SecretAccessKey: *resp.SecretAccessKey,
 			SessionToken:    *resp.SessionToken,
 		}
 
-		// var credentials CloudCredentials
-		// credentials.LoadFromEnv(cloudFlag)
-		// if credentials.ValidUntil(*account, cloudFlag, time.Duration(timeRemaining)*time.Minute) {
-		// 	return echoCredentials(args[0], args[0], credentials, outputType, cloudFlag)
-		// }
+		if ttl == 1 && config.TTL != 0 {
+			ttl = config.TTL
+		}
 
-		// if !quiet {
-		// 	fmt.Fprintf(os.Stderr, "sending authentication request for account %q - you may be asked to authenticate with Duo\n", label)
-		// }
-
-		// if ttl == 1 && config.TTL != 0 {
-		// 	ttl = config.TTL
-		// }
-
-		// account.MostRecentRole = roleName
+		account.MostRecentRole = roleName
 		return echoCredentials(args[0], args[0], credentials, outputType, cloudFlag)
 	}}
 

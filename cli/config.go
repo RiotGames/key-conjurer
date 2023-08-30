@@ -310,7 +310,7 @@ func (c *Config) Unalias(name string) {
 
 func (c *Config) FindAccount(name string) (*Account, bool) {
 	if c.Accounts == nil {
-		return nil, false
+		return &Account{}, false
 	}
 
 	val, ok := c.Accounts.Resolve(name)
@@ -318,7 +318,7 @@ func (c *Config) FindAccount(name string) (*Account, bool) {
 		return val, true
 	}
 
-	return nil, false
+	return &Account{}, false
 }
 
 func (c *Config) UpdateAccounts(entries []Account) {
