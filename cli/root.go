@@ -58,7 +58,7 @@ To get started run the following commands:
 	SilenceErrors: true,
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		// We don't care about this being cancelled.
-		nextCtx, _ := context.WithTimeout(cmd.Context(), time.Duration(timeout))
+		nextCtx, _ := context.WithTimeout(cmd.Context(), time.Duration(timeout)*time.Second)
 		cmd.SetContext(nextCtx)
 
 		fp := keyConjurerRcPath
