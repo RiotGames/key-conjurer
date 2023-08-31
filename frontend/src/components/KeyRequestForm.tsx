@@ -71,18 +71,20 @@ export class KeyRequestForm extends Component<{}, State> {
 
   handleChange =
     <K extends keyof State>(name: K) =>
-    (event: ChangeEvent<HTMLSelectElement | HTMLInputElement>) => {
-      if (name === "timeout") {
-        localStorage.setItem("timeout", event.currentTarget.value);
-      }
+      (event: ChangeEvent<HTMLSelectElement | HTMLInputElement>) => {
+        // We capture the value in a local value here to make sure event.target doesn't change underneath us
+        const value = event.target.value;
+        if (name === "timeout") {
+          localStorage.setItem("timeout", value);
+        }
 
-      this.setState((prevState) => {
-        return { ...prevState, [name]: event.currentTarget.value };
-      });
-    };
+        this.setState((prevState) => {
+          return { ...prevState, [name]: value };
+        });
+      };
 
   setAccount = (event: ChangeEvent<HTMLSelectElement>) => {
-    this.setState({ selectedAccount: event.currentTarget.value });
+    this.setState({ selectedAccount: event.target.value });
   };
 
   componentDidMount() {

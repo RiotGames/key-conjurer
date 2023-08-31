@@ -118,6 +118,7 @@ func (h *Handler) GetUserDataEventHandler(ctx context.Context, req *events.ALBTa
 		return ErrorResponse(ErrCodeUnableToEncrypt, "unable to encrypt credentials")
 	}
 
+	log.Info("GetUserDataEventHandler success")
 	return DataResponse(GetUserDataPayload{
 		Apps:                 applications,
 		EncryptedCredentials: ciphertext,
@@ -225,6 +226,7 @@ func (h *Handler) GetTemporaryCredentialEventHandler(ctx context.Context, req *e
 		return ErrorResponse(ErrCodeInternalServerError, err.Error())
 	}
 
+	log.Info("GetTemporaryCredentialEventHandler success")
 	return DataResponse(GetTemporaryCredentialsPayload{
 		AccountID:       event.AppID,
 		AccessKeyID:     *sts.AccessKeyID,
