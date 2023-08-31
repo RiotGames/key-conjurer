@@ -4,7 +4,6 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/riotgames/key-conjurer/pkg/oidc"
 	"github.com/spf13/cobra"
 	"golang.org/x/oauth2"
 )
@@ -19,7 +18,7 @@ var loginCmd = &cobra.Command{
 			return nil
 		}
 
-		token, err := Login(cmd.Context(), NewHTTPClient(), oidcDomain, false)
+		token, err := Login(cmd.Context(), NewHTTPClient(), oidcDomain)
 		if err != nil {
 			return err
 		}
@@ -28,8 +27,8 @@ var loginCmd = &cobra.Command{
 	},
 }
 
-func Login(ctx context.Context, client *http.Client, domain string, useDeviceFlow bool) (*oauth2.Token, error) {
-	oauthCfg, provider, err := DiscoverOAuth2Config(ctx, client, domain)
+func Login(ctx context.Context, client *http.Client, domain string) (*oauth2.Token, error) {
+	oauthCfg, _, err := DiscoverOAuth2Config(ctx, client, domain)
 	if err != nil {
 		return nil, err
 	}
@@ -44,13 +43,5 @@ func Login(ctx context.Context, client *http.Client, domain string, useDeviceFlo
 		return nil, err
 	}
 
-	// The device flow and the redirect flow are almost indistinguishable from a user point of view.
-	//
-	// The device flow should be preferred as it gives the user the option to open a browser on their mobile device or their terminal, whereas the redirect flow requires opening a browser on the current machine.
-	if useDeviceFlow && oidc.SupportsDeviceFlow(provider) {
-		// TODO: This flow is not currently exposing ID tokens so it cannot be used to access an SSO account
-		return DeviceAuthorizationFlow(provider, oauthCfg)
-	} else {
-		return RedirectionFlow(ctx, oauthCfg, state, codeChallenge, codeVerifier)
-	}
+	return RedirectionFlow(ctx, oauthCfg, state, codeChallenge, codeVerifier)
 }

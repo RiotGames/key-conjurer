@@ -7,7 +7,6 @@ require (
 	github.com/go-ini/ini v1.61.0
 	github.com/google/uuid v1.1.2
 	github.com/hashicorp/go-rootcerts v1.0.2
-	github.com/mdp/qrterminal v1.0.1
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/mitchellh/go-ps v1.0.0
 	github.com/okta/okta-sdk-golang/v2 v2.2.1
@@ -68,7 +67,6 @@ require (
 	gopkg.in/ini.v1 v1.42.0 // indirect
 	gopkg.in/square/go-jose.v2 v2.5.1 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	rsc.io/qr v0.2.0 // indirect
 )
 
 go 1.19
