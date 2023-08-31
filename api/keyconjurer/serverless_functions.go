@@ -88,7 +88,12 @@ func (h *Handler) GetUserDataEventHandler(ctx context.Context, req *events.ALBTa
 		return ErrorResponse(ErrCodeUnableToDecrypt, "unable to decrypt credentials")
 	}
 
-	log = h.log.WithFields(logrus.Fields{"username": event.Credentials.Username, "idp": event.AuthenticationProvider})
+	log = h.log.WithFields(logrus.Fields{
+		"username":   event.Credentials.Username,
+		"idp":        event.AuthenticationProvider,
+		"user_agent": req.Headers["user-agent"],
+	})
+
 	provider, ok := providers.Get(event.AuthenticationProvider)
 	if !ok {
 		log.Infof("unknown provider %q", provider)
@@ -189,7 +194,13 @@ func (h *Handler) GetTemporaryCredentialEventHandler(ctx context.Context, req *e
 		return ErrorResponse(ErrCodeUnableToDecrypt, "unable to decrypt credentials")
 	}
 
-	log = h.log.WithFields(logrus.Fields{"username": event.Credentials.Username, "idp": event.AuthenticationProvider, "account_id": event.AppID})
+	log = h.log.WithFields(logrus.Fields{
+		"username":   event.Credentials.Username,
+		"idp":        event.AuthenticationProvider,
+		"user_agent": req.Headers["user-agent"],
+		"account_id": event.AppID,
+	})
+
 	provider, ok := providers.Get(event.AuthenticationProvider)
 	if !ok {
 		log.Infof("unknown provider %q", provider)
