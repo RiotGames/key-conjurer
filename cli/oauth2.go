@@ -13,7 +13,6 @@ import (
 	"net/url"
 	"os"
 	"strings"
-	"time"
 
 	rootcerts "github.com/hashicorp/go-rootcerts"
 	"github.com/mdp/qrterminal"
@@ -27,23 +26,16 @@ import (
 
 func NewHTTPClient() *http.Client {
 	// Some Darwin systems require certs to be loaded from the system certificate store or attempts to verify SSL certs on internal websites may fail.
-	transport := http.DefaultTransport
+	tr := http.DefaultTransport
 	if certs, err := rootcerts.LoadSystemCAs(); err == nil {
-		transport = &http.Transport{
+		tr = &http.Transport{
 			TLSClientConfig: &tls.Config{
 				RootCAs: certs,
 			},
 		}
 	}
 
-	return NewHTTPClientWithRoundTripper(transport)
-}
-
-func NewHTTPClientWithRoundTripper(rt http.RoundTripper) *http.Client {
-	return &http.Client{
-		Transport: httputil.LogRoundTripper(rt),
-		Timeout:   time.Second * time.Duration(clientHttpTimeoutSeconds),
-	}
+	return &http.Client{Transport: httputil.LogRoundTripper(tr)}
 }
 
 func DiscoverOAuth2Config(ctx context.Context, client *http.Client, domain string) (*oauth2.Config, *oidc.Provider, error) {
@@ -62,10 +54,8 @@ func DiscoverOAuth2Config(ctx context.Context, client *http.Client, domain strin
 }
 
 func NewOAuth2Client(ctx context.Context, ts oauth2.TokenSource) *http.Client {
-	// The following Oauth2 code is copied from the OAuth2 package
-	// src := oauth2.ReuseTokenSource(tok, cfg.TokenSource(ctx, tok))
-	rt := oauth2.Transport{Base: http.DefaultTransport, Source: ts}
-	return NewHTTPClientWithRoundTripper(&rt)
+	tr := oauth2.Transport{Base: http.DefaultTransport, Source: ts}
+	return &http.Client{Transport: httputil.LogRoundTripper(&tr)}
 }
 
 type OAuth2CallbackInfo struct {

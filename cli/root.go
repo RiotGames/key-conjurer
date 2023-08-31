@@ -1,9 +1,11 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
@@ -13,20 +15,20 @@ var (
 	//  Config json storage location
 	keyConjurerRcPath string
 	// config is a cache-like datastore for this application. It is loaded at app start-up.
-	config                   Config
-	quiet                    bool
-	buildTimestamp           string = BuildDate + " " + BuildTime + " " + BuildTimeZone
-	cloudAws                        = "aws"
-	cloudTencent                    = "tencent"
-	clientHttpTimeoutSeconds int    = 120
-	oidcDomain               string
-	clientID                 string
+	config         Config
+	quiet          bool
+	buildTimestamp string = BuildDate + " " + BuildTime + " " + BuildTimeZone
+	cloudAws              = "aws"
+	cloudTencent          = "tencent"
+	timeout        int    = 120
+	oidcDomain     string
+	clientID       string
 )
 
 func init() {
 	rootCmd.PersistentFlags().StringVar(&oidcDomain, "oidc-domain", OIDCDomain, "The domain name of your OIDC server")
 	rootCmd.PersistentFlags().StringVar(&clientID, "client-id", ClientID, "The OAuth2 Client ID for the application registered with your OIDC server")
-	rootCmd.PersistentFlags().IntVar(&clientHttpTimeoutSeconds, "http-timeout", 120, "the amount of time in seconds to wait for keyconjurer to respond")
+	rootCmd.PersistentFlags().IntVar(&timeout, "timeout", 120, "the amount of time in seconds to wait for keyconjurer to respond")
 	rootCmd.PersistentFlags().StringVar(&keyConjurerRcPath, "keyconjurer-rc-path", "~/.keyconjurerrc", "path to .keyconjurerrc file")
 	rootCmd.PersistentFlags().BoolVar(&quiet, "quiet", false, "tells the CLI to be quiet; stdout will not contain human-readable informational messages")
 	rootCmd.AddCommand(loginCmd)
@@ -55,6 +57,10 @@ To get started run the following commands:
 	SilenceUsage:  true,
 	SilenceErrors: true,
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+		// We don't care about this being cancelled.
+		nextCtx, _ := context.WithTimeout(cmd.Context(), time.Duration(timeout))
+		cmd.SetContext(nextCtx)
+
 		fp := keyConjurerRcPath
 		if expanded, err := homedir.Expand(fp); err == nil {
 			fp = expanded
