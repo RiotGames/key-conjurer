@@ -1,6 +1,8 @@
 package main
 
 import (
+	"context"
+	"errors"
 	"net/http"
 	"os"
 
@@ -37,34 +39,45 @@ var accountsCmd = &cobra.Command{
 			// It must be specified to satisfy the Okta SDK.
 			okta.WithToken("dummy text"),
 		)
-
 		if err != nil {
 			return err
 		}
 
-		apps, resp, err := client.Application.ListApplications(cmd.Context(), query.NewQueryParams())
-		if err != nil {
-			if resp.StatusCode == http.StatusUnauthorized {
-				// Tokens expired.
-				config.SaveOAuthToken(nil)
-				cmd.PrintErrln("Your session has expired. Please run login again.")
-				return nil
-			}
+		accounts, err := FetchAccounts(cmd.Context(), client)
+		if errors.Is(err, ErrSessionExpired) {
+			config.SaveOAuthToken(nil)
+			cmd.PrintErrln("Your session has expired. Please run login again.")
+			return nil
+		} else if err != nil {
 			return err
 		}
 
-		var entries []Account
-		for _, app := range apps {
-			app, ok := app.(*okta.Application)
-			if !ok {
-				continue
-			}
-
-			entries = append(entries, Account{ID: app.Id, Name: app.Label, Alias: generateDefaultAlias(app.Label)})
-		}
-
-		config.UpdateAccounts(entries)
+		config.UpdateAccounts(accounts)
 		config.DumpAccounts(os.Stdout)
 		return nil
 	},
+}
+
+var ErrSessionExpired = errors.New("session expired")
+
+func FetchAccounts(ctx context.Context, client *okta.Client) ([]Account, error) {
+	apps, resp, err := client.Application.ListApplications(ctx, query.NewQueryParams())
+	if err != nil {
+		if resp.StatusCode == http.StatusUnauthorized {
+			// Tokens expired.
+			return nil, ErrSessionExpired
+		}
+		return nil, err
+	}
+
+	var entries []Account
+	for _, app := range apps {
+		app, ok := app.(*okta.Application)
+		if !ok {
+			continue
+		}
+
+		entries = append(entries, Account{ID: app.Id, Name: app.Label, Alias: generateDefaultAlias(app.Label)})
+	}
+	return entries, nil
 }
