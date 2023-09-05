@@ -70,7 +70,8 @@ type OAuth2Listener struct {
 
 func NewOAuth2Listener() OAuth2Listener {
 	return OAuth2Listener{
-		Addr:       ":8081",
+		// 5RIOT on a phone pad
+		Addr: ":57468",
 		errCh:      make(chan error),
 		callbackCh: make(chan OAuth2CallbackInfo),
 	}
@@ -159,7 +160,7 @@ func GenerateState() (string, error) {
 func RedirectionFlow(ctx context.Context, oauthCfg *oauth2.Config, state, codeChallenge, codeVerifier string) (*oauth2.Token, error) {
 	listener := NewOAuth2Listener()
 	go listener.Listen(ctx)
-	oauthCfg.RedirectURL = "http://localhost:8081"
+	oauthCfg.RedirectURL = "http://localhost:57468"
 	url := oauthCfg.AuthCodeURL(state,
 		oauth2.SetAuthURLParam("code_challenge_method", "S256"),
 		oauth2.SetAuthURLParam("code_challenge", codeChallenge),
