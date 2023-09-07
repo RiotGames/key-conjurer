@@ -1,4 +1,4 @@
-package main
+package httputil
 
 import (
 	"context"
@@ -29,7 +29,7 @@ func TestLambdaify_ALBTargetEvents(t *testing.T) {
 	inboundEventBytes, err := json.Marshal(inboundEvent)
 	require.NoError(t, err, "Could not marshal inbound event to JSON")
 
-	handler := lambdaify(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	handler := Lambdaify(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, r.Method, "POST")
 		assert.Equal(t, r.URL.Path, "/hello-world")
 		assert.Equal(t, r.FormValue("id_token"), "id token goes here")
