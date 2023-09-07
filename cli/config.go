@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/csv"
 	"encoding/json"
 	"errors"
 	"io"
@@ -8,7 +9,6 @@ import (
 
 	"strings"
 
-	"github.com/olekukonko/tablewriter"
 	"golang.org/x/oauth2"
 )
 
@@ -71,9 +71,9 @@ func generateDefaultAlias(name string) string {
 	return strings.ToLower(strings.ReplaceAll(name, " ", "-"))
 }
 
-func (a *accountSet) ForEach(f func(id string, account Account, aliases []string)) {
+func (a *accountSet) ForEach(f func(id string, account Account, alias string)) {
 	for id, acc := range a.accounts {
-		f(id, *acc, []string{acc.Alias})
+		f(id, *acc, acc.Alias)
 	}
 }
 
@@ -169,13 +169,12 @@ func (a *accountSet) ReplaceWith(other []Account) {
 }
 
 func (s accountSet) WriteTable(w io.Writer) {
-	tbl := tablewriter.NewWriter(w)
-	tbl.SetHeader([]string{"ID", "Name", "Aliases (comma-separated)"})
-	s.ForEach(func(id string, acc Account, aliases []string) {
-		tbl.Append([]string{id, acc.Name, strings.Join(aliases, ",")})
+	tbl := csv.NewWriter(w)
+	tbl.Write([]string{"id,name,alias"})
+	s.ForEach(func(id string, acc Account, alias string) {
+		tbl.Write([]string{id, acc.Name, alias})
 	})
-
-	tbl.Render()
+	tbl.Flush()
 }
 
 // Config stores all information related to the user
