@@ -33,34 +33,33 @@ var accountsCmd = &cobra.Command{
 	Use:   "accounts",
 	Short: "Prints and optionally refreshes the list of accounts you have access to.",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		quiet, _ := cmd.Flags().GetBool("quiet")
 		noRefresh, _ := cmd.Flags().GetBool(FlagNoRefresh)
-		if !noRefresh {
-			serverAddr, _ := cmd.Flags().GetString(FlagServerAddress)
-			serverAddrUri, err := url.Parse(serverAddr)
-			if err != nil {
-				cmd.PrintErrf("--%s had an invalid value: %s", FlagServerAddress, err)
-				return nil
+		if noRefresh {
+			config.DumpAccounts(os.Stdout)
+			if q, _ := cmd.Flags().GetBool("quiet"); !q {
+				cmd.PrintErrf("--%s was specified - these results may be out of date, and you may not have access to accounts in this list.", FlagNoRefresh)
 			}
-
-			accounts, err := refreshAccounts(cmd.Context(), serverAddrUri, config.Tokens)
-			if errors.Is(err, ErrSessionExpired) {
-				cmd.PrintErrln("Your session has expired. Please run login again.")
-				config.SaveOAuthToken(nil)
-				return nil
-			} else if err != nil {
-				cmd.PrintErrf("Error refreshing accounts: %s", err)
-				cmd.PrintErrln("If you don't need to refresh your accounts, consider adding the --no-refresh flag")
-				return nil
-			}
-
-			config.UpdateAccounts(accounts)
 		}
 
-		config.DumpAccounts(os.Stdout)
-		if noRefresh && !quiet {
-			cmd.PrintErrf("--%s was specified - these results may be out of date, and you may not have access to accounts in this list.", FlagNoRefresh)
+		serverAddr, _ := cmd.Flags().GetString(FlagServerAddress)
+		serverAddrUri, err := url.Parse(serverAddr)
+		if err != nil {
+			cmd.PrintErrf("--%s had an invalid value: %s", FlagServerAddress, err)
+			return nil
 		}
+
+		accounts, err := refreshAccounts(cmd.Context(), serverAddrUri, config.Tokens)
+		if errors.Is(err, ErrSessionExpired) {
+			cmd.PrintErrln("Your session has expired. Please run login again.")
+			config.SaveOAuthToken(nil)
+			return nil
+		} else if err != nil {
+			cmd.PrintErrf("Error refreshing accounts: %s", err)
+			cmd.PrintErrln("If you don't need to refresh your accounts, consider adding the --no-refresh flag")
+			return nil
+		}
+
+		config.UpdateAccounts(accounts)
 
 		return nil
 	},
