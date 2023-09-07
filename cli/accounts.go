@@ -19,6 +19,7 @@ import (
 var (
 	FlagNoRefresh     = "no-refresh"
 	FlagServerAddress = "server-address"
+	FlagQuiet         = "quiet"
 
 	ErrSessionExpired = errors.New("session expired")
 )
@@ -36,15 +37,15 @@ var accountsCmd = &cobra.Command{
 		noRefresh, _ := cmd.Flags().GetBool(FlagNoRefresh)
 		if noRefresh {
 			config.DumpAccounts(os.Stdout)
-			if q, _ := cmd.Flags().GetBool("quiet"); !q {
-				cmd.PrintErrf("--%s was specified - these results may be out of date, and you may not have access to accounts in this list.", FlagNoRefresh)
+			if q, _ := cmd.Flags().GetBool(FlagQuiet); !q {
+				cmd.PrintErrf("--%s was specified - these results may be out of date, and you may not have access to accounts in this list.\n", FlagNoRefresh)
 			}
 		}
 
 		serverAddr, _ := cmd.Flags().GetString(FlagServerAddress)
 		serverAddrUri, err := url.Parse(serverAddr)
 		if err != nil {
-			cmd.PrintErrf("--%s had an invalid value: %s", FlagServerAddress, err)
+			cmd.PrintErrf("--%s had an invalid value: %s\n", FlagServerAddress, err)
 			return nil
 		}
 
@@ -54,7 +55,7 @@ var accountsCmd = &cobra.Command{
 			config.SaveOAuthToken(nil)
 			return nil
 		} else if err != nil {
-			cmd.PrintErrf("Error refreshing accounts: %s", err)
+			cmd.PrintErrf("Error refreshing accounts: %s\n", err)
 			cmd.PrintErrln("If you don't need to refresh your accounts, consider adding the --no-refresh flag")
 			return nil
 		}
