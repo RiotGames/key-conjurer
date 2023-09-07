@@ -92,6 +92,9 @@ func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}
 	switch r.URL.Path {
+	case "/v2/applications":
+		handler := keyconjurer.ServeUserApplications(nil)
+		handler.ServeHTTP(w, r)
 	case "/get_aws_creds":
 		s.getAWSCreds(w, r)
 	case "/get_user_data":
