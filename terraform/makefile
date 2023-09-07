@@ -1,8 +1,5 @@
 S3_TF_BUCKET_TAGS ?= "TagSet=[{Key=Name,Value=KeyConjurerS3Bucket}]"
-
-ifndef RELEASE
-$(error RELEASE is not set)
-endif
+RELEASE ?= dev
 
 ifndef S3_TF_BUCKET_NAME
 $(error S3_TF_BUCKET_NAME is not set)
@@ -26,8 +23,14 @@ api_upload: api_zip
 	cd ../builds/$(RELEASE)/cloud \
 	&& aws s3 cp . s3://$(S3_TF_BUCKET_NAME)/$(RELEASE) --exclude "*" --include "*.zip" --recursive
 
-api_zip:
+api_zip: ../builds/$(RELEASE)/list_applications_v2.zip
 	cd ../builds/$(RELEASE)/cloud && \
 	zip get_user_data.zip get_user_data \
 	&& zip get_cloud_creds.zip get_cloud_creds \
+	&& zip list_providers.zip list_providers \
 	&& zip list_providers.zip list_providers
+
+../builds/$(RELEASE)/list_applications_v2.zip:
+	cd ../builds/$(RELEASE) && \
+	mv list_applications_v2 bootstrap && \
+	zip list_applications_v2.zip bootstrap

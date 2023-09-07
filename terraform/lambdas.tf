@@ -75,3 +75,24 @@ resource "aws_lambda_function" "keyconjurer-list_providers" {
     security_group_ids = [aws_security_group.keyconjurer-default.id]
   }
 }
+
+resource "aws_lambda_function" "keyconjurer-list_applications_v2" {
+  function_name    = "keyconjurer-${var.environment}-list_applications_v2"
+  description      = "[${var.environment}] List the providers a user can use"
+  s3_bucket        = var.s3_tf_bucket
+  s3_key           = "${var.environment}/list_applications_v2.zip"
+  source_code_hash = "true"
+  role             = aws_iam_role.keyconjurer-lambda.arn
+  handler          = "list_applications_v2"
+  runtime          = "go1.x"
+  timeout          = 300
+
+  environment {
+    variables = var.lambda_env
+  }
+
+  vpc_config {
+    subnet_ids         = var.subnets
+    security_group_ids = [aws_security_group.keyconjurer-default.id]
+  }
+}

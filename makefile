@@ -1,6 +1,4 @@
-ifndef RELEASE
-$(error RELEASE is not set)
-endif
+RELEASE ?= dev
 
 build:
 	make cli_build \

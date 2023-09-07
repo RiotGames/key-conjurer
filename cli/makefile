@@ -6,9 +6,8 @@ build_date =  $(shell date -u +'%Y-%m-%d')
 build_time =  $(shell date -u +'%H:%M:%S')
 build_timezone = UTC
 
-ifndef RELEASE
-$(error RELEASE is not set)
-endif
+RELEASE ?= dev
+
 ifndef CLIENT_ID
 $(error CLIENT_ID is not set)
 endif

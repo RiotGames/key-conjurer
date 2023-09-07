@@ -1,9 +1,8 @@
 prod_build = ./build/index.html
 prod_input = ./src/App.tsx ./src/actions.ts ./src/index.tsx ./src/stores.ts ./src/components/*.tsx
 
-ifndef RELEASE
-$(error RELEASE is not set)
-endif
+RELEASE ?= dev
+BINARY_NAME ?= keyconjurer
 
 ifndef FRONTEND_URL
 $(error FRONTEND_URL is not set)
@@ -13,6 +12,7 @@ ifndef API_URL
 $(error API_URL is not set)
 endif
 
+<<<<<<< HEAD
 ifndef BINARY_NAME
 $(error BINARY_NAME is not set)
 endif
