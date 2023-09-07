@@ -13,17 +13,38 @@ import (
 )
 
 type oktaService struct {
-	Domain *url.URL
-	Token  string
-	client *http.Client
+	Domain     *url.URL
+	Token      string
+	client     *http.Client
+	oktaClient *okta.Client
 }
 
 func NewOktaService(domain *url.URL, token string) oktaService {
-	return oktaService{domain, token, http.DefaultClient}
+	_, oktaClient, _ := okta.NewClient(
+		context.Background(),
+		okta.WithToken(token),
+		okta.WithOrgUrl(domain.String()),
+	)
+
+	return oktaService{domain, token, http.DefaultClient, oktaClient}
 }
 
-func (oktaService) ListApplicationsForUser(ctx context.Context, user string) ([]okta.Application, error) {
-	return nil, nil
+func (o oktaService) ListApplicationsForUser(ctx context.Context, user string) ([]*okta.AppLink, error) {
+	links, resp, err := o.oktaClient.User.ListAppLinks(ctx, user)
+	if err != nil {
+		return nil, err
+	}
+
+	for resp.HasNextPage() {
+		var next []*okta.AppLink
+		if resp, err = resp.Next(ctx, &next); err != nil {
+			return nil, err
+		}
+
+		links = append(links, next...)
+	}
+
+	return links, nil
 }
 
 type OktaUserInfo struct {

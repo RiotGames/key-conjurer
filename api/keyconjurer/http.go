@@ -31,7 +31,7 @@ func GetBearerToken(r *http.Request) (string, bool) {
 
 type OktaService interface {
 	GetUserInfo(ctx context.Context, token string) (OktaUserInfo, error)
-	ListApplicationsForUser(ctx context.Context, user string) ([]okta.Application, error)
+	ListApplicationsForUser(ctx context.Context, user string) ([]*okta.AppLink, error)
 }
 
 func ServeUserApplications(okta OktaService) http.Handler {
