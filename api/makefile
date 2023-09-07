@@ -6,6 +6,11 @@ ldflags = "-X github.com/riotgames/key-conjurer/api/consts.Version=$(version)-${
 deploy: ../builds/$(RELEASE)/cloud/get_cloud_creds.zip ../builds/$(RELEASE)/cloud/get_user_data.zip ../builds/$(RELEASE)/cloud/list_providers.zip
 	$(MAKE) upload
 
+list_applications_v2.zip:
+	GOOS=linux GOARCH=amd64 go build -ldflags $(ldflags) -o bootstrap serverless_functions/$(subst .zip,,$@)/main.go
+	zip $@ bootstrap
+	rm bootstrap
+
 list_providers.zip get_cloud_creds.zip get_user_data.zip:
 	GOOS=linux GOARCH=amd64 go build -ldflags $(ldflags) -o $(subst .zip,,$@) serverless_functions/cloud/$(subst .zip,,$@)/main.go
 	zip $@ $(subst .zip,,$@)
@@ -20,8 +25,11 @@ list_providers.zip get_cloud_creds.zip get_user_data.zip:
 ../builds/$(RELEASE)/cloud/list_providers.zip: list_providers.zip
 	mkdir -p ../builds/$(RELEASE)/cloud
 	mv $^ $@
+../builds/$(RELEASE)/list_applications_v2.zip:
+	mkdir -p ../builds/$(RELEASE)
+	mv $^ $@
 
-build: ../builds/$(RELEASE)/cloud/get_cloud_creds.zip ../builds/$(RELEASE)/cloud/get_user_data.zip ../builds/$(RELEASE)/cloud/list_providers.zip
+build: ../builds/$(RELEASE)/cloud/get_cloud_creds.zip ../builds/$(RELEASE)/cloud/get_user_data.zip ../builds/$(RELEASE)/cloud/list_providers.zip ../builds/$(RELEASE)/list_applications_v2.zip
 
 test:
 	go test ./...

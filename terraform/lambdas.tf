@@ -83,8 +83,8 @@ resource "aws_lambda_function" "keyconjurer-list_applications_v2" {
   s3_key           = "${var.environment}/list_applications_v2.zip"
   source_code_hash = "true"
   role             = aws_iam_role.keyconjurer-lambda.arn
-  handler          = "list_applications_v2"
-  runtime          = "go1.x"
+  handler          = "bootstrap"
+  runtime          = "provider.al2"
   timeout          = 300
 
   environment {

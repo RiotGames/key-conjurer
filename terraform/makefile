@@ -23,6 +23,7 @@ api_upload: api_zip
 	cd ../builds/$(RELEASE)/cloud \
 	&& aws s3 cp . s3://$(S3_TF_BUCKET_NAME)/$(RELEASE) --exclude "*" --include "*.zip" --recursive
 
+# TODO: Remove - these are all already zipped
 api_zip: ../builds/$(RELEASE)/list_applications_v2.zip
 	cd ../builds/$(RELEASE)/cloud && \
 	zip get_user_data.zip get_user_data \
