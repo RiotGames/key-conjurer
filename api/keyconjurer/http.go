@@ -26,7 +26,7 @@ func GetBearerToken(r *http.Request) (string, bool) {
 		return "", false
 	}
 
-	return parts[2], parts[1] == "Bearer"
+	return parts[1], parts[0] == "Bearer"
 }
 
 type OktaService interface {
