@@ -2,12 +2,16 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"fmt"
+	"io"
 	"net/http"
+	"net/url"
 	"os"
 
-	"github.com/okta/okta-sdk-golang/v2/okta"
-	"github.com/okta/okta-sdk-golang/v2/okta/query"
+	"github.com/riotgames/key-conjurer/api/core"
+	"github.com/riotgames/key-conjurer/pkg/httputil"
 	"github.com/spf13/cobra"
 	"golang.org/x/oauth2"
 )
@@ -29,25 +33,40 @@ var accountsCmd = &cobra.Command{
 	Use:   "accounts",
 	Short: "Prints and optionally refreshes the list of accounts you have access to.",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		if val, _ := cmd.Flags().GetBool(FlagNoRefresh); !val {
-			accounts, err := refreshAccounts(cmd.Context(), config.Tokens)
+		quiet, _ := cmd.Flags().GetBool("quiet")
+		noRefresh, _ := cmd.Flags().GetBool(FlagNoRefresh)
+		if !noRefresh {
+			serverAddr, _ := cmd.Flags().GetString(FlagServerAddress)
+			serverAddrUri, err := url.Parse(serverAddr)
+			if err != nil {
+				cmd.PrintErrf("--%s had an invalid value: %s", FlagServerAddress, err)
+				return nil
+			}
+
+			accounts, err := refreshAccounts(cmd.Context(), serverAddrUri, config.Tokens)
 			if errors.Is(err, ErrSessionExpired) {
 				cmd.PrintErrln("Your session has expired. Please run login again.")
 				config.SaveOAuthToken(nil)
 				return nil
 			} else if err != nil {
-				return err
+				cmd.PrintErrf("Error refreshing accounts: %s", err)
+				cmd.PrintErrln("If you don't need to refresh your accounts, consider adding the --no-refresh flag")
+				return nil
 			}
 
 			config.UpdateAccounts(accounts)
 		}
 
 		config.DumpAccounts(os.Stdout)
+		if noRefresh && !quiet {
+			cmd.PrintErrf("--%s was specified - these results may be out of date, and you may not have access to accounts in this list.", FlagNoRefresh)
+		}
+
 		return nil
 	},
 }
 
-func refreshAccounts(ctx context.Context, tokens *TokenSet) ([]Account, error) {
+func refreshAccounts(ctx context.Context, serverAddr *url.URL, tokens *TokenSet) ([]Account, error) {
 	if HasTokenExpired(tokens) {
 		return nil, ErrSessionExpired
 	}
@@ -59,41 +78,41 @@ func refreshAccounts(ctx context.Context, tokens *TokenSet) ([]Account, error) {
 		TokenType:    config.Tokens.TokenType,
 	}
 
+	uri := serverAddr.ResolveReference(&url.URL{Path: "/v2/applications"})
 	httpClient := NewOAuth2Client(ctx, oauth2.StaticTokenSource(&tok))
-	_, client, err := okta.NewClient(
-		ctx,
-		okta.WithOrgUrl(oidcDomain),
-		okta.WithHttpClient(*httpClient),
-		// This is not used - the http client overwrites the tokens when a request is made.
-		// It must be specified to satisfy the Okta SDK.
-		okta.WithToken("dummy text"),
-	)
-
+	req, _ := http.NewRequestWithContext(ctx, "POST", uri.String(), nil)
+	resp, err := httpClient.Do(req)
 	if err != nil {
-		return nil, ErrSessionExpired
+		return nil, fmt.Errorf("failed to issue request: %s", err)
 	}
 
-	return FetchAccounts(ctx, client)
-}
-
-func FetchAccounts(ctx context.Context, client *okta.Client) ([]Account, error) {
-	apps, resp, err := client.Application.ListApplications(ctx, query.NewQueryParams())
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		if resp.StatusCode == http.StatusUnauthorized {
-			// Tokens expired.
-			return nil, ErrSessionExpired
-		}
-		return nil, err
+		return nil, fmt.Errorf("could not read body: %s", err)
 	}
 
-	var entries []Account
-	for _, app := range apps {
-		app, ok := app.(*okta.Application)
-		if !ok {
-			continue
-		}
+	var jsonError httputil.JSONError
+	if resp.StatusCode != http.StatusOK {
+		if err := json.Unmarshal(body, &jsonError); err != nil {
+			return nil, errors.New(jsonError.Message)
 
-		entries = append(entries, Account{ID: app.Id, Name: app.Label, Alias: generateDefaultAlias(app.Label)})
+		}
+		return nil, fmt.Errorf("status code %d", resp.StatusCode)
 	}
+
+	var apps []core.Application
+	if err := json.Unmarshal(body, &apps); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal applications: %w", err)
+	}
+
+	entries := make([]Account, len(apps))
+	for idx, app := range apps {
+		entries[idx] = Account{
+			ID:    app.ID,
+			Name:  app.Name,
+			Alias: generateDefaultAlias(app.Name),
+		}
+	}
+
 	return entries, nil
 }

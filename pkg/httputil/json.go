@@ -17,11 +17,11 @@ func ServeJSON[T any](w http.ResponseWriter, data T) {
 	w.Write(buf)
 }
 
-type jsonError struct {
+type JSONError struct {
 	Message string `json:"error"`
 }
 
 func ServeJSONError(w http.ResponseWriter, statusCode int, msg string) {
 	w.WriteHeader(statusCode)
-	ServeJSON[jsonError](w, jsonError{msg})
+	ServeJSON[JSONError](w, JSONError{msg})
 }
