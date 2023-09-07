@@ -2,13 +2,29 @@ package main
 
 import (
 	"io"
+	"log"
 	"mime"
 	"net/http"
+	"net/url"
+	"os"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/riotgames/key-conjurer/api/keyconjurer"
 	"github.com/riotgames/key-conjurer/api/settings"
 )
+
+var (
+	OktaToken  = os.Getenv("OKTA_TOKEN")
+	OktaDomain *url.URL
+)
+
+func init() {
+	uri, err := url.Parse(os.Getenv("OKTA_DOMAIN"))
+	if err != nil {
+		log.Fatalf("OKTA_DOMAIN must be a valid URL: %s", err)
+	}
+	OktaDomain = uri
+}
 
 type server struct {
 	h keyconjurer.Handler
@@ -93,7 +109,11 @@ func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	switch r.URL.Path {
 	case "/v2/applications":
-		handler := keyconjurer.ServeUserApplications(nil)
+		okta := keyconjurer.NewOktaService(
+			OktaDomain,
+			OktaToken,
+		)
+		handler := keyconjurer.ServeUserApplications(&okta)
 		handler.ServeHTTP(w, r)
 	case "/get_aws_creds":
 		s.getAWSCreds(w, r)

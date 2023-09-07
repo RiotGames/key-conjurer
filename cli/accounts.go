@@ -8,7 +8,6 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"os"
 
 	"github.com/riotgames/key-conjurer/api/core"
 	"github.com/riotgames/key-conjurer/pkg/httputil"
@@ -34,9 +33,10 @@ var accountsCmd = &cobra.Command{
 	Use:   "accounts",
 	Short: "Prints and optionally refreshes the list of accounts you have access to.",
 	RunE: func(cmd *cobra.Command, args []string) error {
+		stdOut := cmd.OutOrStdout()
 		noRefresh, _ := cmd.Flags().GetBool(FlagNoRefresh)
 		if noRefresh {
-			config.DumpAccounts(os.Stdout)
+			config.DumpAccounts(stdOut)
 			if q, _ := cmd.Flags().GetBool(FlagQuiet); !q {
 				cmd.PrintErrf("--%s was specified - these results may be out of date, and you may not have access to accounts in this list.\n", FlagNoRefresh)
 			}
@@ -61,7 +61,7 @@ var accountsCmd = &cobra.Command{
 		}
 
 		config.UpdateAccounts(accounts)
-
+		config.DumpAccounts(stdOut)
 		return nil
 	},
 }

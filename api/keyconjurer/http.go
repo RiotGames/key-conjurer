@@ -30,8 +30,7 @@ func GetBearerToken(r *http.Request) (string, bool) {
 }
 
 type OktaService interface {
-	// GetTokenUsername returns the username associated with the given id token, or an error if the token is not accepted by Okta for any reason.
-	GetTokenUsername(ctx context.Context, token string) (string, error)
+	GetUserInfo(ctx context.Context, token string) (OktaUserInfo, error)
 	ListApplicationsForUser(ctx context.Context, user string) ([]okta.Application, error)
 }
 
@@ -56,16 +55,16 @@ func ServeUserApplications(okta OktaService) http.Handler {
 			return
 		}
 
-		username, err := okta.GetTokenUsername(r.Context(), idToken)
+		info, err := okta.GetUserInfo(r.Context(), idToken)
 		if err != nil {
 			attrs = append(attrs, slog.String("error", err.Error()))
 			slog.Error("okta rejected id token", attrs...)
-
 			httputil.ServeJSONError(w, http.StatusForbidden, "unauthorized")
 			return
 		}
 
-		applications, err := okta.ListApplicationsForUser(r.Context(), username)
+		attrs = append(attrs, slog.String("username", info.PreferredUsername))
+		applications, err := okta.ListApplicationsForUser(r.Context(), info.PreferredUsername)
 		if err != nil {
 			attrs = append(attrs, slog.String("error", err.Error()))
 			slog.Error("failed to fetch applications", attrs...)
