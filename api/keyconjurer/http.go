@@ -74,9 +74,11 @@ func ServeUserApplications(okta OktaService) http.Handler {
 
 		accounts := make([]core.Application, len(applications))
 		for i, app := range applications {
-			accounts[i] = core.Application{
-				ID:   app.Id,
-				Name: app.Label,
+			if app.AppName == "amazon_aws" || strings.Contains(app.AppName, "tencent") {
+				accounts[i] = core.Application{
+					ID:   app.Id,
+					Name: app.Label,
+				}
 			}
 		}
 
