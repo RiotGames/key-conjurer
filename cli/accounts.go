@@ -40,6 +40,7 @@ var accountsCmd = &cobra.Command{
 			if q, _ := cmd.Flags().GetBool(FlagQuiet); !q {
 				cmd.PrintErrf("--%s was specified - these results may be out of date, and you may not have access to accounts in this list.\n", FlagNoRefresh)
 			}
+			return nil
 		}
 
 		serverAddr, _ := cmd.Flags().GetString(FlagServerAddress)
