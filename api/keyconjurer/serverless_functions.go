@@ -290,38 +290,28 @@ type OktaService interface {
 
 func ServeUserApplications(okta OktaService) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		attrs := []any{
-			slog.String("origin_ip_address", r.RemoteAddr),
-		}
-
-		if v, ok := r.Header["X-Amzn-Trace-Id"]; ok {
-			attrs = append(attrs, slog.String("amz_request_id", v[0]))
-		}
-
-		if v, ok := r.Header["X-Forwarded-For"]; ok {
-			attrs = append(attrs, slog.String("x_forwarded_for", v[0]))
-		}
-
+		ctx := r.Context()
+		requestAttrs := RequestAttrs(r)
 		idToken, ok := GetBearerToken(r)
 		if !ok {
-			slog.Error("no bearer token present", attrs...)
+			slog.Error("no bearer token present", requestAttrs...)
 			httputil.ServeJSONError(w, http.StatusUnauthorized, "unauthorized")
 			return
 		}
 
-		info, err := okta.GetUserInfo(r.Context(), idToken)
+		info, err := okta.GetUserInfo(ctx, idToken)
 		if err != nil {
-			attrs = append(attrs, slog.String("error", err.Error()))
-			slog.Error("okta rejected id token", attrs...)
+			requestAttrs = append(requestAttrs, slog.String("error", err.Error()))
+			slog.Error("okta rejected id token", requestAttrs...)
 			httputil.ServeJSONError(w, http.StatusForbidden, "unauthorized")
 			return
 		}
 
-		attrs = append(attrs, slog.String("username", info.PreferredUsername))
-		applications, err := okta.ListApplicationsForUser(r.Context(), info.PreferredUsername)
+		requestAttrs = append(requestAttrs, slog.String("username", info.PreferredUsername))
+		applications, err := okta.ListApplicationsForUser(ctx, info.PreferredUsername)
 		if err != nil {
-			attrs = append(attrs, slog.String("error", err.Error()))
-			slog.Error("failed to fetch applications", attrs...)
+			requestAttrs = append(requestAttrs, slog.String("error", err.Error()))
+			slog.Error("failed to fetch applications", requestAttrs...)
 			httputil.ServeJSONError(w, http.StatusBadGateway, "upstream error")
 			return
 		}
@@ -336,8 +326,8 @@ func ServeUserApplications(okta OktaService) http.Handler {
 			}
 		}
 
-		attrs = append(attrs, slog.Int("application_count", len(accounts)))
-		slog.Info("served applications", attrs...)
+		requestAttrs = append(requestAttrs, slog.Int("application_count", len(accounts)))
+		slog.Info("served applications", requestAttrs...)
 		httputil.ServeJSON(w, accounts)
 	})
 }
