@@ -6,9 +6,15 @@ import (
 	"time"
 
 	"github.com/RobotsAndPencils/go-saml"
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/sts"
 	"github.com/riotgames/key-conjurer/internal"
-	"github.com/riotgames/key-conjurer/internal/aws"
 	"github.com/spf13/cobra"
+)
+
+var (
+	FlagRegion = "region"
 )
 
 var (
@@ -34,6 +40,7 @@ var (
 )
 
 func init() {
+	getCmd.Flags().String(FlagRegion, "us-west-2", "The AWS region to use")
 	getCmd.Flags().UintVar(&ttl, "ttl", 1, "The key timeout in hours from 1 to 8.")
 	getCmd.Flags().UintVarP(&timeRemaining, "time-remaining", "t", DefaultTimeRemaining, "Request new keys if there are no keys in the environment or the current keys expire within <time-remaining> minutes. Defaults to 60.")
 	getCmd.Flags().StringVarP(&outputType, "out", "o", outputTypeEnvironmentVariable, "Format to save new credentials in. Supported outputs: env, awscli,tencentcli")
@@ -50,9 +57,9 @@ var getCmd = &cobra.Command{
 	Long: `Retrieves temporary Cloud(AWS|Tencent) API credentials for the specified account.  It sends a push request to the first Duo device it finds associated with your account.
 
 	A role must be specified when using this command through the --role flag. You may list the roles you can assume through the roles command.`,
-	// Example: appname + " get <accountName/alias>",
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
+		ctx := cmd.Context()
 		if HasTokenExpired(config.Tokens) {
 			cmd.PrintErrln("Your session has expired. Please login again.")
 			return nil
@@ -138,24 +145,35 @@ var getCmd = &cobra.Command{
 			return nil
 		}
 
-		prov, _ := aws.NewProvider("us-west-2")
 		pair, _, ok := internal.FindRole(roleName, samlResponse)
 		if !ok {
 			cmd.PrintErrf("you do not have access to the role %s on application %s\n", roleName, args[0])
 			return nil
 		}
 
-		resp, err := prov.GetTemporaryCredentialsForUser(cmd.Context(), &pair.ProviderARN, &pair.RoleARN, &assertionStr, 1)
-		if err != nil {
-			cmd.PrintErrf("failed to exchange credentials: %s", err)
-			return nil
-		}
+		if cloudFlag == cloudAws {
+			region, _ := cmd.Flags().GetString(FlagRegion)
+			session, _ := session.NewSession(&aws.Config{Region: aws.String(region)})
+			stsClient := sts.New(session)
+			timeoutInSeconds := int64(3600 * ttl)
+			resp, err := stsClient.AssumeRoleWithSAMLWithContext(ctx, &sts.AssumeRoleWithSAMLInput{
+				DurationSeconds: &timeoutInSeconds,
+				PrincipalArn:    &pair.ProviderARN,
+				RoleArn:         &pair.RoleARN,
+				SAMLAssertion:   &assertionStr,
+			})
 
-		credentials = CloudCredentials{
-			AccessKeyID:     *resp.AccessKeyId,
-			Expiration:      resp.Expiration.Format(time.RFC3339),
-			SecretAccessKey: *resp.SecretAccessKey,
-			SessionToken:    *resp.SessionToken,
+			if err != nil {
+				cmd.PrintErrf("failed to exchange credentials: %s", err)
+				return nil
+			}
+
+			credentials = CloudCredentials{
+				AccessKeyID:     *resp.Credentials.AccessKeyId,
+				Expiration:      resp.Credentials.Expiration.Format(time.RFC3339),
+				SecretAccessKey: *resp.Credentials.SecretAccessKey,
+				SessionToken:    *resp.Credentials.SessionToken,
+			}
 		}
 
 		if ttl == 1 && config.TTL != 0 {
