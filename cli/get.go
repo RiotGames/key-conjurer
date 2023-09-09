@@ -51,6 +51,16 @@ func init() {
 	getCmd.Flags().StringVarP(&cloudFlag, "cloud", "", "aws", "Choose a cloud vendor. Default is aws. Can choose aws or tencent")
 }
 
+func isMemberOfSlice(slice []string, val string) bool {
+	for _, member := range slice {
+		if member == val {
+			return true
+		}
+	}
+
+	return false
+}
+
 var getCmd = &cobra.Command{
 	Use:   "get <accountName/alias>",
 	Short: "Retrieves temporary Cloud(AWS|Tencent) API credentials.",
@@ -66,25 +76,11 @@ var getCmd = &cobra.Command{
 		}
 		client := NewHTTPClient()
 
-		valid := false
-		for _, permitted := range permittedOutputTypes {
-			if outputType == permitted {
-				valid = true
-			}
-		}
-
-		if !valid {
+		if !isMemberOfSlice(permittedOutputTypes, outputType) {
 			return invalidValueError(outputType, permittedOutputTypes)
 		}
 
-		valid = false
-		for _, permitted := range permittedShellTypes {
-			if shell == permitted {
-				valid = true
-			}
-		}
-
-		if !valid {
+		if !isMemberOfSlice(permittedShellTypes, shell) {
 			return invalidValueError(shell, permittedShellTypes)
 		}
 
