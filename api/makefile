@@ -3,9 +3,6 @@ RELEASE ?= dev
 version = $(shell git rev-parse --short HEAD)
 ldflags = "-X github.com/riotgames/key-conjurer/api/consts.Version=$(version)-${RELEASE}"
 
-deploy: ../builds/$(RELEASE)/cloud/get_cloud_creds.zip ../builds/$(RELEASE)/cloud/get_user_data.zip ../builds/$(RELEASE)/cloud/list_providers.zip
-	$(MAKE) upload
-
 list_applications_v2.zip:
 	GOOS=linux GOARCH=amd64 go build \
 		-ldflags $(ldflags) \

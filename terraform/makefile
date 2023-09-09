@@ -19,19 +19,5 @@ frontend_upload:
 	cd ../builds/$(RELEASE)/frontend \
 	&& aws s3 cp . s3://$(S3_FRONTEND_BUCKET_NAME)-$(RELEASE) --include "*" --recursive
 
-api_upload: api_zip
-	cd ../builds/$(RELEASE)/cloud \
-	&& aws s3 cp . s3://$(S3_TF_BUCKET_NAME)/$(RELEASE) --exclude "*" --include "*.zip" --recursive
-
-# TODO: Remove - these are all already zipped
-api_zip: ../builds/$(RELEASE)/list_applications_v2.zip
-	cd ../builds/$(RELEASE)/cloud && \
-	zip get_user_data.zip get_user_data \
-	&& zip get_cloud_creds.zip get_cloud_creds \
-	&& zip list_providers.zip list_providers \
-	&& zip list_providers.zip list_providers
-
-../builds/$(RELEASE)/list_applications_v2.zip:
-	cd ../builds/$(RELEASE) && \
-	mv list_applications_v2 bootstrap && \
-	zip list_applications_v2.zip bootstrap
+api_upload: ../builds/$(RELEASE)/list_applications_v2.zip ../builds/$(RELEASE)/cloud/get_user_data.zip ../builds/$(RELEASE)/cloud/list_providers.zip ../builds/$(RELEASE)/cloud/get_cloud_creds.zip
+	echo $^ | xargs -I{} -n1 aws s3 cp "{}" s3://$(S3_TF_BUCKET_NAME)/$(RELEASE)
