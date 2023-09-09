@@ -36,9 +36,6 @@ func getShellType() ShellType {
 	return shellTypeBash
 }
 
-// CloudCredentials are used to store and print out temporary AWS Credentials
-// Note: verified that onelogin uses int as ID (so no leading 0's)
-// ... but does mean we can have negative user ids
 type CloudCredentials struct {
 	AccountID       string `json:"AccountId"`
 	AccessKeyID     string `json:"AccessKeyId"`

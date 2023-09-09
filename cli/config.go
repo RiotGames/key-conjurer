@@ -20,7 +20,6 @@ type TokenSet struct {
 	TokenType    string    `json:"token_type"`
 }
 
-// Account is used to store information related to the AWS OneLogin App/AWS Account
 type Account struct {
 	ID             string `json:"id"`
 	Name           string `json:"name"`

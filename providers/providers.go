@@ -9,9 +9,8 @@ import (
 const (
 	// Default lets the server decide which authentication provider to use.  This is not recommended.
 	// Older clients will supply this as it has the value of an empty string.
-	Default  = ""
-	Okta     = "okta"
-	OneLogin = "onelogin"
+	Default = ""
+	Okta    = "okta"
 )
 
 // A Provider is a component which will verify user credentials, list the applications a user is entitled to, the roles the user may assume within that application and generate SAML assertions for federation.

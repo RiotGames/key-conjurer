@@ -8,17 +8,11 @@ import (
 
 // Settings is used to hold keyconjurer settings
 type Settings struct {
-	AwsRegion              string
-	AwsKMSKeyID            string `json:"awsKmsKeyId"`
-	TencentRegion          string
-	OneLoginReadUserID     string `json:"oneLoginReadUserId"`
-	OneLoginReadUserSecret string `json:"oneLoginReadUserSecret"`
-	OneLoginSamlID         string `json:"oneLoginSamlId"`
-	OneLoginSamlSecret     string `json:"oneLoginSamlSecret"`
-	OneLoginShard          string `json:"oneLoginShard"`
-	OneLoginSubdomain      string `json:"oneLoginSubdomain"`
-	OktaHost               string `json:"oktaHost" split_words:"true"`
-	OktaToken              string `json:"oktaToken" split_words:"true"`
+	AwsRegion     string
+	AwsKMSKeyID   string `json:"awsKmsKeyId"`
+	TencentRegion string
+	OktaHost      string `json:"oktaHost" split_words:"true"`
+	OktaToken     string `json:"oktaToken" split_words:"true"`
 }
 
 type retrieverFunc = func() (*Settings, error)
@@ -49,17 +43,11 @@ func registerRetriever(name string, fn retrieverFunc) {
 
 func retrieveFromEnv() (*Settings, error) {
 	s := Settings{
-		AwsRegion:              os.Getenv("AWS_REGION"),
-		TencentRegion:          os.Getenv("TENCENT_REGION"),
-		AwsKMSKeyID:            os.Getenv("AWS_KMS_KEY_ID"),
-		OneLoginReadUserID:     os.Getenv("ONELOGIN_READ_USER_ID"),
-		OneLoginReadUserSecret: os.Getenv("ONELOGIN_READ_USER_SECRET"),
-		OneLoginSamlID:         os.Getenv("ONELOGIN_SAML_ID"),
-		OneLoginSamlSecret:     os.Getenv("ONELOGIN_SAML_SECRET"),
-		OneLoginShard:          os.Getenv("ONELOGIN_SHARD"),
-		OneLoginSubdomain:      os.Getenv("ONELOGIN_SUBDOMAIN"),
-		OktaHost:               os.Getenv("OKTA_HOST"),
-		OktaToken:              os.Getenv("OKTA_TOKEN"),
+		AwsRegion:     os.Getenv("AWS_REGION"),
+		TencentRegion: os.Getenv("TENCENT_REGION"),
+		AwsKMSKeyID:   os.Getenv("AWS_KMS_KEY_ID"),
+		OktaHost:      os.Getenv("OKTA_HOST"),
+		OktaToken:     os.Getenv("OKTA_TOKEN"),
 	}
 
 	return &s, nil

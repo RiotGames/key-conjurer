@@ -1,5 +1,5 @@
 # Key Conjurer API
-Key Conjurer provides temporary AWS API credentials! Key Conjurer uses OneLogin and Duo to retrieve STS tokens.
+Key Conjurer provides temporary AWS API credentials! Key Conjurer uses Okta to retrieve STS tokens.
 
 ## Requirements
 Go 1.13.4+
@@ -27,23 +27,11 @@ The encrypted settings are a JSON blob with the following keys.
 ```
 {
   "awsKmsKeyId": "abc...",
-  "oneLoginReadUserId": "def...",
-  "oneLoginReadUserSecret": "ghi...",
-  "oneLoginSamlId": "jkl...",
-  "oneLoginSamlSecret": "lmn...",
-  "oneLoginShard": "opq...",
-  "oneLoginSubdomain": "rst..."
 }
 ```
 | Variable               | Purpose                                 |
 |------------------------|-----------------------------------------|
 | awsKmsKeyId            | The KMS key to encrypt information with |
-| oneLoginReadUserId     | OneLogin key with read user permissions |
-| oneLoginReadUserSecret | Secret key for oneLoginReadUserId       |
-| oneLoginSamlId         | OneLogin key with SAML permissions      |
-| oneLoginSamlSecret     | Secret key for oneLoginSamlId           |
-| oneLoginShard          | OneLogin shard to talk with             |
-| oneLoginSubdomain      | OneLogin subdomain                      |
 
 They are encrypted so users with access to the lambdas cannot see the secrets
 

@@ -72,7 +72,7 @@ type GetUserDataPayload struct {
 	EncryptedCredentials string             `json:"creds"`
 }
 
-// GetUserDataEventHandler authenticates the user against OneLogin and retrieves a list of AWS application the user has available.
+// GetUserDataEventHandler authenticates the user against Okta and retrieves a list of AWS application the user has available.
 //
 // This MUST be backwards compatible with the old version of KeyConjurer for a time.
 func (h *Handler) GetUserDataEventHandler(ctx context.Context, req *events.ALBTargetGroupRequest) (*events.ALBTargetGroupResponse, error) {
@@ -137,7 +137,6 @@ type GetTemporaryCredentialEvent struct {
 	RoleName       string `json:"roleName"`
 
 	// AuthenticationProvider is the authentication provider that should be used when logging in.
-	// This will be blank for old versions of KeyConjurer; if it is blank, you must default to OneLogin
 	AuthenticationProvider string `json:"authentication_provider"`
 }
 
@@ -150,11 +149,6 @@ var (
 func (e *GetTemporaryCredentialEvent) Validate() error {
 	if e.TimeoutInHours < 1 || e.TimeoutInHours > 8 {
 		return errTimeoutBadSize
-	}
-
-	if e.AuthenticationProvider == providers.OneLogin {
-		// We don't use role names in OneLogin
-		e.RoleName = ""
 	}
 
 	if e.AuthenticationProvider == providers.Okta && e.RoleName == "" {
