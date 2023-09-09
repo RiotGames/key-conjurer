@@ -45,7 +45,9 @@ var rolesCmd = cobra.Command{
 			return echoCredentials(args[0], args[0], credentials, outputType, cloudFlag)
 		}
 
-		oauthCfg, _, err := DiscoverOAuth2Config(cmd.Context(), client, oidcDomain)
+		oidcDomain, _ := cmd.Flags().GetString(FlagOIDCDomain)
+		clientID, _ := cmd.Flags().GetString(FlagClientID)
+		oauthCfg, _, err := DiscoverOAuth2Config(cmd.Context(), client, oidcDomain, clientID)
 		if err != nil {
 			cmd.PrintErrf("could not discover oauth2  config: %s\n", err)
 			return nil

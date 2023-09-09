@@ -18,7 +18,9 @@ var loginCmd = &cobra.Command{
 			return nil
 		}
 
-		token, err := Login(cmd.Context(), NewHTTPClient(), oidcDomain)
+		oidcDomain, _ := cmd.Flags().GetString(FlagOIDCDomain)
+		clientID, _ := cmd.Flags().GetString(FlagClientID)
+		token, err := Login(cmd.Context(), NewHTTPClient(), oidcDomain, clientID)
 		if err != nil {
 			return err
 		}
@@ -27,8 +29,8 @@ var loginCmd = &cobra.Command{
 	},
 }
 
-func Login(ctx context.Context, client *http.Client, domain string) (*oauth2.Token, error) {
-	oauthCfg, _, err := DiscoverOAuth2Config(ctx, client, domain)
+func Login(ctx context.Context, client *http.Client, domain, clientID string) (*oauth2.Token, error) {
+	oauthCfg, _, err := DiscoverOAuth2Config(ctx, client, domain, clientID)
 	if err != nil {
 		return nil, err
 	}

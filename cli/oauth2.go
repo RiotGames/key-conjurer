@@ -35,10 +35,10 @@ func NewHTTPClient() *http.Client {
 	return &http.Client{Transport: httputil.LogRoundTripper(tr)}
 }
 
-func DiscoverOAuth2Config(ctx context.Context, client *http.Client, domain string) (*oauth2.Config, *oidc.Provider, error) {
+func DiscoverOAuth2Config(ctx context.Context, client *http.Client, domain, clientID string) (*oauth2.Config, *oidc.Provider, error) {
 	provider, err := oidc.DiscoverProvider(ctx, client, domain)
 	if err != nil {
-		return nil, nil, fmt.Errorf("couldn't discover OIDC configuration for %s: %w", oidcDomain, err)
+		return nil, nil, fmt.Errorf("couldn't discover OIDC configuration for %s: %w", domain, err)
 	}
 
 	cfg := oauth2.Config{
@@ -71,7 +71,7 @@ type OAuth2Listener struct {
 func NewOAuth2Listener() OAuth2Listener {
 	return OAuth2Listener{
 		// 5RIOT on a phone pad
-		Addr: ":57468",
+		Addr:       ":57468",
 		errCh:      make(chan error),
 		callbackCh: make(chan OAuth2CallbackInfo),
 	}

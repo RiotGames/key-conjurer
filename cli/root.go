@@ -12,6 +12,11 @@ import (
 )
 
 var (
+	FlagOIDCDomain = "oidc-domain"
+	FlagClientID   = "client-id"
+)
+
+var (
 	//  Config json storage location
 	configPath string
 	// config is a cache-like datastore for this application. It is loaded at app start-up.
@@ -21,13 +26,11 @@ var (
 	cloudAws              = "aws"
 	cloudTencent          = "tencent"
 	timeout        int    = 120
-	oidcDomain     string
-	clientID       string
 )
 
 func init() {
-	rootCmd.PersistentFlags().StringVar(&oidcDomain, "oidc-domain", OIDCDomain, "The domain name of your OIDC server")
-	rootCmd.PersistentFlags().StringVar(&clientID, "client-id", ClientID, "The OAuth2 Client ID for the application registered with your OIDC server")
+	rootCmd.PersistentFlags().String(FlagOIDCDomain, OIDCDomain, "The domain name of your OIDC server")
+	rootCmd.PersistentFlags().String(FlagClientID, ClientID, "The OAuth2 Client ID for the application registered with your OIDC server")
 	rootCmd.PersistentFlags().IntVar(&timeout, "timeout", 120, "the amount of time in seconds to wait for keyconjurer to respond")
 	rootCmd.PersistentFlags().StringVar(&configPath, "config", "~/.keyconjurerrc", "path to .keyconjurerrc file")
 	rootCmd.PersistentFlags().BoolVar(&quiet, "quiet", false, "tells the CLI to be quiet; stdout will not contain human-readable informational messages")
