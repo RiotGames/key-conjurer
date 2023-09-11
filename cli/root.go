@@ -15,10 +15,10 @@ var (
 	FlagOIDCDomain = "oidc-domain"
 	FlagClientID   = "client-id"
 	FlagConfigPath = "config"
+	FlagQuiet      = "quiet"
 )
 
 var (
-	quiet          bool
 	buildTimestamp string = BuildDate + " " + BuildTime + " " + BuildTimeZone
 	cloudAws              = "aws"
 	cloudTencent          = "tencent"
@@ -30,7 +30,7 @@ func init() {
 	rootCmd.PersistentFlags().String(FlagClientID, ClientID, "The OAuth2 Client ID for the application registered with your OIDC server")
 	rootCmd.PersistentFlags().IntVar(&timeout, "timeout", 120, "the amount of time in seconds to wait for keyconjurer to respond")
 	rootCmd.PersistentFlags().String(FlagConfigPath, "~/.keyconjurerrc", "path to .keyconjurerrc file")
-	rootCmd.PersistentFlags().BoolVar(&quiet, "quiet", false, "tells the CLI to be quiet; stdout will not contain human-readable informational messages")
+	rootCmd.PersistentFlags().Bool(FlagQuiet, false, "tells the CLI to be quiet; stdout will not contain human-readable informational messages")
 	rootCmd.AddCommand(loginCmd)
 	rootCmd.AddCommand(accountsCmd)
 	rootCmd.AddCommand(getCmd)

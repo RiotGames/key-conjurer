@@ -18,7 +18,6 @@ import (
 var (
 	FlagNoRefresh     = "no-refresh"
 	FlagServerAddress = "server-address"
-	FlagQuiet         = "quiet"
 
 	ErrSessionExpired = errors.New("session expired")
 )
