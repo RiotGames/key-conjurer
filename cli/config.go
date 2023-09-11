@@ -299,5 +299,5 @@ func EnsureConfigFileExists(fp string) (io.ReadWriteCloser, error) {
 		return nil, err
 	}
 
-	return os.OpenFile(fp, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0666)
+	return os.OpenFile(fp, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 }

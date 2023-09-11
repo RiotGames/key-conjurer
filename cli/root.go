@@ -73,7 +73,7 @@ To get started run the following commands:
 			return err
 		}
 
-		info := configInfo{
+		info := &configInfo{
 			Config: &config,
 			Path:   configPath,
 		}
