@@ -18,6 +18,7 @@ var (
 	FlagRoleName      = "role"
 	FlagTimeRemaining = "time-remaining"
 	FlagTimeToLive    = "ttl"
+	FlagBypassCache   = "bypass-cache"
 )
 
 var (
@@ -42,6 +43,7 @@ func init() {
 	getCmd.Flags().String(FlagAWSCLIPath, "~/.aws/", "Path for directory used by the aws-cli tool. Default is \"~/.aws\".")
 	getCmd.Flags().String(FlagTencentCLIPath, "~/.tencent/", "Path for directory used by the tencent-cli tool. Default is \"~/.tencent\".")
 	getCmd.Flags().String(FlagCloudType, "aws", "Choose a cloud vendor. Default is aws. Can choose aws or tencent")
+	getCmd.Flags().Bool(FlagBypassCache, false, "Do not check the cache for accounts and send the application ID as-is to Okta. This is useful if you have an ID you know is an Okta application ID and it is not stored in your local account cache.")
 }
 
 func isMemberOfSlice(slice []string, val string) bool {
@@ -94,12 +96,14 @@ var getCmd = &cobra.Command{
 			ttl = 8
 		}
 
-		var applicationID = args[0]
-		account, ok := config.FindAccount(applicationID)
-		if ok {
-			applicationID = account.ID
+		account, ok := config.FindAccount(args[0])
+		willBypassCache, _ := cmd.Flags().GetBool(FlagBypassCache)
+		if !ok && !willBypassCache {
+			cmd.PrintErrf("%q is not a known account name in your account cache. Your cache can be refreshed by entering executing `keyconjurer accounts`. If the value provided is an Okta application ID, you may provide %s as an option to this command and try again.", args[0], FlagBypassCache)
+			return nil
 		}
 
+		applicationID := account.ID
 		if account.MostRecentRole != "" && roleName == "" {
 			roleName = account.MostRecentRole
 		}
@@ -150,6 +154,10 @@ var getCmd = &cobra.Command{
 			return nil
 		}
 
+		if ttl == 1 && config.TTL != 0 {
+			ttl = config.TTL
+		}
+
 		if cloudType == cloudAws {
 			region, _ := cmd.Flags().GetString(FlagRegion)
 			session, _ := session.NewSession(&aws.Config{Region: aws.String(region)})
@@ -173,10 +181,8 @@ var getCmd = &cobra.Command{
 				SecretAccessKey: *resp.Credentials.SecretAccessKey,
 				SessionToken:    *resp.Credentials.SessionToken,
 			}
-		}
-
-		if ttl == 1 && config.TTL != 0 {
-			ttl = config.TTL
+		} else {
+			panic("not yet implemented")
 		}
 
 		account.MostRecentRole = roleName
