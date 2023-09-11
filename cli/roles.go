@@ -1,8 +1,6 @@
 package main
 
 import (
-	"time"
-
 	"github.com/RobotsAndPencils/go-saml"
 	"github.com/riotgames/key-conjurer/internal"
 	"github.com/spf13/cobra"
@@ -21,33 +19,15 @@ var rolesCmd = cobra.Command{
 		}
 		client := NewHTTPClient()
 
+		oidcDomain, _ := cmd.Flags().GetString(FlagOIDCDomain)
+		clientID, _ := cmd.Flags().GetString(FlagClientID)
+
 		var applicationID = args[0]
 		account, ok := config.FindAccount(applicationID)
 		if ok {
 			applicationID = account.ID
 		}
 
-		if account.MostRecentRole != "" && roleName == "" {
-			roleName = account.MostRecentRole
-		}
-
-		if config.TimeRemaining != 0 && timeRemaining == DefaultTimeRemaining {
-			timeRemaining = config.TimeRemaining
-		}
-
-		if roleName == "" {
-			cmd.PrintErrln("You must specify the --role flag with this command")
-			return nil
-		}
-
-		var credentials CloudCredentials
-		credentials.LoadFromEnv(cloudFlag)
-		if credentials.ValidUntil(*account, cloudFlag, time.Duration(timeRemaining)*time.Minute) {
-			return echoCredentials(args[0], args[0], credentials, outputType, cloudFlag)
-		}
-
-		oidcDomain, _ := cmd.Flags().GetString(FlagOIDCDomain)
-		clientID, _ := cmd.Flags().GetString(FlagClientID)
 		oauthCfg, _, err := DiscoverOAuth2Config(cmd.Context(), client, oidcDomain, clientID)
 		if err != nil {
 			cmd.PrintErrf("could not discover oauth2  config: %s\n", err)
@@ -67,7 +47,6 @@ var rolesCmd = cobra.Command{
 		}
 
 		assertionStr := string(assertionBytes)
-
 		samlResponse, err := saml.ParseEncodedResponse(assertionStr)
 		if err != nil {
 			cmd.PrintErrf("could not parse assertion: %s\n", err)

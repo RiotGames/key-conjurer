@@ -14,18 +14,10 @@ import (
 )
 
 var (
-	FlagRegion = "region"
-)
-
-var (
-	ttl            uint
-	timeRemaining  uint
-	outputType     string
-	awsCliPath     string
-	tencentCliPath string
-	roleName       string
-	cloudFlag      string
-	shell          string = shellTypeInfer
+	FlagRegion        = "region"
+	FlagRoleName      = "role"
+	FlagTimeRemaining = "time-remaining"
+	FlagTimeToLive    = "ttl"
 )
 
 var (
@@ -41,14 +33,15 @@ var (
 
 func init() {
 	getCmd.Flags().String(FlagRegion, "us-west-2", "The AWS region to use")
-	getCmd.Flags().UintVar(&ttl, "ttl", 1, "The key timeout in hours from 1 to 8.")
-	getCmd.Flags().UintVarP(&timeRemaining, "time-remaining", "t", DefaultTimeRemaining, "Request new keys if there are no keys in the environment or the current keys expire within <time-remaining> minutes. Defaults to 60.")
-	getCmd.Flags().StringVarP(&outputType, "out", "o", outputTypeEnvironmentVariable, "Format to save new credentials in. Supported outputs: env, awscli,tencentcli")
-	getCmd.Flags().StringVarP(&shell, "shell", "", shellTypeInfer, "If output type is env, determines which format to output credentials in - by default, the format is inferred based on the execution environment. WSL users may wish to overwrite this to `bash`")
-	getCmd.Flags().StringVarP(&awsCliPath, "awscli", "", "~/.aws/", "Path for directory used by the aws-cli tool. Default is \"~/.aws\".")
-	getCmd.Flags().StringVarP(&tencentCliPath, "tencentcli", "", "~/.tencent/", "Path for directory used by the tencent-cli tool. Default is \"~/.tencent\".")
-	getCmd.Flags().StringVar(&roleName, "role", "", "The name of the role to assume.")
-	getCmd.Flags().StringVarP(&cloudFlag, "cloud", "", "aws", "Choose a cloud vendor. Default is aws. Can choose aws or tencent")
+	getCmd.Flags().Uint(FlagTimeToLive, 1, "The key timeout in hours from 1 to 8.")
+	getCmd.Flags().UintP(FlagTimeRemaining, "t", DefaultTimeRemaining, "Request new keys if there are no keys in the environment or the current keys expire within <time-remaining> minutes. Defaults to 60.")
+	getCmd.Flags().StringP(FlagRoleName, "r", "", "The name of the role to assume.")
+	getCmd.Flags().String(FlagRoleSessionName, "KeyConjurer-AssumeRole", "the name of the role session name that will show up in CloudTrail logs")
+	getCmd.Flags().StringP(FlagOutputType, "o", outputTypeEnvironmentVariable, "Format to save new credentials in. Supported outputs: env, awscli,tencentcli")
+	getCmd.Flags().String(FlagShellType, shellTypeInfer, "If output type is env, determines which format to output credentials in - by default, the format is inferred based on the execution environment. WSL users may wish to overwrite this to `bash`")
+	getCmd.Flags().String(FlagAWSCLIPath, "~/.aws/", "Path for directory used by the aws-cli tool. Default is \"~/.aws\".")
+	getCmd.Flags().String(FlagTencentCLIPath, "~/.tencent/", "Path for directory used by the tencent-cli tool. Default is \"~/.tencent\".")
+	getCmd.Flags().String(FlagCloudType, "aws", "Choose a cloud vendor. Default is aws. Can choose aws or tencent")
 }
 
 func isMemberOfSlice(slice []string, val string) bool {
@@ -77,12 +70,23 @@ var getCmd = &cobra.Command{
 		}
 		client := NewHTTPClient()
 
+		ttl, _ := cmd.Flags().GetUint(FlagTimeToLive)
+		timeRemaining, _ := cmd.Flags().GetUint(FlagTimeRemaining)
+		outputType, _ := cmd.Flags().GetString(FlagOutputType)
+		shellType, _ := cmd.Flags().GetString(FlagShellType)
+		roleName, _ := cmd.Flags().GetString(FlagRoleName)
+		cloudType, _ := cmd.Flags().GetString(FlagCloudType)
+		oidcDomain, _ := cmd.Flags().GetString(FlagOIDCDomain)
+		clientID, _ := cmd.Flags().GetString(FlagClientID)
+		awsCliPath, _ := cmd.Flags().GetString(FlagAWSCLIPath)
+		tencentCliPath, _ := cmd.Flags().GetString(FlagTencentCLIPath)
+
 		if !isMemberOfSlice(permittedOutputTypes, outputType) {
 			return invalidValueError(outputType, permittedOutputTypes)
 		}
 
-		if !isMemberOfSlice(permittedShellTypes, shell) {
-			return invalidValueError(shell, permittedShellTypes)
+		if !isMemberOfSlice(permittedShellTypes, shellType) {
+			return invalidValueError(shellType, permittedShellTypes)
 		}
 
 		// make sure we enforce limit
@@ -110,13 +114,11 @@ var getCmd = &cobra.Command{
 		}
 
 		var credentials CloudCredentials
-		credentials.LoadFromEnv(cloudFlag)
-		if credentials.ValidUntil(*account, cloudFlag, time.Duration(timeRemaining)*time.Minute) {
-			return echoCredentials(args[0], args[0], credentials, outputType, cloudFlag)
+		credentials.LoadFromEnv(cloudType)
+		if credentials.ValidUntil(*account, cloudType, time.Duration(timeRemaining)*time.Minute) {
+			return echoCredentials(args[0], args[0], credentials, outputType, shellType, awsCliPath, tencentCliPath, cloudType)
 		}
 
-		oidcDomain, _ := cmd.Flags().GetString(FlagOIDCDomain)
-		clientID, _ := cmd.Flags().GetString(FlagClientID)
 		oauthCfg, _, err := DiscoverOAuth2Config(cmd.Context(), client, oidcDomain, clientID)
 		if err != nil {
 			cmd.PrintErrf("could not discover oauth2  config: %s\n", err)
@@ -148,7 +150,7 @@ var getCmd = &cobra.Command{
 			return nil
 		}
 
-		if cloudFlag == cloudAws {
+		if cloudType == cloudAws {
 			region, _ := cmd.Flags().GetString(FlagRegion)
 			session, _ := session.NewSession(&aws.Config{Region: aws.String(region)})
 			stsClient := sts.New(session)
@@ -178,13 +180,13 @@ var getCmd = &cobra.Command{
 		}
 
 		account.MostRecentRole = roleName
-		return echoCredentials(args[0], args[0], credentials, outputType, cloudFlag)
+		return echoCredentials(args[0], args[0], credentials, outputType, shellType, awsCliPath, tencentCliPath, cloudType)
 	}}
 
-func echoCredentials(id, name string, credentials CloudCredentials, outputType, cloudFlag string) error {
+func echoCredentials(id, name string, credentials CloudCredentials, outputType, shellType, awsCliPath, tencentCliPath, cloudFlag string) error {
 	switch outputType {
 	case outputTypeEnvironmentVariable:
-		credentials.WriteFormat(os.Stdout, shell, cloudFlag)
+		credentials.WriteFormat(os.Stdout, shellType, cloudFlag)
 		return nil
 	case outputTypeAWSCredentialsFile, outputTypeTencentCredentialsFile:
 		acc := Account{ID: id, Name: name}
