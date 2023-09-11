@@ -14,6 +14,7 @@ var loginCmd = &cobra.Command{
 	Long:  "Login to KeyConjurer using OAuth2. You will be required to open the URL printed to the console or scan a QR code.",
 	// Example: appname + " login",
 	RunE: func(cmd *cobra.Command, args []string) error {
+		config := ConfigFromContext(cmd.Context())
 		if !HasTokenExpired(config.Tokens) {
 			return nil
 		}

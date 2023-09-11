@@ -33,6 +33,7 @@ var accountsCmd = &cobra.Command{
 	Use:   "accounts",
 	Short: "Prints and optionally refreshes the list of accounts you have access to.",
 	RunE: func(cmd *cobra.Command, args []string) error {
+		config := ConfigFromContext(cmd.Context())
 		stdOut := cmd.OutOrStdout()
 		noRefresh, _ := cmd.Flags().GetBool(FlagNoRefresh)
 		if noRefresh {
@@ -50,12 +51,21 @@ var accountsCmd = &cobra.Command{
 			return nil
 		}
 
-		accounts, err := refreshAccounts(cmd.Context(), serverAddrUri, config.Tokens)
-		if errors.Is(err, ErrSessionExpired) {
+		if HasTokenExpired(config.Tokens) {
 			cmd.PrintErrln("Your session has expired. Please run login again.")
 			config.SaveOAuthToken(nil)
 			return nil
-		} else if err != nil {
+		}
+
+		tok := oauth2.Token{
+			AccessToken:  config.Tokens.AccessToken,
+			RefreshToken: config.Tokens.RefreshToken,
+			Expiry:       config.Tokens.Expiry,
+			TokenType:    config.Tokens.TokenType,
+		}
+
+		accounts, err := refreshAccounts(cmd.Context(), serverAddrUri, &tok)
+		if err != nil {
 			cmd.PrintErrf("Error refreshing accounts: %s\n", err)
 			cmd.PrintErrln("If you don't need to refresh your accounts, consider adding the --no-refresh flag")
 			return nil
@@ -67,20 +77,9 @@ var accountsCmd = &cobra.Command{
 	},
 }
 
-func refreshAccounts(ctx context.Context, serverAddr *url.URL, tokens *TokenSet) ([]Account, error) {
-	if HasTokenExpired(tokens) {
-		return nil, ErrSessionExpired
-	}
-
-	tok := oauth2.Token{
-		AccessToken:  config.Tokens.AccessToken,
-		RefreshToken: config.Tokens.RefreshToken,
-		Expiry:       config.Tokens.Expiry,
-		TokenType:    config.Tokens.TokenType,
-	}
-
+func refreshAccounts(ctx context.Context, serverAddr *url.URL, tok *oauth2.Token) ([]Account, error) {
 	uri := serverAddr.ResolveReference(&url.URL{Path: "/v2/applications"})
-	httpClient := NewOAuth2Client(ctx, oauth2.StaticTokenSource(&tok))
+	httpClient := NewOAuth2Client(ctx, oauth2.StaticTokenSource(tok))
 	req, _ := http.NewRequestWithContext(ctx, "POST", uri.String(), nil)
 	resp, err := httpClient.Do(req)
 	if err != nil {

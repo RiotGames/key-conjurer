@@ -14,13 +14,10 @@ import (
 var (
 	FlagOIDCDomain = "oidc-domain"
 	FlagClientID   = "client-id"
+	FlagConfigPath = "config"
 )
 
 var (
-	//  Config json storage location
-	configPath string
-	// config is a cache-like datastore for this application. It is loaded at app start-up.
-	config         Config
 	quiet          bool
 	buildTimestamp string = BuildDate + " " + BuildTime + " " + BuildTimeZone
 	cloudAws              = "aws"
@@ -32,7 +29,7 @@ func init() {
 	rootCmd.PersistentFlags().String(FlagOIDCDomain, OIDCDomain, "The domain name of your OIDC server")
 	rootCmd.PersistentFlags().String(FlagClientID, ClientID, "The OAuth2 Client ID for the application registered with your OIDC server")
 	rootCmd.PersistentFlags().IntVar(&timeout, "timeout", 120, "the amount of time in seconds to wait for keyconjurer to respond")
-	rootCmd.PersistentFlags().StringVar(&configPath, "config", "~/.keyconjurerrc", "path to .keyconjurerrc file")
+	rootCmd.PersistentFlags().String(FlagConfigPath, "~/.keyconjurerrc", "path to .keyconjurerrc file")
 	rootCmd.PersistentFlags().BoolVar(&quiet, "quiet", false, "tells the CLI to be quiet; stdout will not contain human-readable informational messages")
 	rootCmd.AddCommand(loginCmd)
 	rootCmd.AddCommand(accountsCmd)
@@ -60,42 +57,50 @@ To get started run the following commands:
 	SilenceUsage:  true,
 	SilenceErrors: true,
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+		var config Config
+		// The error of this function call is only non-nil if the flag was not provided or is not a string.
+		configPath, _ := cmd.Flags().GetString(FlagConfigPath)
+		if expanded, err := homedir.Expand(configPath); err == nil {
+			configPath = expanded
+		}
+
+		file, err := EnsureConfigFileExists(configPath)
+		if err != nil {
+			return err
+		}
+
+		if err := config.Read(file); err != nil {
+			return err
+		}
+
+		info := configInfo{
+			Config: &config,
+			Path:   configPath,
+		}
+
 		// We don't care about this being cancelled.
 		nextCtx, _ := context.WithTimeout(cmd.Context(), time.Duration(timeout)*time.Second)
-		cmd.SetContext(nextCtx)
-
-		fp := configPath
-		if expanded, err := homedir.Expand(fp); err == nil {
-			fp = expanded
-		}
-
-		if err := os.MkdirAll(filepath.Dir(fp), os.ModeDir|os.FileMode(0755)); err != nil {
-			return err
-		}
-
-		file, err := os.OpenFile(fp, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
-		if os.IsNotExist(err) {
-			return nil
-		} else if err != nil {
-			return err
-		}
-
-		return config.Read(file)
+		cmd.SetContext(ConfigContext(nextCtx, info))
+		return nil
 	},
-	PersistentPostRunE: func(*cobra.Command, []string) error {
-		var fp string
-		if expanded, err := homedir.Expand(configPath); err == nil {
-			fp = expanded
+	PersistentPostRunE: func(cmd *cobra.Command, _ []string) error {
+		config := ConfigFromContext(cmd.Context())
+		path := ConfigPathFromContext(cmd.Context())
+		if expanded, err := homedir.Expand(path); err == nil {
+			path = expanded
 		}
 
-		dir := filepath.Dir(fp)
-		if err := os.MkdirAll(dir, os.ModeDir|os.FileMode(0755)); err != nil {
+		// Do not use EnsureConfigFileExists here!
+		// EnsureConfigFileExists opens the file in append mode.
+		// If we open the file in append mode, we'll always append to the file. If we open the file in truncate mode before reading from the file, the content will be truncated _before we read from it_, which will cause a users configuration to be discarded every time we run the program.
+
+		if err := os.MkdirAll(filepath.Dir(path), os.ModeDir|os.FileMode(0755)); err != nil {
 			return err
 		}
 
-		file, err := os.Create(fp)
+		file, err := os.Create(path)
 		if err != nil {
-			return fmt.Errorf("unable to create %s reason: %w", fp, err)
+			return fmt.Errorf("unable to create %s reason: %w", path, err)
 		}
 
 		defer file.Close()

@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"os"
+	"path/filepath"
 	"time"
 
 	"strings"
@@ -290,4 +292,12 @@ func (c *Config) UpdateAccounts(entries []Account) {
 
 func (c *Config) DumpAccounts(w io.Writer) {
 	c.Accounts.WriteTable(w)
+}
+
+func EnsureConfigFileExists(fp string) (io.ReadWriteCloser, error) {
+	if err := os.MkdirAll(filepath.Dir(fp), os.ModeDir|os.FileMode(0755)); err != nil {
+		return nil, err
+	}
+
+	return os.OpenFile(fp, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0666)
 }
