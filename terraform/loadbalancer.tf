@@ -85,6 +85,21 @@ resource "aws_lb_listener_rule" "get_user_data" {
   }
 }
 
+resource "aws_lb_listener_rule" "list_applications_v2" {
+  listener_arn = aws_lb_listener.https.arn
+
+  action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.list_applications_v2.arn
+  }
+
+  condition {
+    path_pattern {
+      values = ["/v2/applications"]
+    }
+  }
+}
+
 resource "aws_lb_target_group" "get_aws_creds" {
   name_prefix = "keycon"
   target_type = "lambda"
