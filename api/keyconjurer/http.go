@@ -17,28 +17,24 @@ func RequestAttrs(r *http.Request) []any {
 		slog.String("origin_ip_address", r.RemoteAddr),
 	}
 
-	if v, ok := r.Header["X-Amzn-Trace-Id"]; ok {
-		attrs = append(attrs, slog.String("amz_request_id", v[0]))
+	if v := r.Header.Get("X-Amzn-Trace-Id"); v != "" {
+		attrs = append(attrs, slog.String("amz_request_id", v))
 	}
 
-	if v, ok := r.Header["X-Forwarded-For"]; ok {
-		attrs = append(attrs, slog.String("x_forwarded_for", v[0]))
+	if v := r.Header.Get("X-Forwarded-For"); v != "" {
+		attrs = append(attrs, slog.String("x_forwarded_for", v))
 	}
 
 	return attrs
 }
 
 func GetBearerToken(r *http.Request) (string, bool) {
-	headerValue, ok := r.Header["Authorization"]
-	if !ok {
+	headerValue := r.Header.Get("Authorization")
+	if headerValue == "" {
 		return "", false
 	}
 
-	if len(headerValue) != 1 {
-		return "", false
-	}
-
-	parts := strings.Split(headerValue[0], " ")
+	parts := strings.Split(headerValue, " ")
 	if len(parts) != 2 {
 		return "", false
 	}
