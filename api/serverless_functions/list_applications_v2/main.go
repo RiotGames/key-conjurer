@@ -25,6 +25,5 @@ func main() {
 
 	slog.Info("running list_applications_v2 Lambda")
 	service := keyconjurer.NewOktaService(&oktaDomain, settings.OktaToken)
-	fn := httputil.Lambdaify(keyconjurer.ServeUserApplications(service))
-	lambda.Start(fn)
+	lambda.StartHandler(httputil.Lambdaify(keyconjurer.ServeUserApplications(service)))
 }
