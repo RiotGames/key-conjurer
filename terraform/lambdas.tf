@@ -84,7 +84,7 @@ resource "aws_lambda_function" "keyconjurer-list_applications_v2" {
   source_code_hash = "true"
   role             = aws_iam_role.keyconjurer-lambda.arn
   handler          = "bootstrap"
-  runtime          = "provider.al2"
+  runtime          = "provided.al2"
   timeout          = 300
 
   environment {
