@@ -50,11 +50,6 @@ func DiscoverOAuth2Config(ctx context.Context, client *http.Client, domain, clie
 	return &cfg, provider, nil
 }
 
-func NewOAuth2Client(ctx context.Context, ts oauth2.TokenSource) *http.Client {
-	tr := oauth2.Transport{Base: http.DefaultTransport, Source: ts}
-	return &http.Client{Transport: httputil.LogRoundTripper(&tr)}
-}
-
 type OAuth2CallbackInfo struct {
 	Code             string
 	State            string

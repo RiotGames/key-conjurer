@@ -78,8 +78,9 @@ var accountsCmd = &cobra.Command{
 
 func refreshAccounts(ctx context.Context, serverAddr *url.URL, tok *oauth2.Token) ([]Account, error) {
 	uri := serverAddr.ResolveReference(&url.URL{Path: "/v2/applications"})
-	httpClient := NewOAuth2Client(ctx, oauth2.StaticTokenSource(tok))
+	httpClient := NewHTTPClient()
 	req, _ := http.NewRequestWithContext(ctx, "POST", uri.String(), nil)
+	tok.SetAuthHeader(req)
 	resp, err := httpClient.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to issue request: %s", err)
@@ -91,7 +92,7 @@ func refreshAccounts(ctx context.Context, serverAddr *url.URL, tok *oauth2.Token
 	}
 
 	var jsonError httputil.JSONError
-	if resp.StatusCode != http.StatusOK {
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != 0 {
 		if err := json.Unmarshal(body, &jsonError); err != nil {
 			return nil, errors.New(jsonError.Message)
 
