@@ -1,19 +1,21 @@
 package main
 
 import (
-	"log"
 	"net/url"
+	"os"
 
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/riotgames/key-conjurer/api/keyconjurer"
 	"github.com/riotgames/key-conjurer/api/settings"
 	"github.com/riotgames/key-conjurer/pkg/httputil"
+	"golang.org/x/exp/slog"
 )
 
 func main() {
 	settings, err := settings.NewSettings()
 	if err != nil {
-		log.Fatalf("Could not fetch configuration: %s", err)
+		slog.Error("could not fetch configuration: %s", err)
+		os.Exit(1)
 	}
 
 	oktaDomain := url.URL{
@@ -21,6 +23,7 @@ func main() {
 		Host:   settings.OktaHost,
 	}
 
+	slog.Info("running list_applications_v2 Lambda")
 	service := keyconjurer.NewOktaService(&oktaDomain, settings.OktaToken)
 	fn := httputil.Lambdaify(keyconjurer.ServeUserApplications(service))
 	lambda.Start(fn)
