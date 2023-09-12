@@ -24,4 +24,5 @@ api_upload: ../builds/$(RELEASE)/list_applications_v2.zip ../builds/$(RELEASE)/c
 # passed to aws s3 cp one at a time.
 #
 # aws s3 cp doesnt support multiple targets, so we have to do one per line.
-	echo $^ | tr " " "\n" | xargs -I{} -n1 aws s3 cp "{}" s3://$(S3_TF_BUCKET_NAME)/$(RELEASE)
+	echo $^ | tr " " "\n" | xargs -I{} -n1 aws s3 cp "{}" s3://$(S3_TF_BUCKET_NAME)/$(RELEASE)/
+
