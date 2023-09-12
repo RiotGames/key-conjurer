@@ -17,11 +17,11 @@ func RequestAttrs(r *http.Request) []any {
 		slog.String("origin_ip_address", r.RemoteAddr),
 	}
 
-	if v := r.Header.Get("X-Amzn-Trace-Id"); v != "" {
+	if v := r.Header.Get("x-amzn-trace-id"); v != "" {
 		attrs = append(attrs, slog.String("amz_request_id", v))
 	}
 
-	if v := r.Header.Get("X-Forwarded-For"); v != "" {
+	if v := r.Header.Get("x-forwarded-for"); v != "" {
 		attrs = append(attrs, slog.String("x_forwarded_for", v))
 	}
 
@@ -29,7 +29,7 @@ func RequestAttrs(r *http.Request) []any {
 }
 
 func GetBearerToken(r *http.Request) (string, bool) {
-	headerValue := r.Header.Get("Authorization")
+	headerValue := r.Header.Get("authorization")
 	if headerValue == "" {
 		return "", false
 	}
