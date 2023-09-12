@@ -63,6 +63,10 @@ func (h lambda2HttpHandler) Invoke(ctx context.Context, b []byte) ([]byte, error
 
 	var respWriter lambdaResponseWriter
 	h.next.ServeHTTP(&respWriter, &req)
+	if respWriter.TargetGroupResponse.StatusCode == 0 {
+		respWriter.TargetGroupResponse.StatusCode = http.StatusOK
+	}
+
 	return json.Marshal(respWriter.TargetGroupResponse)
 }
 
