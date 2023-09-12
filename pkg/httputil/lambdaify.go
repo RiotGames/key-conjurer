@@ -43,22 +43,21 @@ func (h lambda2HttpHandler) Invoke(ctx context.Context, b []byte) ([]byte, error
 		return nil, err
 	}
 
-	header := http.Header{}
-	if len(inboundReq.MultiValueHeaders) > 0 {
-		header = http.Header(inboundReq.MultiValueHeaders)
-	} else {
-		for k, v := range inboundReq.Headers {
-			header[k] = []string{v}
-		}
-	}
-
 	req := http.Request{
 		Method: inboundReq.HTTPMethod,
 		URL: &url.URL{
 			Path: inboundReq.Path,
 		},
-		Header: header,
+		Header: make(http.Header),
 		Body:   io.NopCloser(strings.NewReader(inboundReq.Body)),
+	}
+
+	if len(inboundReq.MultiValueHeaders) > 0 {
+		req.Header = http.Header(inboundReq.MultiValueHeaders)
+	} else {
+		for k, v := range inboundReq.Headers {
+			req.Header[http.CanonicalHeaderKey(k)] = []string{v}
+		}
 	}
 
 	var respWriter lambdaResponseWriter
