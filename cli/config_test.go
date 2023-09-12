@@ -63,16 +63,8 @@ func TestLegacyUnmarshalJSON(t *testing.T) {
 	blob := `{"migrated":false,"apps":null,"accounts":{"1":{"id":1,"name":"AWS - name","alias":"name"}},"ttl":1,"time_remaining":0,"creds":"eyJ1c2VybmFtZSI6InVzZXJuYW1lIiwicGFzc3dvcmQiOiJwYXNzd29yZCJ9"}`
 	c := Config{}
 
-	assert.NoError(t, json.Unmarshal([]byte(blob), &c))
-
-	acc, ok := c.Accounts.Resolve("name")
-	assert.True(t, ok)
-	assert.Equal(t, "AWS - name", acc.Name)
-	assert.Equal(t, "name", acc.Alias)
-	assert.Equal(t, "1", acc.ID)
-
-	assert.Equal(t, uint(0), c.TimeRemaining)
-	assert.Equal(t, uint(1), c.TTL)
+	var err *json.UnmarshalTypeError
+	assert.ErrorAs(t, json.Unmarshal([]byte(blob), &c), &err)
 }
 
 func TestConfigAliasesWork(t *testing.T) {

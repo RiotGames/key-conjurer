@@ -62,10 +62,9 @@ func (a Authenticator) ListApplications(ctx context.Context, user core.User) ([]
 		}
 
 		cloudAccounts = append(cloudAccounts, core.Application{
-			LegacyID: 0,
-			ID:       app.AppInstanceId,
-			Name:     app.Label,
-			Href:     app.LinkUrl,
+			ID:   app.AppInstanceId,
+			Name: app.Label,
+			Href: app.LinkUrl,
 		})
 	}
 
