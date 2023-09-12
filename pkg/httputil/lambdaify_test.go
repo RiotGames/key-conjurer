@@ -52,7 +52,7 @@ func TestLambdaify_ALBTargetEvents(t *testing.T) {
 		token, ok := GetBearerToken(r)
 		assert.Equal(t, token, "1234")
 		assert.True(t, ok)
-
+		w.Header().Set("Content-Type", "text/plain")
 		w.Write([]byte("Hello, world!"))
 	}))
 
@@ -62,4 +62,7 @@ func TestLambdaify_ALBTargetEvents(t *testing.T) {
 	var resp events.ALBTargetGroupResponse
 	require.NoError(t, json.Unmarshal(payload, &resp), "Could not unmarshal JSON")
 	assert.Equal(t, resp.Body, "Hello, world!")
+	assert.Equal(t, resp.StatusCode, 200)
+	assert.Equal(t, resp.IsBase64Encoded, false)
+	assert.Equal(t, resp.Headers["Content-Type"], "text/plain")
 }

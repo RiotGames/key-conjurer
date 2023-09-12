@@ -66,6 +66,12 @@ func (h lambda2HttpHandler) Invoke(ctx context.Context, b []byte) ([]byte, error
 		respWriter.TargetGroupResponse.StatusCode = http.StatusOK
 	}
 
+	hdrs := make(map[string]string)
+	for k, v := range respWriter.Header() {
+		hdrs[k] = strings.Join(v, ",")
+	}
+	respWriter.TargetGroupResponse.Headers = hdrs
+
 	return json.Marshal(respWriter.TargetGroupResponse)
 }
 
