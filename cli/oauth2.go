@@ -211,9 +211,15 @@ func ExchangeWebSSOTokenForSAMLAssertion(ctx context.Context, client *http.Clien
 
 	data := url.Values{"token": {token.AccessToken}}
 	uri := fmt.Sprintf("%s/login/token/sso?%s", issuer, data.Encode())
-	resp, err := client.Get(uri)
+	req, _ := http.NewRequestWithContext(ctx, "GET", uri, nil)
+	req.Header.Add("Accept", "text/html")
+	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
+	}
+
+	if resp.StatusCode == http.StatusInternalServerError {
+		return nil, errors.New("internal okta error occurred")
 	}
 
 	doc, _ := html.Parse(resp.Body)
