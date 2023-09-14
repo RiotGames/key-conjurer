@@ -96,16 +96,21 @@ var getCmd = &cobra.Command{
 			ttl = 8
 		}
 
-		account, ok := config.FindAccount(args[0])
-		willBypassCache, _ := cmd.Flags().GetBool(FlagBypassCache)
-		if !ok && !willBypassCache {
-			cmd.PrintErrf("%q is not a known account name in your account cache. Your cache can be refreshed by entering executing `keyconjurer accounts`. If the value provided is an Okta application ID, you may provide %s as an option to this command and try again.", args[0], FlagBypassCache)
-			return nil
-		}
-
-		applicationID := account.ID
-		if account.MostRecentRole != "" && roleName == "" {
-			roleName = account.MostRecentRole
+		var applicationID string
+		var account *Account
+		if bypass, _ := cmd.Flags().GetBool(FlagBypassCache); bypass {
+			applicationID = args[0]
+		} else {
+			acct, ok := config.FindAccount(args[0])
+			if !ok {
+				cmd.PrintErrf("%q is not a known account name in your account cache. Your cache can be refreshed by entering executing `keyconjurer accounts`. If the value provided is an Okta application ID, you may provide %s as an option to this command and try again.", args[0], FlagBypassCache)
+				return nil
+			}
+			applicationID = account.ID
+			if acct.MostRecentRole != "" && roleName == "" {
+				roleName = account.MostRecentRole
+			}
+			account = acct
 		}
 
 		if config.TimeRemaining != 0 && timeRemaining == DefaultTimeRemaining {
@@ -119,7 +124,7 @@ var getCmd = &cobra.Command{
 
 		var credentials CloudCredentials
 		credentials.LoadFromEnv(cloudType)
-		if credentials.ValidUntil(*account, cloudType, time.Duration(timeRemaining)*time.Minute) {
+		if credentials.ValidUntil(account, cloudType, time.Duration(timeRemaining)*time.Minute) {
 			return echoCredentials(args[0], args[0], credentials, outputType, shellType, awsCliPath, tencentCliPath, cloudType)
 		}
 
@@ -185,7 +190,10 @@ var getCmd = &cobra.Command{
 			panic("not yet implemented")
 		}
 
-		account.MostRecentRole = roleName
+		if account != nil {
+			account.MostRecentRole = roleName
+		}
+
 		return echoCredentials(args[0], args[0], credentials, outputType, shellType, awsCliPath, tencentCliPath, cloudType)
 	}}
 

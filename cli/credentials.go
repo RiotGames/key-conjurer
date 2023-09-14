@@ -60,7 +60,11 @@ func (c *CloudCredentials) LoadFromEnv(cloudFlag string) {
 	}
 }
 
-func (c *CloudCredentials) ValidUntil(account Account, cloudFlag string, dur time.Duration) bool {
+func (c *CloudCredentials) ValidUntil(account *Account, cloudFlag string, dur time.Duration) bool {
+	if account == nil {
+		return false
+	}
+
 	currentAccount, ok := os.LookupEnv("AWSKEY_ACCOUNT")
 	if cloudFlag == cloudTencent {
 		currentAccount, ok = os.LookupEnv("TENCENTKEY_ACCOUNT")
