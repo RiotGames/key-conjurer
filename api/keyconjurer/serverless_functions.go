@@ -314,7 +314,7 @@ func ServeUserApplications(okta OktaService) http.Handler {
 		for _, app := range applications {
 			if app.AppName == "amazon_aws" || strings.Contains(app.AppName, "tencent") {
 				accounts = append(accounts, core.Application{
-					ID:   app.Id,
+					ID:   app.AppInstanceId,
 					Name: app.Label,
 				})
 			}

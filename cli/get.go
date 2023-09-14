@@ -106,7 +106,8 @@ var getCmd = &cobra.Command{
 				cmd.PrintErrf("%q is not a known account name in your account cache. Your cache can be refreshed by entering executing `keyconjurer accounts`. If the value provided is an Okta application ID, you may provide %s as an option to this command and try again.", args[0], FlagBypassCache)
 				return nil
 			}
-			applicationID = account.ID
+
+			applicationID = acct.ID
 			if acct.MostRecentRole != "" && roleName == "" {
 				roleName = account.MostRecentRole
 			}
