@@ -58,10 +58,10 @@ func isMemberOfSlice(slice []string, val string) bool {
 
 var getCmd = &cobra.Command{
 	Use:   "get <accountName/alias>",
-	Short: "Retrieves temporary Cloud(AWS|Tencent) API credentials.",
-	Long: `Retrieves temporary Cloud(AWS|Tencent) API credentials for the specified account.  It sends a push request to the first Duo device it finds associated with your account.
+	Short: "Retrieves temporary cloud API credentials.",
+	Long: `Retrieves temporary cloud API credentials for the specified account.  It sends a push request to the first Duo device it finds associated with your account.
 
-	A role must be specified when using this command through the --role flag. You may list the roles you can assume through the roles command.`,
+A role must be specified when using this command through the --role flag. You may list the roles you can assume through the roles command.`,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		config := ConfigFromContext(cmd.Context())
