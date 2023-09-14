@@ -78,7 +78,7 @@ This command will fail if you do not have active Cloud credentials.
 
 		switch outputType {
 		case outputTypeEnvironmentVariable:
-			creds.WriteFormat(os.Stdout, shellType, cloudType)
+			creds.WriteFormat(os.Stdout, shellType)
 			return nil
 		case outputTypeAWSCredentialsFile:
 			acc := Account{ID: args[0], Name: args[0]}
@@ -134,6 +134,7 @@ func getTencentCredentials(accountId, roleSessionName string) (creds CloudCreden
 		SecretAccessKey: *resp.Response.Credentials.TmpSecretKey,
 		SessionToken:    *resp.Response.Credentials.Token,
 		Expiration:      *resp.Response.Expiration,
+		credentialsType: cloudTencent,
 	}
 
 	return creds, nil
@@ -183,6 +184,7 @@ func getAWSCredentials(accountId, roleSessionName string) (creds CloudCredential
 		SecretAccessKey: *resp.Credentials.SecretAccessKey,
 		SessionToken:    *resp.Credentials.SessionToken,
 		Expiration:      resp.Credentials.Expiration.Format(time.RFC3339),
+		credentialsType: cloudAws,
 	}
 
 	return creds, nil

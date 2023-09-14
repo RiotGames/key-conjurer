@@ -124,7 +124,12 @@ var getCmd = &cobra.Command{
 		}
 
 		var credentials CloudCredentials
-		credentials.LoadFromEnv(cloudType)
+		if cloudType == cloudAws {
+			credentials = LoadAWSCredentialsFromEnvironment()
+		} else if cloudType == cloudTencent {
+			credentials = LoadTencentCredentialsFromEnvironment()
+		}
+
 		if credentials.ValidUntil(account, cloudType, time.Duration(timeRemaining)*time.Minute) {
 			return echoCredentials(args[0], args[0], credentials, outputType, shellType, awsCliPath, tencentCliPath, cloudType)
 		}
@@ -186,6 +191,7 @@ var getCmd = &cobra.Command{
 				Expiration:      resp.Credentials.Expiration.Format(time.RFC3339),
 				SecretAccessKey: *resp.Credentials.SecretAccessKey,
 				SessionToken:    *resp.Credentials.SessionToken,
+				credentialsType: cloudType,
 			}
 		} else {
 			panic("not yet implemented")
@@ -201,7 +207,7 @@ var getCmd = &cobra.Command{
 func echoCredentials(id, name string, credentials CloudCredentials, outputType, shellType, awsCliPath, tencentCliPath, cloudFlag string) error {
 	switch outputType {
 	case outputTypeEnvironmentVariable:
-		credentials.WriteFormat(os.Stdout, shellType, cloudFlag)
+		credentials.WriteFormat(os.Stdout, shellType)
 		return nil
 	case outputTypeAWSCredentialsFile, outputTypeTencentCredentialsFile:
 		acc := Account{ID: id, Name: name}

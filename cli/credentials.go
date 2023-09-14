@@ -42,48 +42,42 @@ type CloudCredentials struct {
 	SecretAccessKey string `json:"SecretAccessKey"`
 	SessionToken    string `json:"SessionToken"`
 	Expiration      string `json:"Expiration"`
+
+	credentialsType string
 }
 
-func (c *CloudCredentials) LoadFromEnv(cloudFlag string) {
-	if cloudFlag == cloudTencent {
-		c.AccountID = os.Getenv("TENCENTKEY_ACCOUNT")
-		c.AccessKeyID = os.Getenv("TENCENTCLOUD_SECRET_ID")
-		c.SecretAccessKey = os.Getenv("TENCENTCLOUD_SECRET_KEY")
-		c.SessionToken = os.Getenv("TENCENTCLOUD_TOKEN")
-		c.Expiration = os.Getenv("TENCENTKEY_EXPIRATION")
-	} else if cloudFlag == cloudAws {
-		c.AccountID = os.Getenv("AWSKEY_ACCOUNT")
-		c.AccessKeyID = os.Getenv("AWS_ACCESS_KEY_ID")
-		c.SecretAccessKey = os.Getenv("AWS_SECRET_ACCESS_KEY")
-		c.SessionToken = os.Getenv("AWS_SESSION_TOKEN")
-		c.Expiration = os.Getenv("AWSKEY_EXPIRATION")
+func LoadTencentCredentialsFromEnvironment() CloudCredentials {
+	return CloudCredentials{
+		AccessKeyID:     os.Getenv("TENCENTCLOUD_SECRET_ID"),
+		SecretAccessKey: os.Getenv("TENCENTCLOUD_SECRET_KEY"),
+		SessionToken:    os.Getenv("TENCENTCLOUD_TOKEN"),
+		AccountID:       os.Getenv("TENCENTKEY_ACCOUNT"),
+		Expiration:      os.Getenv("TENCENTKEY_EXPIRATION"),
+		credentialsType: cloudTencent,
+	}
+}
+
+func LoadAWSCredentialsFromEnvironment() CloudCredentials {
+	return CloudCredentials{
+		AccessKeyID:     os.Getenv("AWS_ACCESS_KEY_ID"),
+		SecretAccessKey: os.Getenv("AWS_SECRET_ACCESS_KEY"),
+		SessionToken:    os.Getenv("AWS_SESSION_TOKEN"),
+		AccountID:       os.Getenv("AWSKEY_ACCOUNT"),
+		Expiration:      os.Getenv("AWSKEY_EXPIRATION"),
+		credentialsType: cloudAws,
 	}
 }
 
 func (c *CloudCredentials) ValidUntil(account *Account, cloudFlag string, dur time.Duration) bool {
-	if account == nil {
+	if account == nil || c == nil {
 		return false
 	}
 
-	currentAccount, ok := os.LookupEnv("AWSKEY_ACCOUNT")
-	if cloudFlag == cloudTencent {
-		currentAccount, ok = os.LookupEnv("TENCENTKEY_ACCOUNT")
-	}
-
-	if !ok || currentAccount != account.ID {
+	if c.AccountID != account.ID {
 		return false
 	}
 
-	currentExpiration, ok := os.LookupEnv("AWSKEY_EXPIRATION")
-	if cloudFlag == cloudTencent {
-		currentExpiration, ok = os.LookupEnv("TENCENTKEY_EXPIRATION")
-	}
-
-	if !ok {
-		return false
-	}
-
-	expiration, err := time.Parse(time.RFC3339, currentExpiration)
+	expiration, err := time.Parse(time.RFC3339, c.Expiration)
 	if err != nil {
 		return false
 	}
@@ -153,7 +147,7 @@ export TENCENTKEY_ACCOUNT=%v
 `
 )
 
-func (c CloudCredentials) WriteFormat(w io.Writer, format ShellType, cloudFlag string) (int, error) {
+func (c CloudCredentials) WriteFormat(w io.Writer, format ShellType) (int, error) {
 	var str string
 	if format == shellTypeInfer {
 		format = getShellType()
@@ -162,17 +156,17 @@ func (c CloudCredentials) WriteFormat(w io.Writer, format ShellType, cloudFlag s
 	switch format {
 	case shellTypePowershell:
 		str = aws_shellTypePowershell
-		if cloudFlag == cloudTencent {
+		if c.credentialsType == cloudTencent {
 			str = tencent_shellTypePowershell
 		}
 	case shellTypeBasic:
 		str = aws_shellTypeBasic
-		if cloudFlag == cloudTencent {
+		if c.credentialsType == cloudTencent {
 			str = tencent_shellTypeBasic
 		}
 	case shellTypeBash:
 		str = aws_shellTypeBash
-		if cloudFlag == cloudTencent {
+		if c.credentialsType == cloudTencent {
 			str = tencent_shellTypeBash
 		}
 	}
