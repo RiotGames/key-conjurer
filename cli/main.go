@@ -1,9 +1,8 @@
 package main
 
 import (
-	"errors"
-	"fmt"
 	"os"
+	"strings"
 
 	"golang.org/x/exp/slog"
 )
@@ -13,23 +12,21 @@ func init() {
 	if os.Getenv("DEBUG") == "1" {
 		opts.Level = slog.LevelDebug
 	}
+
 	handler := slog.NewTextHandler(os.Stdout, &opts)
 	slog.SetDefault(slog.New(handler))
 }
 
 func main() {
-	err := rootCmd.Execute()
-	if err == nil {
+	args := os.Args[1:]
+	if flag, ok := os.LookupEnv("KEYCONJURERFLAGS"); ok {
+		args = append(args, strings.Split(flag, " ")...)
+	}
+	rootCmd.SetArgs(args)
+
+	if err := rootCmd.Execute(); err == nil {
 		return
 	}
 
-	var usageErr *UsageError
-	if errors.As(err, &usageErr) {
-		fmt.Fprintln(os.Stderr, usageErr.Help)
-		os.Exit(1)
-		return
-	}
-
-	fmt.Fprintln(os.Stderr, err.Error())
 	os.Exit(1)
 }

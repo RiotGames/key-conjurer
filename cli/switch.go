@@ -50,7 +50,6 @@ This command will fail if you do not have active Cloud credentials.
 		shellType, _ := cmd.Flags().GetString(FlagShellType)
 		cloudType, _ := cmd.Flags().GetString(FlagCloudType)
 		awsCliPath, _ := cmd.Flags().GetString(FlagAWSCLIPath)
-
 		if !isMemberOfSlice(permittedOutputTypes, outputType) {
 			return invalidValueError(outputType, permittedOutputTypes)
 		}

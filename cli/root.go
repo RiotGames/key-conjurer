@@ -52,8 +52,9 @@ To get started run the following commands:
   keyconjurer accounts
   keyconjurer get <accountName>
 `,
-	SilenceUsage:  true,
-	SilenceErrors: true,
+	FParseErrWhitelist: cobra.FParseErrWhitelist{
+		UnknownFlags: true,
+	},
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		var config Config
 		// The error of this function call is only non-nil if the flag was not provided or is not a string.
