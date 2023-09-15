@@ -10,13 +10,7 @@ import (
 )
 
 type cloudCli struct {
-	creds  *cloudCliCredentialsFile
-	config *cloudCliConfigFile
-}
-
-type cloudCliConfigFile struct {
-	*ini.File
-	Path string
+	creds *cloudCliCredentialsFile
 }
 
 // Intentionally missing the `ini` notation sections,keys, and values
@@ -70,24 +64,6 @@ func getCloudCliCredentialsFile(credsPath string) (*cloudCliCredentialsFile, err
 	return &creds, err
 }
 
-func getCloudCliConfigFile(configPath string) (*cloudCliConfigFile, error) {
-	path, err := homedir.Expand(configPath)
-	if err != nil {
-		return nil, err
-	}
-
-	f, err := touchFile(path)
-	if err != nil {
-		return nil, err
-	}
-	defer f.Close()
-
-	var cfg cloudCliConfigFile
-	cfg.File, err = ini.Load(f)
-	cfg.Path = path
-	return &cfg, err
-}
-
 func getCloudCliByPath(path string) (*cloudCli, error) {
 	fullPath, err := homedir.Expand(path)
 	if err != nil {
@@ -99,12 +75,7 @@ func getCloudCliByPath(path string) (*cloudCli, error) {
 		return nil, err
 	}
 
-	cfg, err := getCloudCliConfigFile(filepath.Join(fullPath, "config"))
-	if err != nil {
-		return nil, err
-	}
-
-	return &cloudCli{creds: creds, config: cfg}, nil
+	return &cloudCli{creds: creds}, nil
 }
 
 func (a *cloudCli) saveCredentialEntry(entry *CloudCliEntry) error {

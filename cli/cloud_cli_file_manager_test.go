@@ -16,24 +16,11 @@ func TestAwsCliCredsFile(t *testing.T) {
 	}
 }
 
-func TestAwsCliConfigFile(t *testing.T) {
-	configFile, err := getCloudCliConfigFile("~/.aws/config")
-	require.NoError(t, err)
-
-	for _, section := range configFile.Sections() {
-		t.Log(section.Name(), section.KeyStrings())
-	}
-}
-
 func TestAwsCliFileNoSlash(t *testing.T) {
 	awscli, err := getCloudCliByPath("~/.aws/")
 	require.NoError(t, err)
 
 	for _, section := range awscli.creds.Sections() {
-		t.Log(section.Name(), section.Keys())
-	}
-
-	for _, section := range awscli.config.Sections() {
 		t.Log(section.Name(), section.Keys())
 	}
 }
@@ -43,10 +30,6 @@ func TestAwsCliFileWithSlash(t *testing.T) {
 	require.NoError(t, err)
 
 	for _, section := range awscli.creds.Sections() {
-		t.Log(section.Name(), section.Keys())
-	}
-
-	for _, section := range awscli.config.Sections() {
 		t.Log(section.Name(), section.Keys())
 	}
 }
