@@ -79,13 +79,7 @@ func getCloudCliByPath(path string) (*cloudCli, error) {
 }
 
 func (a *cloudCli) saveCredentialEntry(entry *CloudCliEntry) error {
-	var section *ini.Section
-	var err error
-	if section, err = a.creds.GetSection(entry.profileName); err != nil {
-		if section, err = a.creds.NewSection(entry.profileName); err != nil {
-			return err
-		}
-	}
+	section := a.creds.Section(entry.profileName)
 	if strings.Contains(strings.ToLower(a.creds.Path), cloudAws) {
 		section.Key("aws_access_key_id").SetValue(entry.keyId)
 		section.Key("aws_secret_access_key").SetValue(entry.key)
