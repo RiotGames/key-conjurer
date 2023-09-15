@@ -49,7 +49,7 @@ dir:
 
 build: dir
 	go build \
-		-ldflags "-X main.Version=$(version)-$(RELEASE) -X main.ClientName=keyconjurer-$(GOOS) -X main.ClientID=$(CLIENT_ID) -X main.OIDCDomain=$(OIDC_DOMAIN) -X main.BuildDate=$(build_date) -X main.BuildTime=$(build_time) -X main.BuildTimeZone=$(build_timezone) -X main.ServerAddress=$(SERVER_ADDRESS)" \
+		-ldflags "-X main.Version=$(version)-$(RELEASE) -X main.ClientID=$(CLIENT_ID) -X main.OIDCDomain=$(OIDC_DOMAIN) -X main.BuildDate=$(build_date) -X main.BuildTime=$(build_time) -X main.BuildTimeZone=$(build_timezone) -X main.ServerAddress=$(SERVER_ADDRESS)" \
 		-o ../builds/$(RELEASE)/cli/$(BUILD_TARGET)
 
 test: dir

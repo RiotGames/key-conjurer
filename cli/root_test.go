@@ -2,6 +2,8 @@ package main
 
 import (
 	"bytes"
+	"fmt"
+	"runtime"
 	"testing"
 
 	"github.com/spf13/cobra"
@@ -34,7 +36,8 @@ func TestVersionFlag(t *testing.T) {
 		t.Errorf("Unexpected error: %v", err)
 	}
 
-	assert.Equal(t, output, "keyconjurer version keyconjurer TBD (date not set time not set zone not set)\n")
+	expected := fmt.Sprintf("keyconjurer-%s-%s TBD (date not set time not set zone not set)\n", runtime.GOOS, runtime.GOARCH)
+	assert.Equal(t, output, expected)
 }
 
 func TestVersionShortFlag(t *testing.T) {
@@ -47,7 +50,8 @@ func TestVersionShortFlag(t *testing.T) {
 		t.Errorf("Unexpected error: %v", err)
 	}
 
-	assert.Equal(t, output, "keyconjurer version keyconjurer TBD (date not set time not set zone not set)\n")
+	expected := fmt.Sprintf("keyconjurer-%s-%s TBD (date not set time not set zone not set)\n", runtime.GOOS, runtime.GOARCH)
+	assert.Equal(t, output, expected)
 }
 
 func TestHelpLongInvalidArgs(t *testing.T) {
@@ -71,7 +75,7 @@ func TestInvalidCommand(t *testing.T) {
 
 	output, err := execute(rootCmd, "badcommand")
 	if err != nil {
-		if err.Error() != "unknown command \"badcommand\" for \""+appname+"\"" {
+		if err.Error() != "unknown command \"badcommand\" for \"keyconjurer\"" {
 			t.Errorf("Unexpected error: %v", err)
 		}
 	} else {

@@ -9,8 +9,7 @@ import (
 var rolesCmd = cobra.Command{
 	Use:   "roles <accountName/alias>",
 	Short: "Returns the roles that you have access to in the given account.",
-	// Example: appname + " roles <accountName/alias>",
-	Args: cobra.ExactArgs(1),
+	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		config := ConfigFromContext(cmd.Context())
 		if HasTokenExpired(config.Tokens) {

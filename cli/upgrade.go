@@ -15,10 +15,8 @@ import (
 
 var upgradeCmd = &cobra.Command{
 	Use:   "upgrade",
-	Short: "Downloads the latest version of " + appname + ".",
-	Long:  "Downloads the latest version of " + appname + ".",
+	Short: "Downloads the latest version of KeyConjurer",
 	Args:  cobra.ExactArgs(0),
-	// Example: appname + " upgrade",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		keyConjurerRcPath, err := os.Executable()
 		if err != nil {

@@ -6,7 +6,6 @@ var (
 	OIDCDomain    string
 	ServerAddress string
 	Version       string = "TBD"
-	ClientName    string = appname
 	BuildDate     string = "date not set"
 	BuildTime     string = "time not set"
 	BuildTimeZone string = "zone not set"
@@ -23,5 +22,4 @@ const (
 	WindowsBinaryName     string = "keyconjurer-windows.exe"
 	DarwinArm64BinaryName string = "keyconjurer-darwin-arm64"
 	DarwinAmd64BinaryName string = "keyconjurer-darwin-amd64"
-	appname               string = "keyconjurer"
 )

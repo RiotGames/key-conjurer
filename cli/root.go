@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"time"
 
 	"github.com/mitchellh/go-homedir"
@@ -40,19 +41,20 @@ func init() {
 	rootCmd.AddCommand(&aliasCmd)
 	rootCmd.AddCommand(&unaliasCmd)
 	rootCmd.AddCommand(&rolesCmd)
+	rootCmd.SetVersionTemplate("{{.Version}}\n")
 }
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
-	Use:     appname,
-	Version: fmt.Sprintf("%s %s (%s)", ClientName, Version, buildTimestamp),
+	Use:     "keyconjurer",
+	Version: fmt.Sprintf("keyconjurer-%s-%s %s (%s)", runtime.GOOS, runtime.GOARCH, Version, buildTimestamp),
 	Short:   "Retrieve temporary cloud credentials.",
-	Long: `Key Conjurer retrieves temporary credentials from the Key Conjurer API.
+	Long: `KeyConjurer retrieves temporary credentials from Okta with the assistance of an optional API.
 
 To get started run the following commands:
-  ` + appname + ` login # You will get prompted for your AD credentials
-  ` + appname + ` accounts
-  ` + appname + ` get <accountName>
+  keyconjurer login
+  keyconjurer accounts
+  keyconjurer get <accountName>
 `,
 	SilenceUsage:  true,
 	SilenceErrors: true,
