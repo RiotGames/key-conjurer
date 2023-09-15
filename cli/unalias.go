@@ -10,6 +10,6 @@ var unaliasCmd = cobra.Command{
 	Args:    cobra.ExactArgs(1),
 	Example: "keyconjurer unalias bar",
 	Run: func(cmd *cobra.Command, args []string) {
-		config := ConfigFromContext(cmd.Context())
+		config := ConfigFromCommand(cmd)
 		config.Unalias(args[0])
 	}}

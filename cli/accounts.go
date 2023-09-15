@@ -32,7 +32,7 @@ var accountsCmd = &cobra.Command{
 	Use:   "accounts",
 	Short: "Prints and optionally refreshes the list of accounts you have access to.",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		config := ConfigFromContext(cmd.Context())
+		config := ConfigFromCommand(cmd)
 		stdOut := cmd.OutOrStdout()
 		noRefresh, _ := cmd.Flags().GetBool(FlagNoRefresh)
 		if noRefresh {

@@ -72,7 +72,7 @@ var getCmd = &cobra.Command{
 A role must be specified when using this command through the --role flag. You may list the roles you can assume through the roles command.`,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		config := ConfigFromContext(cmd.Context())
+		config := ConfigFromCommand(cmd)
 		ctx := cmd.Context()
 		if HasTokenExpired(config.Tokens) {
 			cmd.PrintErrln("Your session has expired. Please login again.")

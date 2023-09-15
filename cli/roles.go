@@ -11,7 +11,7 @@ var rolesCmd = cobra.Command{
 	Short: "Returns the roles that you have access to in the given account.",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		config := ConfigFromContext(cmd.Context())
+		config := ConfigFromCommand(cmd)
 		if HasTokenExpired(config.Tokens) {
 			cmd.PrintErrln("Your session has expired. Please login again.")
 			return nil

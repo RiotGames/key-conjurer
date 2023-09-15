@@ -1,6 +1,10 @@
 package main
 
-import "context"
+import (
+	"context"
+
+	"github.com/spf13/cobra"
+)
 
 type configInfo struct {
 	Path   string
@@ -9,12 +13,12 @@ type configInfo struct {
 
 type ctxKeyConfig struct{}
 
-func ConfigFromContext(ctx context.Context) *Config {
-	return ctx.Value(ctxKeyConfig{}).(*configInfo).Config
+func ConfigFromCommand(cmd *cobra.Command) *Config {
+	return cmd.Context().Value(ctxKeyConfig{}).(*configInfo).Config
 }
 
-func ConfigPathFromContext(ctx context.Context) string {
-	return ctx.Value(ctxKeyConfig{}).(*configInfo).Path
+func ConfigPathFromCommand(cmd *cobra.Command) string {
+	return cmd.Context().Value(ctxKeyConfig{}).(*configInfo).Path
 }
 
 func ConfigContext(ctx context.Context, config *Config, path string) context.Context {

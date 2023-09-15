@@ -11,6 +11,6 @@ var aliasCmd = cobra.Command{
 	Args:    cobra.ExactArgs(2),
 	Example: "keyconjurer alias FooAccount Bar",
 	Run: func(cmd *cobra.Command, args []string) {
-		config := ConfigFromContext(cmd.Context())
+		config := ConfigFromCommand(cmd)
 		config.Alias(args[0], args[1])
 	}}

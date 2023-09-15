@@ -82,8 +82,8 @@ To get started run the following commands:
 		return nil
 	},
 	PersistentPostRunE: func(cmd *cobra.Command, _ []string) error {
-		config := ConfigFromContext(cmd.Context())
-		path := ConfigPathFromContext(cmd.Context())
+		config := ConfigFromCommand(cmd)
+		path := ConfigPathFromCommand(cmd)
 		if expanded, err := homedir.Expand(path); err == nil {
 			path = expanded
 		}
