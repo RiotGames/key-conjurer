@@ -56,6 +56,14 @@ func isMemberOfSlice(slice []string, val string) bool {
 	return false
 }
 
+func resolveApplicationInfo(cfg *Config, bypassCache bool, nameOrId string) (*Account, bool) {
+	if bypassCache {
+		return &Account{ID: nameOrId, Name: nameOrId}, true
+	} else {
+		return cfg.FindAccount(nameOrId)
+	}
+}
+
 var getCmd = &cobra.Command{
 	Use:   "get <accountName/alias>",
 	Short: "Retrieves temporary cloud API credentials.",
@@ -96,31 +104,22 @@ A role must be specified when using this command through the --role flag. You ma
 			ttl = 8
 		}
 
-		var applicationID string
-		var account *Account
-		if bypass, _ := cmd.Flags().GetBool(FlagBypassCache); bypass {
-			applicationID = args[0]
-		} else {
-			acct, ok := config.FindAccount(args[0])
-			if !ok {
-				cmd.PrintErrf("%q is not a known account name in your account cache. Your cache can be refreshed by entering executing `keyconjurer accounts`. If the value provided is an Okta application ID, you may provide %s as an option to this command and try again.", args[0], FlagBypassCache)
-				return nil
-			}
+		bypassCache, _ := cmd.Flags().GetBool(FlagBypassCache)
+		account, ok := resolveApplicationInfo(config, bypassCache, args[0])
+		if !ok {
+			cmd.PrintErrf("%q is not a known account name in your account cache. Your cache can be refreshed by entering executing `keyconjurer accounts`. If the value provided is an Okta application ID, you may provide %s as an option to this command and try again.", args[0], FlagBypassCache)
+			return nil
+		}
 
-			applicationID = acct.ID
-			if acct.MostRecentRole != "" && roleName == "" {
-				roleName = account.MostRecentRole
-			}
-			account = acct
+		if roleName == "" && account.MostRecentRole != "" {
+			roleName = account.MostRecentRole
+		} else {
+			cmd.PrintErrln("You must specify the --role flag with this command")
+			return nil
 		}
 
 		if config.TimeRemaining != 0 && timeRemaining == DefaultTimeRemaining {
 			timeRemaining = config.TimeRemaining
-		}
-
-		if roleName == "" {
-			cmd.PrintErrln("You must specify the --role flag with this command")
-			return nil
 		}
 
 		var credentials CloudCredentials
@@ -140,7 +139,7 @@ A role must be specified when using this command through the --role flag. You ma
 			return nil
 		}
 
-		tok, err := ExchangeAccessTokenForWebSSOToken(cmd.Context(), client, oauthCfg, config.Tokens, applicationID)
+		tok, err := ExchangeAccessTokenForWebSSOToken(cmd.Context(), client, oauthCfg, config.Tokens, account.ID)
 		if err != nil {
 			cmd.PrintErrf("error exchanging token: %s\n", err)
 			return nil
