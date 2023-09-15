@@ -18,12 +18,8 @@ var (
 	FlagConfigPath = "config"
 	FlagQuiet      = "quiet"
 	FlagTimeout    = "timeout"
-)
-
-var (
-	buildTimestamp string = BuildDate + " " + BuildTime + " " + BuildTimeZone
-	cloudAws              = "aws"
-	cloudTencent          = "tencent"
+	cloudAws       = "aws"
+	cloudTencent   = "tencent"
 )
 
 func init() {
@@ -47,7 +43,7 @@ func init() {
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:     "keyconjurer",
-	Version: fmt.Sprintf("keyconjurer-%s-%s %s (%s)", runtime.GOOS, runtime.GOARCH, Version, buildTimestamp),
+	Version: fmt.Sprintf("keyconjurer-%s-%s %s (%s)", runtime.GOOS, runtime.GOARCH, Version, BuildTimestamp),
 	Short:   "Retrieve temporary cloud credentials.",
 	Long: `KeyConjurer retrieves temporary credentials from Okta with the assistance of an optional API.
 

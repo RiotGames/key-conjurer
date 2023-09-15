@@ -2,14 +2,12 @@ package main
 
 // Vars for build time
 var (
-	ClientID      string
-	OIDCDomain    string
-	ServerAddress string
-	Version       string = "TBD"
-	BuildDate     string = "date not set"
-	BuildTime     string = "time not set"
-	BuildTimeZone string = "zone not set"
-	DownloadURL   string = "URL not set yet"
+	ClientID       string
+	OIDCDomain     string
+	ServerAddress  string
+	Version        string = "TBD"
+	BuildTimestamp string = "BuildTimestamp is not set"
+	DownloadURL    string = "URL not set yet"
 )
 
 const (

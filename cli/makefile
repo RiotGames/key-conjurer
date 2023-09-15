@@ -1,11 +1,5 @@
 .DEFAULT_GOAL = all
 
-version = $(shell git rev-parse --short HEAD)
-
-build_date = $(shell date -u +'%Y-%m-%d')
-build_time = $(shell date -u +'%H:%M:%S')
-build_timezone = UTC
-
 RELEASE ?= dev
 
 .PHONY: all build test build_requirements
@@ -40,7 +34,12 @@ build:
 	@test $${SERVER_ADDRESS?is not set}
 	@mkdir -p ../builds/$(RELEASE)/cli
 	go build \
-		-ldflags "-X main.Version=$(version)-$(RELEASE) -X main.ClientID=$(CLIENT_ID) -X main.OIDCDomain=$(OIDC_DOMAIN) -X main.BuildDate=$(build_date) -X main.BuildTime=$(build_time) -X main.BuildTimeZone=$(build_timezone) -X main.ServerAddress=$(SERVER_ADDRESS)" \
+		-ldflags " \
+			-X main.Version=$(shell git rev-parse --short HEAD)-$(RELEASE) \
+			-X main.ClientID=$(CLIENT_ID) \
+			-X main.OIDCDomain=$(OIDC_DOMAIN) \
+			-X main.BuildTimestamp='$(shell date --iso-8601=minutes)'' \
+			-X main.ServerAddress=$(SERVER_ADDRESS)" \
 		-o ../builds/$(RELEASE)/cli/$(BUILD_TARGET)
 
 test:

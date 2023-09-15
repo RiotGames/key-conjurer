@@ -36,7 +36,7 @@ func TestVersionFlag(t *testing.T) {
 		t.Errorf("Unexpected error: %v", err)
 	}
 
-	expected := fmt.Sprintf("keyconjurer-%s-%s TBD (date not set time not set zone not set)\n", runtime.GOOS, runtime.GOARCH)
+	expected := fmt.Sprintf("keyconjurer-%s-%s TBD (BuildTimestamp is not set)\n", runtime.GOOS, runtime.GOARCH)
 	assert.Equal(t, output, expected)
 }
 
@@ -50,7 +50,7 @@ func TestVersionShortFlag(t *testing.T) {
 		t.Errorf("Unexpected error: %v", err)
 	}
 
-	expected := fmt.Sprintf("keyconjurer-%s-%s TBD (date not set time not set zone not set)\n", runtime.GOOS, runtime.GOARCH)
+	expected := fmt.Sprintf("keyconjurer-%s-%s TBD (BuildTimestamp is not set)\n", runtime.GOOS, runtime.GOARCH)
 	assert.Equal(t, output, expected)
 }
 
