@@ -75,15 +75,10 @@ To get started run the following commands:
 			return err
 		}
 
-		info := &configInfo{
-			Config: &config,
-			Path:   configPath,
-		}
-
 		// We don't care about this being cancelled.
 		timeout, _ := cmd.Flags().GetInt(FlagTimeout)
 		nextCtx, _ := context.WithTimeout(cmd.Context(), time.Duration(timeout)*time.Second)
-		cmd.SetContext(ConfigContext(nextCtx, info))
+		cmd.SetContext(ConfigContext(nextCtx, &config, configPath))
 		return nil
 	},
 	PersistentPostRunE: func(cmd *cobra.Command, _ []string) error {
