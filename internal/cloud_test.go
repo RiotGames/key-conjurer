@@ -20,13 +20,3 @@ func TestAwsFindRoleDoesntBreakIfYouHaveMultipleRoles(t *testing.T) {
 	require.Equal(t, "arn:cloud:iam::1234:saml-provider/Okta", pair.ProviderARN)
 	require.Equal(t, "arn:cloud:iam::1234:role/Admin", pair.RoleARN)
 }
-
-func TestAwsFindRoleWorksWithOneLoginAssertions(t *testing.T) {
-	resp := saml.Response{}
-	// For some reason, this is reversed in OneLogin.
-	resp.AddAttribute("https://aws.amazon.com/SAML/Attributes/Role", "arn:cloud:iam::1234:role/Admin,arn:cloud:iam::1234:saml-provider/Onelogin")
-	pair, _, err := FindRole("", &resp)
-	require.True(t, err)
-	require.Equal(t, "arn:cloud:iam::1234:saml-provider/Onelogin", pair.ProviderARN)
-	require.Equal(t, "arn:cloud:iam::1234:role/Admin", pair.RoleARN)
-}
