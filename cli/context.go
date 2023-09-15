@@ -18,5 +18,5 @@ func ConfigPathFromContext(ctx context.Context) string {
 }
 
 func ConfigContext(ctx context.Context, config *Config, path string) context.Context {
-	return context.WithValue(ctx, ctxKeyConfig{}, configInfo{Path: path, Config: config})
+	return context.WithValue(ctx, ctxKeyConfig{}, &configInfo{Path: path, Config: config})
 }
