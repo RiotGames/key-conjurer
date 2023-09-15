@@ -20,9 +20,9 @@ type retrieverFunc = func() (*Settings, error)
 var retrievers = map[string]retrieverFunc{}
 
 func NewSettings() (*Settings, error) {
-	prov := os.Getenv("SETTINGS_PROVIDER")
-	if prov == "" {
-		prov = "env"
+	prov := "vault"
+	if nextProv, ok := os.LookupEnv("SETTINGS_PROVIDER"); ok {
+		prov = nextProv
 	}
 
 	entry, ok := retrievers[prov]
@@ -56,5 +56,4 @@ func retrieveFromEnv() (*Settings, error) {
 func init() {
 	registerRetriever("env", retrieveFromEnv)
 	registerRetriever("vault", retrieveFromVault)
-	registerRetriever("kms_blob", NewSettingsFromKMSBlob)
 }
