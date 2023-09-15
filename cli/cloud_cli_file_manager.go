@@ -1,8 +1,8 @@
 package main
 
 import (
-	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/go-ini/ini"
@@ -94,32 +94,18 @@ func getCloudCliByPath(path string) (*cloudCli, error) {
 		return nil, err
 	}
 
-	var configPath string
-	var credsPath string
-	if strings.HasSuffix(fullPath, "/") {
-		configPath = fmt.Sprintf("%s%s", fullPath, "config")
-		credsPath = fmt.Sprintf("%s%s", fullPath, "credentials")
-	} else {
-		configPath = fmt.Sprintf("%s/%s", fullPath, "config")
-		credsPath = fmt.Sprintf("%s/%s", fullPath, "credentials")
-	}
-
-	creds, err := getCloudCliCredentialsFile(credsPath)
+	creds, err := getCloudCliCredentialsFile(filepath.Join(fullPath, "credentials"))
 	if err != nil {
 		return nil, err
 	}
 
-	cfg, err := getCloudCliConfigFile(configPath)
+	cfg, err := getCloudCliConfigFile(filepath.Join(fullPath, "config"))
 	if err != nil {
 		return nil, err
 	}
 
 	return &cloudCli{creds: creds, config: cfg}, nil
 }
-
-// stub for use if we end up managing config file at some point
-// func StubThatDoesNothing(){}
-// func saveConfigEntry(alias, region, output string) {}
 
 func (a *cloudCli) saveCredentialEntry(entry *CloudCliEntry) error {
 	var section *ini.Section
