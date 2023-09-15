@@ -64,18 +64,22 @@ func getCloudCliCredentialsFile(credsPath string) (*cloudCliCredentialsFile, err
 	return &creds, err
 }
 
+func ResolveAWSCredentialsPath(rootPath string) string {
+	rootPath = filepath.Join(rootPath, "credentials")
+	if fullPath, err := homedir.Expand(rootPath); err == nil {
+		return fullPath
+	}
+
+	return rootPath
+}
+
 func getCloudCliByPath(path string) (*cloudCli, error) {
-	fullPath, err := homedir.Expand(path)
+	file, err := getCloudCliCredentialsFile(ResolveAWSCredentialsPath(path))
 	if err != nil {
 		return nil, err
 	}
 
-	creds, err := getCloudCliCredentialsFile(filepath.Join(fullPath, "credentials"))
-	if err != nil {
-		return nil, err
-	}
-
-	return &cloudCli{creds: creds}, nil
+	return &cloudCli{creds: file}, nil
 }
 
 func (a *cloudCli) saveCredentialEntry(entry *CloudCliEntry) error {
