@@ -1,42 +1,10 @@
 package internal
 
 import (
-	"context"
-	"errors"
-	"fmt"
 	"strings"
-	"time"
 
 	"github.com/RobotsAndPencils/go-saml"
-	"github.com/riotgames/key-conjurer/api/core"
-	"github.com/riotgames/key-conjurer/internal/aws"
-	"github.com/riotgames/key-conjurer/internal/tencent"
 )
-
-type Provider struct {
-	Aws     *aws.Provider
-	Tencent *tencent.Provider
-}
-
-func NewProvider(awsRegion, tencentRegion string) (*Provider, error) {
-	awsProvider, err := aws.NewProvider(awsRegion)
-	if err != nil {
-		return nil, err
-	}
-	tencentProvider, err := tencent.NewProvider(tencentRegion)
-	if err != nil {
-		return nil, err
-	}
-	return &Provider{Aws: awsProvider, Tencent: tencentProvider}, nil
-}
-
-var ErrNoEntitlements = errors.New("user is not entitled to any roles")
-
-type ErrRoleNotFound struct{ Name string }
-
-func (e ErrRoleNotFound) Error() string {
-	return fmt.Sprintf("role %s was not found or you do not have access to it", e.Name)
-}
 
 type RoleProviderPair struct {
 	RoleARN     string
@@ -136,49 +104,4 @@ func getARN(value string) RoleProviderPair {
 		}
 	}
 	return p
-}
-
-type STSTokenResponse struct {
-	AccessKeyID     *string `json:"accessKeyId"`
-	SecretAccessKey *string `json:"secretAccessKey"`
-	SessionToken    *string `json:"sessionToken"`
-	Expiration      string  `json:"expiration"`
-}
-
-func (p *Provider) GetTemporaryCredentialsForUser(ctx context.Context, roleName string, response *core.SAMLResponse, ttlInHours int) (STSTokenResponse, error) {
-	pair, cloud, ok := FindRole(roleName, &response.Response)
-	if !ok {
-		return STSTokenResponse{}, errors.New("role not found")
-	}
-
-	switch cloud {
-	case awsFlag:
-		rsp, err := p.Aws.GetTemporaryCredentialsForUser(ctx, &pair.ProviderARN, &pair.RoleARN, response.GetBase64Encoded(), ttlInHours)
-		creds := STSTokenResponse{
-			AccessKeyID:     rsp.AccessKeyId,
-			SecretAccessKey: rsp.SecretAccessKey,
-			SessionToken:    rsp.SessionToken,
-			Expiration:      rsp.Expiration.Format(time.RFC3339),
-		}
-		if err != nil {
-			return STSTokenResponse{}, err
-		}
-
-		return creds, err
-	case tencentFlag:
-		rsp, exp, err := p.Tencent.GetTemporaryCredentialsForUser(ctx, &pair.ProviderARN, &pair.RoleARN, response.GetBase64Encoded(), ttlInHours, roleName)
-		if err != nil {
-			return STSTokenResponse{}, err
-		}
-
-		creds := STSTokenResponse{
-			AccessKeyID:     rsp.TmpSecretId,
-			SecretAccessKey: rsp.TmpSecretKey,
-			SessionToken:    rsp.Token,
-			Expiration:      *exp,
-		}
-		return creds, err
-	}
-
-	return STSTokenResponse{}, errors.New("unsupported cloud provider")
 }
