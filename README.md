@@ -6,8 +6,7 @@ KeyConjurer is a project designed to get rid of permanent AWS credentials.
 
 KeyConjurer is made of three parts:
 
-- [api](./api/) - An API that is used to interact with protected Okta resources.
-  - Within this folder is the [legacy API](./api/serverless_functions/cloud) which will be removed at a later date. It is no longer supported. Please see the [notes on the Legacy API](#Legacy API)
+- [lambda](./lambda/) - Lambda functions used by the CLI to gather data on protected resources.
 - [cli](./cli/) - The CLI interface.
 - [frontend](./frontend/) - A static webpage which informs users on how to download and use KeyConjurer.
 
@@ -189,11 +188,3 @@ $ terraform apply
 * `frontend` serves the CLI tool. This means the binaries created in `cli` need to be uploaded to the same bucket that's used to serve the frontend.
 * KeyConjurer's Terraform will create an ACL by default unless `create_waf_acl` is set to _false_ and a WAF ACL is provided using `waf_acl_id`. This default ACL will **block all connections**.
 * Both a Load Balancer Security Group and a WAF are used to control connections to KeyConjurer. These both need to agree on the IP ranges to allow to KeyConjurer, otherwise you may end up in a situation where a user can access the frontend or use KeyConjurer from the CLI, but not both.
-
-## Legacy API
-
-Within this repository is a legacy API, which is served by all the serverless functions within the [cloud](./api/serverless_functions/cloud) folder. This API is no longer supported and will be removed before the end of 2023. It functioned by requiring a user to provide their username and password to a Lambda function, as it was developed prior to the wider adoption of the OAuth standard which is now used instead.
-
-We are not providing instructions for using the legacy API as it is not considered secure as of 2023. The use of the legacy precludes using useful secure technology like WebAuthn, as authentication was handled by a Lambda function rather than on the users device, which prevented the presentation of factors like a YubiKey.
-
-If you are sure you want to use the legacy API, you should view the history of this repository.
