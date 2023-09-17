@@ -1,12 +1,10 @@
 RELEASE ?= dev
 VERSION ?= $(shell git rev-parse --short HEAD)
-ldflags = "-X github.com/riotgames/key-conjurer/api/consts.Version=$(VERSION)-${RELEASE}"
 
 all: build
 
 list_applications_v2.zip:
 	GOOS=linux GOARCH=amd64 go build \
-		-ldflags $(ldflags) \
 		-tags lambda.norpc \
 		-o bootstrap serverless_functions/$(subst .zip,,$@)/main.go
 	zip $@ bootstrap
