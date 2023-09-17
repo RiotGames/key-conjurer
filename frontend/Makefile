@@ -1,8 +1,9 @@
 RELEASE ?= dev
 BINARY_NAME ?= keyconjurer
-SOURCES = ./src/App.tsx ./src/actions.ts ./src/index.tsx ./src/stores.ts ./src/components/*.tsx
 
-build: $(SOURCES)
+build: build/index.html
+
+build/index.html: ./src/*.tsx ./src/*.ts ./src/components/*.tsx
 	@test $${FRONTEND_URL?is not set}
 	@test $${API_URL?is not set}
 	npm install \
