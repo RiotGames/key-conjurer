@@ -13,10 +13,10 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/coreos/go-oidc"
 	rootcerts "github.com/hashicorp/go-rootcerts"
 	"github.com/riotgames/key-conjurer/pkg/htmlutil"
 	"github.com/riotgames/key-conjurer/pkg/httputil"
-	"github.com/riotgames/key-conjurer/pkg/oidc"
 	"golang.org/x/net/html"
 	"golang.org/x/oauth2"
 )
@@ -35,8 +35,8 @@ func NewHTTPClient() *http.Client {
 	return &http.Client{Transport: httputil.LogRoundTripper(tr)}
 }
 
-func DiscoverOAuth2Config(ctx context.Context, client *http.Client, domain, clientID string) (*oauth2.Config, *oidc.Provider, error) {
-	provider, err := oidc.DiscoverProvider(ctx, client, domain)
+func DiscoverOAuth2Config(ctx context.Context, domain, clientID string) (*oauth2.Config, *oidc.Provider, error) {
+	provider, err := oidc.NewProvider(ctx, domain)
 	if err != nil {
 		return nil, nil, fmt.Errorf("couldn't discover OIDC configuration for %s: %w", domain, err)
 	}

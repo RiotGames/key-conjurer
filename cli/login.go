@@ -50,7 +50,7 @@ var loginCmd = &cobra.Command{
 }
 
 func Login(ctx context.Context, client *http.Client, domain, clientID string, machineOutput bool) (*oauth2.Token, error) {
-	oauthCfg, _, err := DiscoverOAuth2Config(ctx, client, domain, clientID)
+	oauthCfg, _, err := DiscoverOAuth2Config(ctx, domain, clientID)
 	if err != nil {
 		return nil, err
 	}

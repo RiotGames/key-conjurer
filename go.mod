@@ -4,6 +4,7 @@ require (
 	github.com/RobotsAndPencils/go-saml v0.0.0-20170520135329-fb13cb52a46b
 	github.com/aws/aws-lambda-go v1.19.1
 	github.com/aws/aws-sdk-go v1.34.19
+	github.com/coreos/go-oidc v2.2.1+incompatible
 	github.com/go-ini/ini v1.61.0
 	github.com/google/uuid v1.1.2
 	github.com/hashicorp/go-rootcerts v1.0.2
@@ -49,6 +50,7 @@ require (
 	github.com/patrickmn/go-cache v0.0.0-20180815053127-5633e0862627 // indirect
 	github.com/pierrec/lz4 v2.5.2+incompatible // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
+	github.com/pquerna/cachecontrol v0.2.0 // indirect
 	github.com/ryanuber/go-glob v1.0.0 // indirect
 	github.com/smartystreets/goconvey v0.0.0-20190330032615-68dc04aab96a // indirect
 	github.com/tidwall/match v1.1.1 // indirect
