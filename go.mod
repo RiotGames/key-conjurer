@@ -6,20 +6,17 @@ require (
 	github.com/aws/aws-sdk-go v1.34.19
 	github.com/coreos/go-oidc v2.2.1+incompatible
 	github.com/go-ini/ini v1.61.0
-	github.com/google/uuid v1.1.2
 	github.com/hashicorp/go-rootcerts v1.0.2
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/mitchellh/go-ps v1.0.0
 	github.com/okta/okta-sdk-golang/v2 v2.2.1
 	github.com/riotgames/vault-go-client v0.0.3
-	github.com/sirupsen/logrus v1.6.0
 	github.com/spf13/cobra v1.7.0
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.8.1
 	github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/cam v1.0.392
 	github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/common v1.0.479
 	github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/sts v1.0.479
-	github.com/tidwall/gjson v1.14.4
 	golang.org/x/exp v0.0.0-20230817173708-d852ddb80c63
 	golang.org/x/net v0.8.0
 	golang.org/x/oauth2 v0.6.0
@@ -42,7 +39,6 @@ require (
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/kardianos/osext v0.0.0-20190222173326-2bc1f35cddc0 // indirect
 	github.com/kelseyhightower/envconfig v1.4.0 // indirect
-	github.com/konsorten/go-windows-terminal-sequences v1.0.3 // indirect
 	github.com/kr/text v0.2.0 // indirect
 	github.com/mitchellh/mapstructure v1.3.3 // indirect
 	github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e // indirect
@@ -53,10 +49,7 @@ require (
 	github.com/pquerna/cachecontrol v0.2.0 // indirect
 	github.com/ryanuber/go-glob v1.0.0 // indirect
 	github.com/smartystreets/goconvey v0.0.0-20190330032615-68dc04aab96a // indirect
-	github.com/tidwall/match v1.1.1 // indirect
-	github.com/tidwall/pretty v1.2.0 // indirect
 	golang.org/x/crypto v0.0.0-20201016220609-9e8e0b390897 // indirect
-	golang.org/x/sys v0.11.0 // indirect
 	golang.org/x/text v0.8.0 // indirect
 	golang.org/x/time v0.0.0-20200630173020-3af7569d3a1e // indirect
 	google.golang.org/appengine v1.6.7 // indirect
