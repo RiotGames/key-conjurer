@@ -9,7 +9,6 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/sts"
-	"github.com/riotgames/key-conjurer/internal"
 	"github.com/spf13/cobra"
 )
 
@@ -158,7 +157,7 @@ A role must be specified when using this command through the --role flag. You ma
 			return nil
 		}
 
-		pair, _, ok := internal.FindRole(roleName, samlResponse)
+		pair, _, ok := FindRoleInSAML(roleName, samlResponse)
 		if !ok {
 			cmd.PrintErrf("you do not have access to the role %s on application %s\n", roleName, args[0])
 			return nil

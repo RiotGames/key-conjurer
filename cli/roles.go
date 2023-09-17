@@ -2,7 +2,6 @@ package main
 
 import (
 	"github.com/RobotsAndPencils/go-saml"
-	"github.com/riotgames/key-conjurer/internal"
 	"github.com/spf13/cobra"
 )
 
@@ -52,7 +51,7 @@ var rolesCmd = cobra.Command{
 			return nil
 		}
 
-		for _, name := range internal.ListRoles(samlResponse) {
+		for _, name := range ListSAMLRoles(samlResponse) {
 			cmd.Println(name)
 		}
 

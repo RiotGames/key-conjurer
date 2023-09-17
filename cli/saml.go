@@ -1,4 +1,4 @@
-package internal
+package main
 
 import (
 	"strings"
@@ -18,7 +18,7 @@ const (
 	tencentFlag    = 1
 )
 
-func ListRoles(response *saml.Response) []string {
+func ListSAMLRoles(response *saml.Response) []string {
 	if response == nil {
 		return nil
 	}
@@ -41,7 +41,7 @@ func ListRoles(response *saml.Response) []string {
 	return names
 }
 
-func FindRole(roleName string, response *saml.Response) (RoleProviderPair, int, bool) {
+func FindRoleInSAML(roleName string, response *saml.Response) (RoleProviderPair, int, bool) {
 	if response == nil {
 		return RoleProviderPair{}, 0, false
 	}

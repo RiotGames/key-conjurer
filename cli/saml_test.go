@@ -1,4 +1,4 @@
-package internal
+package main
 
 import (
 	"testing"
@@ -11,11 +11,11 @@ func TestAwsFindRoleDoesntBreakIfYouHaveMultipleRoles(t *testing.T) {
 	resp := saml.Response{}
 	resp.AddAttribute("https://aws.amazon.com/SAML/Attributes/Role", "arn:cloud:iam::1234:saml-provider/Okta,arn:cloud:iam::1234:role/Admin")
 	resp.AddAttribute("https://aws.amazon.com/SAML/Attributes/Role", "arn:cloud:iam::1234:saml-provider/Okta,arn:cloud:iam::1234:role/Power")
-	pair, _, err := FindRole("Power", &resp)
+	pair, _, err := FindRoleInSAML("Power", &resp)
 	require.True(t, err)
 	require.Equal(t, "arn:cloud:iam::1234:saml-provider/Okta", pair.ProviderARN)
 	require.Equal(t, "arn:cloud:iam::1234:role/Power", pair.RoleARN)
-	pair, _, err = FindRole("Admin", &resp)
+	pair, _, err = FindRoleInSAML("Admin", &resp)
 	require.True(t, err)
 	require.Equal(t, "arn:cloud:iam::1234:saml-provider/Okta", pair.ProviderARN)
 	require.Equal(t, "arn:cloud:iam::1234:role/Admin", pair.RoleARN)
