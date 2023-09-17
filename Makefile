@@ -13,7 +13,7 @@ clean:
 
 test: frontend_test go_test
 
-build: api_build frontend/build/index.html cli/keyconjurer-darwin cli/keyconjurer-darwin-amd64 cli/keyconjurer-darwin-arm64 cli/keyconjurer-linux cli/keyconjurer-linux-amd64 cli/keyconjurer-linux-arm64 cli/keyconjurer-windows.exe
+build: api_build frontend/build/index.html $(CLI_TARGETS)
 
 go_test:
 	go test ./...
@@ -84,6 +84,7 @@ build/list_applications.zip:
 ## Upload Targets
 upload: api_upload cli_upload frontend_upload
 
+CLI_TARGETS = cli/keyconjurer-darwin cli/keyconjurer-darwin-amd64 cli/keyconjurer-darwin-arm64 cli/keyconjurer-linux cli/keyconjurer-linux-amd64 cli/keyconjurer-linux-arm64 cli/keyconjurer-windows.exe
 cli_upload: $(CLI_TARGETS)
 	@test $${S3_FRONTEND_BUCKET_NAME?is not set}
 	@test $${RELEASE?is not set}
