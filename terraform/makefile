@@ -1,4 +1,3 @@
-S3_TF_BUCKET_TAGS ?= "TagSet=[{Key=Name,Value=KeyConjurerS3Bucket}]"
 RELEASE ?= dev
 
 upload: api_upload cli_upload frontend_upload
