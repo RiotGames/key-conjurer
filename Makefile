@@ -8,6 +8,16 @@ all: build
 clean:
 	rm -r builds
 
+# Multiple targets are used because Make can parallelize them
+# If we had test commands in a single target, Make would serially run it instead.
+frontend_test:
+	cd frontend && CI=true npm test
+
+go_test:
+	go test ./...
+
+test: frontend_test go_test
+
 builds/$(RELEASE)/:
 	mkdir -p $@
 
@@ -18,13 +28,16 @@ build: builds/$(RELEASE)/
 
 api_build: builds/$(RELEASE)/list_applications.zip
 
-frontend_build:
+frontend/node_modules:
+	cd frontend && npm install
+
+frontend_build: frontend/node_modules
+	mkdir -p builds/$(RELEASE)/frontend/
 	@test $${FRONTEND_URL?is not set}
 	@test $${API_URL?is not set}
-	@test $${BINARY_NAME?is not set}
-	mkdir -p builds/$(RELEASE)/frontend
-	cd frontend \
-	&& $(MAKE) -f makefile build
+	cd frontend && \
+	REACT_APP_VERSION='$$(git rev-parse --short HEAD)-$(RELEASE)' REACT_APP_API_URL=${API_URL} REACT_APP_BINARY_NAME=${BINARY_NAME} REACT_APP_DOCUMENTATION_URL=${REACT_APP_DOCUMENTATION_URL} REACT_APP_CLIENT=webUI npm run-script build
+	cp -R frontend/build/* builds/$(RELEASE)/frontend/
 
 cli_build:
 	mkdir -p builds/$(RELEASE)/cli
