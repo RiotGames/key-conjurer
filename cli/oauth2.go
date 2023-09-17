@@ -15,8 +15,8 @@ import (
 
 	"github.com/coreos/go-oidc"
 	rootcerts "github.com/hashicorp/go-rootcerts"
-	"github.com/riotgames/key-conjurer/pkg/htmlutil"
-	"github.com/riotgames/key-conjurer/pkg/httputil"
+	"github.com/riotgames/key-conjurer/internal/htmlutil"
+	"github.com/riotgames/key-conjurer/internal/httputil"
 	"golang.org/x/net/html"
 	"golang.org/x/oauth2"
 )

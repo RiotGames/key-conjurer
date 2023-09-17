@@ -7,7 +7,7 @@ import (
 
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/riotgames/key-conjurer/api/keyconjurer"
-	"github.com/riotgames/key-conjurer/pkg/httputil"
+	"github.com/riotgames/key-conjurer/internal/httputil"
 	"golang.org/x/exp/slog"
 )
 

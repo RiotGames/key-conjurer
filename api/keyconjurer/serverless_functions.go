@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/okta/okta-sdk-golang/v2/okta"
-	"github.com/riotgames/key-conjurer/pkg/httputil"
+	"github.com/riotgames/key-conjurer/internal/httputil"
 	"golang.org/x/exp/slog"
 )
 

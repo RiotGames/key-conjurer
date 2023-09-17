@@ -10,7 +10,7 @@ import (
 	"net/url"
 
 	"github.com/riotgames/key-conjurer/api/keyconjurer"
-	"github.com/riotgames/key-conjurer/pkg/httputil"
+	"github.com/riotgames/key-conjurer/internal/httputil"
 	"github.com/spf13/cobra"
 	"golang.org/x/oauth2"
 )
