@@ -5,10 +5,7 @@ build:
 	&& make api_build \
 	&& make frontend_build
 
-api_build:
-	mkdir -p builds/$(RELEASE)/aws
-	cd api \
-	&& $(MAKE) -f makefile build
+api_build: builds/$(RELEASE)/list_applications.zip
 
 frontend_build:
 	mkdir -p builds/$(RELEASE)/frontend
@@ -35,3 +32,17 @@ deploy_aws:
 plan_aws:
 	cd terraform \
 	&& $(MAKE) -f makefile plan_deploy
+
+RELEASE ?= dev
+VERSION ?= $(shell git rev-parse --short HEAD)
+
+list_applications.zip:
+	GOOS=linux GOARCH=amd64 go build \
+		-tags lambda.norpc \
+		-o bootstrap lambda/$(subst .zip,,$@)/main.go
+	zip $@ bootstrap
+	rm bootstrap
+
+builds/$(RELEASE)/list_applications.zip: list_applications.zip
+	mkdir -p builds/$(RELEASE)
+	mv $^ $@
