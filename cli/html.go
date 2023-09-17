@@ -117,22 +117,3 @@ func FindFirstForm(tree *html.Node) (Form, bool) {
 	form, err := collectFormValues(formNode)
 	return form, err == nil
 }
-
-// FindFormByID returns the first form present in the given document with the given ID, or false if it doesn't exist.
-func FindFormByID(tree *html.Node, id string) (Form, bool) {
-	var formNode *html.Node
-	Walk(tree, func(n *html.Node) bool {
-		if n.Data == "form" {
-			attrID, _ := getAttribute(n.Attr, "id")
-			if attrID == id {
-				formNode = n
-				return true
-			}
-		}
-
-		return false
-	})
-
-	form, err := collectFormValues(formNode)
-	return form, err == nil
-}
