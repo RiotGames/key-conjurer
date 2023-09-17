@@ -40,39 +40,6 @@ resource "aws_lb_listener" "https_redirect" {
   }
 }
 
-resource "aws_lb_listener_rule" "list_applications_v2" {
-  listener_arn = aws_lb_listener.https.arn
-
-  action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.list_applications_v2.arn
-  }
-
-  condition {
-    path_pattern {
-      values = ["/v2/applications"]
-    }
-  }
-}
-
-resource "aws_lb_target_group" "list_applications_v2" {
-  name_prefix = "keycon"
-  target_type = "lambda"
-}
-
-resource "aws_lb_target_group_attachment" "list_applications_v2" {
-  target_group_arn = aws_lb_target_group.list_applications_v2.arn
-  target_id        = aws_lambda_function.keyconjurer-list_applications_v2.arn
-}
-
-resource "aws_lambda_permission" "lb-list_applications_v2" {
-  statement_id  = "LoadBalancer"
-  action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.keyconjurer-list_applications_v2.arn
-  principal     = "elasticloadbalancing.amazonaws.com"
-  source_arn    = aws_lb_target_group.list_applications_v2.arn
-}
-
 resource "aws_security_group" "keyconjurer-lb" {
   name_prefix = "keyconjurer-lb"
   vpc_id      = var.vpc_id
