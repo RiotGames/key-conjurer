@@ -1,4 +1,4 @@
-package keyconjurer
+package api
 
 import (
 	"context"
@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/okta/okta-sdk-golang/v2/okta"
-	"github.com/riotgames/key-conjurer/internal/api"
 	"golang.org/x/exp/slog"
 )
 
@@ -27,7 +26,7 @@ func ServeUserApplications(okta OktaService) http.Handler {
 		idToken, ok := GetBearerToken(r)
 		if !ok {
 			slog.Error("no bearer token present", requestAttrs...)
-			api.ServeJSONError(w, http.StatusUnauthorized, "unauthorized")
+			ServeJSONError(w, http.StatusUnauthorized, "unauthorized")
 			return
 		}
 
@@ -35,7 +34,7 @@ func ServeUserApplications(okta OktaService) http.Handler {
 		if err != nil {
 			requestAttrs = append(requestAttrs, slog.String("error", err.Error()))
 			slog.Error("okta rejected id token", requestAttrs...)
-			api.ServeJSONError(w, http.StatusForbidden, "unauthorized")
+			ServeJSONError(w, http.StatusForbidden, "unauthorized")
 			return
 		}
 
@@ -44,7 +43,7 @@ func ServeUserApplications(okta OktaService) http.Handler {
 		if err != nil {
 			requestAttrs = append(requestAttrs, slog.String("error", err.Error()))
 			slog.Error("failed to fetch applications", requestAttrs...)
-			api.ServeJSONError(w, http.StatusBadGateway, "upstream error")
+			ServeJSONError(w, http.StatusBadGateway, "upstream error")
 			return
 		}
 
@@ -60,6 +59,6 @@ func ServeUserApplications(okta OktaService) http.Handler {
 
 		requestAttrs = append(requestAttrs, slog.Int("application_count", len(accounts)))
 		slog.Info("served applications", requestAttrs...)
-		api.ServeJSON(w, accounts)
+		ServeJSON(w, accounts)
 	})
 }

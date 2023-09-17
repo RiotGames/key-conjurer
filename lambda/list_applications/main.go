@@ -6,13 +6,13 @@ import (
 	"os"
 
 	"github.com/aws/aws-lambda-go/lambda"
-	"github.com/riotgames/key-conjurer/api/keyconjurer"
 	"github.com/riotgames/key-conjurer/internal"
+	"github.com/riotgames/key-conjurer/internal/api"
 	"golang.org/x/exp/slog"
 )
 
 func main() {
-	settings, err := keyconjurer.NewSettings(context.Background())
+	settings, err := api.NewSettings(context.Background())
 	if err != nil {
 		slog.Error("could not fetch configuration: %s", err)
 		os.Exit(1)
@@ -24,6 +24,6 @@ func main() {
 	}
 
 	slog.Info("running list_applications_v2 Lambda")
-	service := keyconjurer.NewOktaService(&oktaDomain, settings.OktaToken)
-	lambda.StartHandler(internal.Lambdaify(keyconjurer.ServeUserApplications(service)))
+	service := api.NewOktaService(&oktaDomain, settings.OktaToken)
+	lambda.StartHandler(internal.Lambdaify(api.ServeUserApplications(service)))
 }
