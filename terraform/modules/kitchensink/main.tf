@@ -2,7 +2,7 @@
 # For more advanced deployments, you should use the constituent modules separately.
 
 module "frontend" {
-  source          = "./modules/frontend"
+  source          = "../frontend"
   create_waf_acl  = var.create_waf_acl
   waf_acl_id      = var.waf_acl_id
   bucket_name     = var.s3_tf_bucket
@@ -12,7 +12,7 @@ module "frontend" {
 }
 
 module "loadbalancer" {
-  source          = "./modules/loadbalancer"
+  source          = "../loadbalancer"
   subnets         = var.subnets
   certificate_arn = var.api_cert
   security_group_ids = [
@@ -21,7 +21,7 @@ module "loadbalancer" {
 }
 
 module "list_applications" {
-  source                = "./modules/list_applications"
+  source                = "../list_applications"
   listener_arn          = module.loadbalancer.https_listener_arn
   bucket_name           = var.s3_tf_bucket
   environment           = var.environment

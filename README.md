@@ -124,7 +124,7 @@ resource "aws_acm_certificate_validation" "frontend-cert" {
 }
 
 module "keyconjurer-production" {
-  source          = "./Key-Conjurer/terraform"
+  source          = "./Key-Conjurer/terraform/modules/kitchensink"
   api_cert        = aws_acm_certificate.development-cert.arn
   api_domain      = aws_acm_certificate.development-cert.domain_name
   frontend_cert   = aws_acm_certificate.frontend-cert.arn
