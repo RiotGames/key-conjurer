@@ -6,10 +6,14 @@ import (
 	"strings"
 
 	"github.com/okta/okta-sdk-golang/v2/okta"
-	"github.com/riotgames/key-conjurer/api/core"
 	"github.com/riotgames/key-conjurer/pkg/httputil"
 	"golang.org/x/exp/slog"
 )
+
+type Application struct {
+	ID   string `json:"@id"`
+	Name string `json:"name"`
+}
 
 type OktaService interface {
 	GetUserInfo(ctx context.Context, token string) (OktaUserInfo, error)
@@ -44,10 +48,10 @@ func ServeUserApplications(okta OktaService) http.Handler {
 			return
 		}
 
-		var accounts []core.Application
+		var accounts []Application
 		for _, app := range applications {
 			if app.AppName == "amazon_aws" || strings.Contains(app.AppName, "tencent") {
-				accounts = append(accounts, core.Application{
+				accounts = append(accounts, Application{
 					ID:   app.AppInstanceId,
 					Name: app.Label,
 				})

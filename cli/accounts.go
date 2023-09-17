@@ -9,7 +9,7 @@ import (
 	"net/http"
 	"net/url"
 
-	"github.com/riotgames/key-conjurer/api/core"
+	"github.com/riotgames/key-conjurer/api/keyconjurer"
 	"github.com/riotgames/key-conjurer/pkg/httputil"
 	"github.com/spf13/cobra"
 	"golang.org/x/oauth2"
@@ -100,7 +100,7 @@ func refreshAccounts(ctx context.Context, serverAddr *url.URL, tok *oauth2.Token
 		return nil, fmt.Errorf("status code %d", resp.StatusCode)
 	}
 
-	var apps []core.Application
+	var apps []keyconjurer.Application
 	if err := json.Unmarshal(body, &apps); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal applications: %w", err)
 	}
