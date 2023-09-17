@@ -19,6 +19,9 @@ build: builds/$(RELEASE)/
 api_build: builds/$(RELEASE)/list_applications.zip
 
 frontend_build:
+	@test $${FRONTEND_URL?is not set}
+	@test $${API_URL?is not set}
+	@test $${BINARY_NAME?is not set}
 	mkdir -p builds/$(RELEASE)/frontend
 	cd frontend \
 	&& $(MAKE) -f makefile build
@@ -27,12 +30,6 @@ cli_build:
 	mkdir -p builds/$(RELEASE)/cli
 	cd cli \
 	&& $(MAKE) -f makefile all
-
-frontend_file_reset:
-	cd frontend \
-	&& $(MAKE) -f makefile reset_files
-
-reset_files: frontend_file_reset
 
 builds/$(RELEASE)/list_applications.zip: builds/$(RELEASE)/
 # A temporary destination is used because we don't want multiple targets run at the same time to conflict - they all have to be named 'bootstrap'
