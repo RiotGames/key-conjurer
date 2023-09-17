@@ -1,5 +1,5 @@
 resource "aws_s3_bucket" "keyconjurer_frontend" {
-  bucket = var.frontend_bucket_name
+  bucket = var.bucket_name
 }
 
 data "aws_iam_policy_document" "frontend_bucket_policy" {

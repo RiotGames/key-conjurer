@@ -7,7 +7,7 @@ resource "aws_cloudfront_distribution" "keyconjurer_distribution" {
   default_root_object = "index.html"
   // US, Canada, Europe only
   price_class = "PriceClass_100"
-  aliases     = [var.frontend_domain]
+  aliases     = [var.domain]
 
   origin {
     domain_name = aws_s3_bucket.keyconjurer_frontend.bucket_regional_domain_name
@@ -42,7 +42,7 @@ resource "aws_cloudfront_distribution" "keyconjurer_distribution" {
   }
 
   viewer_certificate {
-    acm_certificate_arn = var.frontend_cert
+    acm_certificate_arn = var.certificate_arn
     ssl_support_method  = "sni-only"
   }
 

@@ -1,10 +1,20 @@
 # This main.tf file can be used to deploy a version of KeyConjurer.
 # For more advanced deployments, you should use the constituent modules separately.
 
+module "frontend" {
+  source = "./modules/frontend"
+  create_waf_acl = var.create_waf_acl
+  waf_acl_id = var.waf_acl_id
+  bucket_name = var.s3_tf_bucket
+  certificate_arn = var.frontend_cert
+  domain = var.frontend_domain
+  account_number = var.account_number
+}
+
 module "loadbalancer" {
   source = "./modules/loadbalancer"
   subnets = var.subnets
-  api_certificate_arn = var.api_cert
+  certificate_arn = var.api_cert
   security_group_ids = [
     aws_security_group.keyconjurer-lb.id
   ]

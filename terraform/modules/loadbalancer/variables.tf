@@ -2,7 +2,7 @@ variable subnets {
 	type = list(string)
 }
 
-variable api_certificate_arn {
+variable certificate_arn {
 	type = string
 }
 

@@ -17,4 +17,3 @@ resource "aws_waf_web_acl" "keyconjurer_waf_acl" {
     type = "BLOCK"
   }
 }
-

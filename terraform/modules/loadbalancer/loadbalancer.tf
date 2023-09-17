@@ -7,7 +7,7 @@ resource "aws_lb" "keyconjurer" {
 
 resource "aws_lb_listener" "https" {
   load_balancer_arn = aws_lb.keyconjurer.arn
-  certificate_arn   = var.api_certificate_arn
+  certificate_arn   = var.certificate_arn
 
   port     = "443"
   protocol = "HTTPS"
