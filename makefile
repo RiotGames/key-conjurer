@@ -1,4 +1,8 @@
 RELEASE ?= dev
+VERSION ?= $(shell git rev-parse --short HEAD)
+
+builds/$(RELEASE)/:
+	mkdir -p $@
 
 build:
 	make cli_build \
@@ -33,16 +37,10 @@ plan_aws:
 	cd terraform \
 	&& $(MAKE) -f makefile plan_deploy
 
-RELEASE ?= dev
-VERSION ?= $(shell git rev-parse --short HEAD)
-
-list_applications.zip:
+builds/$(RELEASE)/list_applications.zip: builds/$(RELEASE)/
+# A temporary destination is used because we don't want multiple targets run at the same time to conflict - they all have to be named 'bootstrap'
+	TMP_DST=$$(mktemp -d) ;\
 	GOOS=linux GOARCH=amd64 go build \
 		-tags lambda.norpc \
-		-o bootstrap lambda/$(subst .zip,,$@)/main.go
-	zip $@ bootstrap
-	rm bootstrap
-
-builds/$(RELEASE)/list_applications.zip: list_applications.zip
-	mkdir -p builds/$(RELEASE)
-	mv $^ $@
+		-o $$TMP_DST/bootstrap lambda/$(subst .zip,,$(notdir $@))/main.go && \
+	(cd $$TMP_DST && zip - bootstrap) > $@
