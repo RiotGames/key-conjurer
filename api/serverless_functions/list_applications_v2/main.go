@@ -1,18 +1,18 @@
 package main
 
 import (
+	"context"
 	"net/url"
 	"os"
 
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/riotgames/key-conjurer/api/keyconjurer"
-	"github.com/riotgames/key-conjurer/api/settings"
 	"github.com/riotgames/key-conjurer/pkg/httputil"
 	"golang.org/x/exp/slog"
 )
 
 func main() {
-	settings, err := settings.NewSettings()
+	settings, err := keyconjurer.NewSettings(context.Background())
 	if err != nil {
 		slog.Error("could not fetch configuration: %s", err)
 		os.Exit(1)
