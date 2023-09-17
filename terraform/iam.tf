@@ -23,15 +23,6 @@ data "aws_iam_policy_document" "keyconjurer_lambda_permissions" {
     actions   = ["sts:AssumeRole"]
     resources = ["arn:aws:sts::*:federated-user/*"]
   }
-
-  statement {
-    sid = "AllowDecryptAndEncryptCredentials"
-    actions = [
-      "kms:Encrypt",
-      "kms:Decrypt"
-    ]
-    resources = [var.kms_key_arn]
-  }
 }
 
 resource "aws_iam_role_policy" "keyconjurer-lamdba" {

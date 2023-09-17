@@ -54,11 +54,6 @@ variable "waf_acl_id" {
   description = "The ACL to use with the Cloudfront distribution that is created. if not specified, an ACL which blocks all public access will be created"
 }
 
-variable "kms_key_arn" {
-  type        = string
-  description = "The KMS encryption key that is used to encrypt and decrypt credentials so that they are not stored on the users drive in plaintext"
-}
-
 variable "lb_security_group_ids" {
   type = list(string)
 }
