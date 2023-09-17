@@ -62,6 +62,7 @@ cli/keyconjurer:
 	cd cli && \
 	go build \
 		-ldflags "\
+			-s -w \
 			-X main.Version=$(shell git rev-parse --short HEAD)-$(RELEASE) \
 			-X main.ClientID=$(CLIENT_ID) \
 			-X main.OIDCDomain=$(OIDC_DOMAIN) \
