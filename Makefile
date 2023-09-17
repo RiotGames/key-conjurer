@@ -14,15 +14,12 @@ test: frontend_test go_test
 
 build: api_build build/frontend/index.html build/cli/keyconjurer-darwin build/cli/keyconjurer-darwin-amd64 build/cli/keyconjurer-darwin-arm64 build/cli/keyconjurer-linux build/cli/keyconjurer-linux-amd64 build/cli/keyconjurer-linux-arm64 build/cli/keyconjurer-windows.exe
 
-# Multiple targets are used because Make can parallelize them
-# If we had test commands in a single target, Make would serially run it instead.
-frontend_test:
-	cd frontend && CI=true npm test
-
 go_test:
 	go test ./...
 
-api_build: build/list_applications.zip
+## Frontend Build Targets
+frontend_test:
+	cd frontend && CI=true npm test
 
 frontend/node_modules:
 	cd frontend && npm install
@@ -39,9 +36,41 @@ build/frontend/index.html: frontend/node_modules
 	REACT_APP_CLIENT=webUI npm run-script build
 	cp -R frontend/build/* build/frontend/
 
-build/cli/keyconjurer-darwin build/cli/keyconjurer-darwin-amd64 build/cli/keyconjurer-darwin-arm64 build/cli/keyconjurer-linux build/cli/keyconjurer-linux-amd64 build/cli/keyconjurer-linux-arm64 build/cli/keyconjurer-windows.exe:
-	mkdir -p build/cli
-	cd cli && $(MAKE) -f makefile all
+### CLI Build Targets
+build/cli/keyconjurer-linux-arm64 build/cli/keyconjurer-linux:
+	GOOS=linux GOARCH=amd64 BUILD_TARGET=keyconjurer-linux $(MAKE) cli/keyconjurer
+	GOOS=linux GOARCH=arm64 BUILD_TARGET=keyconjurer-linux-arm64 $(MAKE) cli/keyconjurer
+
+build/cli/keyconjurer-linux-amd64: build/cli/keyconjurer-linux
+	cp build/cli/keyconjurer-linux build/cli/keyconjurer-linux-amd64
+
+build/cli/keyconjurer-darwin-arm64 build/cli/keyconjurer-darwin:
+	GOOS=darwin GOARCH=amd64 BUILD_TARGET=keyconjurer-darwin $(MAKE) cli/keyconjurer
+	GOOS=darwin GOARCH=arm64 BUILD_TARGET=keyconjurer-darwin-arm64 $(MAKE) cli/keyconjurer
+
+build/cli/keyconjurer-darwin-amd64: build/cli/keyconjurer-darwin
+	cp build/cli/keyconjurer-darwin build/cli/keyconjurer-darwin-amd64
+
+build/cli/keyconjurer-windows.exe:
+	GOOS=windows GOARCH=amd64 BUILD_TARGET=keyconjurer-windows.exe $(MAKE) cli/keyconjurer
+
+cli/keyconjurer:
+	@test $${CLIENT_ID?is not set}
+	@test $${OIDC_DOMAIN?is not set}
+	@test $${SERVER_ADDRESS?is not set}
+	@mkdir -p build/cli
+	cd cli && \
+	go build \
+		-ldflags "\
+			-X main.Version=$(shell git rev-parse --short HEAD)-$(RELEASE) \
+			-X main.ClientID=$(CLIENT_ID) \
+			-X main.OIDCDomain=$(OIDC_DOMAIN) \
+			-X main.BuildTimestamp='$(shell date --iso-8601=minutes)'' \
+			-X main.ServerAddress=$(SERVER_ADDRESS)" \
+		-o ../build/cli/$(BUILD_TARGET)
+
+## API Build Targets
+api_build: build/list_applications.zip
 
 build/list_applications.zip:
 	mkdir -p build/cli
@@ -52,6 +81,8 @@ build/list_applications.zip:
 		-o $$TMP_DST/bootstrap lambda/$(subst .zip,,$(notdir $@))/main.go && \
 	(cd $$TMP_DST && zip - bootstrap) > $@
 
+
+## Upload Targets
 upload: api_upload cli_upload frontend_upload
 
 cli_upload: $(CLI_TARGETS)
