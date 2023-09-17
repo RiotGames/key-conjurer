@@ -7,7 +7,7 @@ import (
 
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/riotgames/key-conjurer/api/keyconjurer"
-	"github.com/riotgames/key-conjurer/internal/httputil"
+	"github.com/riotgames/key-conjurer/internal"
 	"golang.org/x/exp/slog"
 )
 
@@ -25,5 +25,5 @@ func main() {
 
 	slog.Info("running list_applications_v2 Lambda")
 	service := keyconjurer.NewOktaService(&oktaDomain, settings.OktaToken)
-	lambda.StartHandler(httputil.Lambdaify(keyconjurer.ServeUserApplications(service)))
+	lambda.StartHandler(internal.Lambdaify(keyconjurer.ServeUserApplications(service)))
 }

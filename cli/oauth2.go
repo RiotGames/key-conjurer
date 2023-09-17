@@ -15,8 +15,6 @@ import (
 
 	"github.com/coreos/go-oidc"
 	rootcerts "github.com/hashicorp/go-rootcerts"
-	"github.com/riotgames/key-conjurer/internal/htmlutil"
-	"github.com/riotgames/key-conjurer/internal/httputil"
 	"golang.org/x/net/html"
 	"golang.org/x/oauth2"
 )
@@ -32,7 +30,7 @@ func NewHTTPClient() *http.Client {
 		}
 	}
 
-	return &http.Client{Transport: httputil.LogRoundTripper(tr)}
+	return &http.Client{Transport: LogRoundTripper(tr)}
 }
 
 func DiscoverOAuth2Config(ctx context.Context, domain, clientID string) (*oauth2.Config, *oidc.Provider, error) {
@@ -228,7 +226,7 @@ func ExchangeWebSSOTokenForSAMLAssertion(ctx context.Context, client *http.Clien
 	}
 
 	doc, _ := html.Parse(resp.Body)
-	form, ok := htmlutil.FindFirstForm(doc)
+	form, ok := FindFirstForm(doc)
 	if !ok {
 		return nil, errors.New("could not find form")
 	}

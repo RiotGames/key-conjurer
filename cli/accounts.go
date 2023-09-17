@@ -10,7 +10,7 @@ import (
 	"net/url"
 
 	"github.com/riotgames/key-conjurer/api/keyconjurer"
-	"github.com/riotgames/key-conjurer/internal/httputil"
+	"github.com/riotgames/key-conjurer/internal/api"
 	"github.com/spf13/cobra"
 	"golang.org/x/oauth2"
 )
@@ -91,7 +91,7 @@ func refreshAccounts(ctx context.Context, serverAddr *url.URL, tok *oauth2.Token
 		return nil, fmt.Errorf("could not read body: %s", err)
 	}
 
-	var jsonError httputil.JSONError
+	var jsonError api.JSONError
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != 0 {
 		if err := json.Unmarshal(body, &jsonError); err != nil {
 			return nil, errors.New(jsonError.Message)

@@ -1,4 +1,4 @@
-package htmlutil
+package main
 
 import (
 	"strings"

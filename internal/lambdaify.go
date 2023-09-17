@@ -1,4 +1,4 @@
-package httputil
+package internal
 
 import (
 	"context"
