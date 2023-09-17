@@ -273,3 +273,7 @@ $RECYCLE.BIN/
 *.lnk
 
 # End of https://www.gitignore.io/api/go,vim,osx,node,emacs,windows,terrafomr
+
+cli/keyconjurer-darwin*
+cli/keyconjurer-linux*
+cli/keyconjurer-windows.exe

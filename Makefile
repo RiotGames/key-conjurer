@@ -8,11 +8,12 @@ VERSION ?= $(shell git rev-parse --short HEAD)
 all: build
 
 clean:
-	rm -r build
+	rm -r cli/keyconjurer*
+	rm -r frontend/build
 
 test: frontend_test go_test
 
-build: api_build build/frontend/index.html build/cli/keyconjurer-darwin build/cli/keyconjurer-darwin-amd64 build/cli/keyconjurer-darwin-arm64 build/cli/keyconjurer-linux build/cli/keyconjurer-linux-amd64 build/cli/keyconjurer-linux-arm64 build/cli/keyconjurer-windows.exe
+build: api_build frontend/build/index.html cli/keyconjurer-darwin cli/keyconjurer-darwin-amd64 cli/keyconjurer-darwin-arm64 cli/keyconjurer-linux cli/keyconjurer-linux-amd64 cli/keyconjurer-linux-arm64 cli/keyconjurer-windows.exe
 
 go_test:
 	go test ./...
@@ -24,7 +25,7 @@ frontend_test:
 frontend/node_modules:
 	cd frontend && npm install
 
-build/frontend/index.html: frontend/node_modules
+frontend/build/index.html: frontend/node_modules
 	mkdir -p build/frontend/
 	@test $${FRONTEND_URL?is not set}
 	@test $${API_URL?is not set}
@@ -34,31 +35,29 @@ build/frontend/index.html: frontend/node_modules
 	REACT_APP_BINARY_NAME=${BINARY_NAME} \
 	REACT_APP_DOCUMENTATION_URL=${REACT_APP_DOCUMENTATION_URL} \
 	REACT_APP_CLIENT=webUI npm run-script build
-	cp -R frontend/build/* build/frontend/
 
 ### CLI Build Targets
-build/cli/keyconjurer-linux-arm64 build/cli/keyconjurer-linux:
+cli/keyconjurer-linux-arm64 cli/keyconjurer-linux:
 	GOOS=linux GOARCH=amd64 BUILD_TARGET=keyconjurer-linux $(MAKE) cli/keyconjurer
 	GOOS=linux GOARCH=arm64 BUILD_TARGET=keyconjurer-linux-arm64 $(MAKE) cli/keyconjurer
 
-build/cli/keyconjurer-linux-amd64: build/cli/keyconjurer-linux
-	cp build/cli/keyconjurer-linux build/cli/keyconjurer-linux-amd64
+cli/keyconjurer-linux-amd64: cli/keyconjurer-linux
+	cp cli/keyconjurer-linux cli/keyconjurer-linux-amd64
 
-build/cli/keyconjurer-darwin-arm64 build/cli/keyconjurer-darwin:
+cli/keyconjurer-darwin-arm64 cli/keyconjurer-darwin:
 	GOOS=darwin GOARCH=amd64 BUILD_TARGET=keyconjurer-darwin $(MAKE) cli/keyconjurer
 	GOOS=darwin GOARCH=arm64 BUILD_TARGET=keyconjurer-darwin-arm64 $(MAKE) cli/keyconjurer
 
-build/cli/keyconjurer-darwin-amd64: build/cli/keyconjurer-darwin
-	cp build/cli/keyconjurer-darwin build/cli/keyconjurer-darwin-amd64
+cli/keyconjurer-darwin-amd64: cli/keyconjurer-darwin
+	cp cli/keyconjurer-darwin cli/keyconjurer-darwin-amd64
 
-build/cli/keyconjurer-windows.exe:
+cli/keyconjurer-windows.exe:
 	GOOS=windows GOARCH=amd64 BUILD_TARGET=keyconjurer-windows.exe $(MAKE) cli/keyconjurer
 
 cli/keyconjurer:
 	@test $${CLIENT_ID?is not set}
 	@test $${OIDC_DOMAIN?is not set}
 	@test $${SERVER_ADDRESS?is not set}
-	@mkdir -p build/cli
 	cd cli && \
 	go build \
 		-ldflags "\
@@ -67,7 +66,7 @@ cli/keyconjurer:
 			-X main.OIDCDomain=$(OIDC_DOMAIN) \
 			-X main.BuildTimestamp='$(shell date --iso-8601=minutes)' \
 			-X main.ServerAddress=$(SERVER_ADDRESS)" \
-		-o ../build/cli/$(BUILD_TARGET)
+		-o $(BUILD_TARGET)
 
 ## API Build Targets
 api_build: build/list_applications.zip
@@ -88,13 +87,13 @@ upload: api_upload cli_upload frontend_upload
 cli_upload: $(CLI_TARGETS)
 	@test $${S3_FRONTEND_BUCKET_NAME?is not set}
 	@test $${RELEASE?is not set}
-	cd build/cli && \
+	cd cli/ && \
 	aws s3 cp . s3://$(S3_FRONTEND_BUCKET_NAME)-$(RELEASE) --exclude "*" --include "keyconjurer*" --recursive
 
-frontend_upload: build/frontend/index.html
+frontend_upload: frontend/build/index.html
 	@test $${S3_FRONTEND_BUCKET_NAME?is not set}
 	@test $${RELEASE?is not set}
-	cd build/frontend && \
+	cd frontend/build && \
 	aws s3 cp . s3://$(S3_FRONTEND_BUCKET_NAME)-$(RELEASE) --include "*" --recursive
 
 api_upload: build/list_applications.zip
