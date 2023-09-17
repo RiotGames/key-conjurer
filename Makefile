@@ -3,10 +3,16 @@
 RELEASE ?= dev
 VERSION ?= $(shell git rev-parse --short HEAD)
 
+## Standard targets for all Makefiles in our team
+
 all: build
 
 clean:
 	rm -r builds
+
+test: frontend_test go_test
+
+build: api_build frontend_build cli_build
 
 # Multiple targets are used because Make can parallelize them
 # If we had test commands in a single target, Make would serially run it instead.
@@ -15,16 +21,6 @@ frontend_test:
 
 go_test:
 	go test ./...
-
-test: frontend_test go_test
-
-builds/$(RELEASE)/:
-	mkdir -p $@
-
-build: builds/$(RELEASE)/
-	make cli_build \
-	&& make api_build \
-	&& make frontend_build
 
 api_build: builds/$(RELEASE)/list_applications.zip
 
@@ -36,15 +32,19 @@ frontend_build: frontend/node_modules
 	@test $${FRONTEND_URL?is not set}
 	@test $${API_URL?is not set}
 	cd frontend && \
-	REACT_APP_VERSION='$$(git rev-parse --short HEAD)-$(RELEASE)' REACT_APP_API_URL=${API_URL} REACT_APP_BINARY_NAME=${BINARY_NAME} REACT_APP_DOCUMENTATION_URL=${REACT_APP_DOCUMENTATION_URL} REACT_APP_CLIENT=webUI npm run-script build
+	REACT_APP_VERSION='$$(git rev-parse --short HEAD)-$(RELEASE)' \
+	REACT_APP_API_URL=${API_URL} \
+	REACT_APP_BINARY_NAME=${BINARY_NAME} \
+	REACT_APP_DOCUMENTATION_URL=${REACT_APP_DOCUMENTATION_URL} \
+	REACT_APP_CLIENT=webUI npm run-script build
 	cp -R frontend/build/* builds/$(RELEASE)/frontend/
 
 cli_build:
 	mkdir -p builds/$(RELEASE)/cli
-	cd cli \
-	&& $(MAKE) -f makefile all
+	cd cli && $(MAKE) -f makefile all
 
 builds/$(RELEASE)/list_applications.zip: builds/$(RELEASE)/
+	mkdir -p builds/$(RELEASE)/cli
 # A temporary destination is used because we don't want multiple targets run at the same time to conflict - they all have to be named 'bootstrap'
 	TMP_DST=$$(mktemp -d) ;\
 	GOOS=linux GOARCH=amd64 go build \
