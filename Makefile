@@ -65,7 +65,7 @@ cli/keyconjurer:
 			-X main.Version=$(shell git rev-parse --short HEAD)-$(RELEASE) \
 			-X main.ClientID=$(CLIENT_ID) \
 			-X main.OIDCDomain=$(OIDC_DOMAIN) \
-			-X main.BuildTimestamp='$(shell date --iso-8601=minutes)'' \
+			-X main.BuildTimestamp='$(shell date --iso-8601=minutes)' \
 			-X main.ServerAddress=$(SERVER_ADDRESS)" \
 		-o ../build/cli/$(BUILD_TARGET)
 
