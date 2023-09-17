@@ -3,6 +3,7 @@
 dev.env
 prod.env
 shared.env
+build/
 frontend/build/**
 **/builds/**
 api/lambdas/get_aws_creds/get_aws_creds
