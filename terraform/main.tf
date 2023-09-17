@@ -2,18 +2,18 @@
 # For more advanced deployments, you should use the constituent modules separately.
 
 module "frontend" {
-  source = "./modules/frontend"
-  create_waf_acl = var.create_waf_acl
-  waf_acl_id = var.waf_acl_id
-  bucket_name = var.s3_tf_bucket
+  source          = "./modules/frontend"
+  create_waf_acl  = var.create_waf_acl
+  waf_acl_id      = var.waf_acl_id
+  bucket_name     = var.s3_tf_bucket
   certificate_arn = var.frontend_cert
-  domain = var.frontend_domain
-  account_number = var.account_number
+  domain          = var.frontend_domain
+  account_number  = var.account_number
 }
 
 module "loadbalancer" {
-  source = "./modules/loadbalancer"
-  subnets = var.subnets
+  source          = "./modules/loadbalancer"
+  subnets         = var.subnets
   certificate_arn = var.api_cert
   security_group_ids = [
     aws_security_group.keyconjurer-lb.id
@@ -21,13 +21,13 @@ module "loadbalancer" {
 }
 
 module "list_applications" {
-  source = "./modules/list_applications"
-  listener_arn = module.loadbalancer.https_listener_arn
-  bucket_name = var.s3_tf_bucket
-  environment = var.environment
+  source                = "./modules/list_applications"
+  listener_arn          = module.loadbalancer.https_listener_arn
+  bucket_name           = var.s3_tf_bucket
+  environment           = var.environment
   environment_variables = var.lambda_env
-  subnets = var.subnets
-  execution_role_arn = aws_iam_role.keyconjurer-lambda.arn
+  subnets               = var.subnets
+  execution_role_arn    = aws_iam_role.keyconjurer-lambda.arn
   security_group_ids = [
     aws_security_group.keyconjurer-default.id
   ]

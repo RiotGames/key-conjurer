@@ -1,7 +1,7 @@
 resource "aws_lb" "keyconjurer" {
-  name_prefix = "keycon"
-  internal    = true
-  subnets     = var.subnets
+  name_prefix     = "keycon"
+  internal        = true
+  subnets         = var.subnets
   security_groups = var.security_group_ids
 }
 
