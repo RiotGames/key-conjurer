@@ -2,14 +2,12 @@ resource "aws_lb" "keyconjurer" {
   name_prefix = "keycon"
   internal    = true
   subnets     = var.subnets
-  security_groups = concat(var.lb_security_group_ids, [
-    aws_security_group.keyconjurer-lb.id
-  ])
+  security_groups = var.security_group_ids
 }
 
 resource "aws_lb_listener" "https" {
   load_balancer_arn = aws_lb.keyconjurer.arn
-  certificate_arn   = var.api_cert
+  certificate_arn   = var.api_certificate_arn
 
   port     = "443"
   protocol = "HTTPS"
@@ -37,18 +35,5 @@ resource "aws_lb_listener" "https_redirect" {
       protocol    = "HTTPS"
       status_code = "HTTP_301"
     }
-  }
-}
-
-resource "aws_security_group" "keyconjurer-lb" {
-  name_prefix = "keyconjurer-lb"
-  vpc_id      = var.vpc_id
-
-  egress {
-    from_port        = 0
-    to_port          = 0
-    protocol         = "-1"
-    cidr_blocks      = ["0.0.0.0/0"]
-    ipv6_cidr_blocks = ["::/0"]
   }
 }

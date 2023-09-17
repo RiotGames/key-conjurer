@@ -1,5 +1,5 @@
 output "url" {
-  value = aws_lb.keyconjurer.dns_name
+  value = module.loadbalancer.dns_name
 }
 
 output "cloudfront_distribution_url" {
