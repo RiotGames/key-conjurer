@@ -150,13 +150,13 @@ func (a *accountSet) ReplaceWith(other []Account) {
 
 	m := map[string]struct{}{}
 	for _, acc := range other {
-		copy := acc
+		clone := acc
 		// Preserve the alias if the account ID is the same and it already exists
 		if entry, ok := a.accounts[acc.ID]; ok {
 			// The name is the only thing that might change.
 			entry.Name = acc.Name
 		} else {
-			a.accounts[acc.ID] = &copy
+			a.accounts[acc.ID] = &clone
 		}
 
 		m[acc.ID] = struct{}{}
@@ -169,10 +169,10 @@ func (a *accountSet) ReplaceWith(other []Account) {
 	}
 }
 
-func (s accountSet) WriteTable(w io.Writer) {
+func (a accountSet) WriteTable(w io.Writer) {
 	tbl := csv.NewWriter(w)
 	tbl.Write([]string{"id,name,alias"})
-	s.ForEach(func(id string, acc Account, alias string) {
+	a.ForEach(func(id string, acc Account, alias string) {
 		tbl.Write([]string{id, acc.Name, alias})
 	})
 	tbl.Flush()

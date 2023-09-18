@@ -37,7 +37,7 @@ type lambda2HttpHandler struct {
 	next http.Handler
 }
 
-func (h lambda2HttpHandler) Invoke(ctx context.Context, b []byte) ([]byte, error) {
+func (h lambda2HttpHandler) Invoke(_ context.Context, b []byte) ([]byte, error) {
 	var inboundReq events.ALBTargetGroupRequest
 	if err := json.Unmarshal(b, &inboundReq); err != nil {
 		return nil, err

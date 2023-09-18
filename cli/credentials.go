@@ -68,7 +68,7 @@ func LoadAWSCredentialsFromEnvironment() CloudCredentials {
 	}
 }
 
-func (c *CloudCredentials) ValidUntil(account *Account, cloudFlag string, dur time.Duration) bool {
+func (c *CloudCredentials) ValidUntil(account *Account, dur time.Duration) bool {
 	if account == nil || c == nil {
 		return false
 	}
@@ -86,7 +86,7 @@ func (c *CloudCredentials) ValidUntil(account *Account, cloudFlag string, dur ti
 }
 
 const (
-	aws_shellTypePowershell = `$Env:AWS_ACCESS_KEY_ID = "%v"
+	awsShellTypePowershell = `$Env:AWS_ACCESS_KEY_ID = "%v"
 $Env:AWS_SECRET_ACCESS_KEY = "%v"
 $Env:AWS_SESSION_TOKEN = "%v"
 $Env:AWS_SECURITY_TOKEN = "%v"
@@ -96,7 +96,7 @@ $Env:TF_VAR_token = $Env:AWS_SESSION_TOKEN
 $Env:AWSKEY_EXPIRATION = "%v"
 $Env:AWSKEY_ACCOUNT = "%v"
 `
-	tencent_shellTypePowershell = `$Env:TENCENTCLOUD_SECRET_ID = "%v"
+	tencentShellTypePowershell = `$Env:TENCENTCLOUD_SECRET_ID = "%v"
 $Env:TENCENTCLOUD_SECRET_KEY = "%v"
 $Env:TENCENTCLOUD_TOKEN = "%v"
 $Env:TENCENTCLOUD_SECURITY_TOKEN = "%v"
@@ -106,7 +106,7 @@ $Env:TF_VAR_token = $Env:TENCENTCLOUD_TOKEN
 $Env:TENCENT_KEY_EXPIRATION = "%v"
 $Env:TENCENT_KEY_ACCOUNT = "%v"
 `
-	aws_shellTypeBasic = `SET AWS_ACCESS_KEY_ID=%v
+	awsShellTypeBasic = `SET AWS_ACCESS_KEY_ID=%v
 SET AWS_SECRET_ACCESS_KEY=%v
 SET AWS_SESSION_TOKEN=%v
 SET AWS_SECURITY_TOKEN=%v
@@ -116,7 +116,7 @@ SET TF_VAR_token=%%AWS_SESSION_TOKEN%%
 SET AWSKEY_EXPIRATION=%v
 SET AWSKEY_ACCOUNT=%v
 `
-	tencent_shellTypeBasic = `SET TENCENTCLOUD_SECRET_ID=%v
+	tencentShellTypeBasic = `SET TENCENTCLOUD_SECRET_ID=%v
 SET TENCENTCLOUD_SECRET_KEY=%v
 SET TENCENTCLOUD_TOKEN=%v
 SET TENCENTCLOUD_SECURITY_TOKEN=%v
@@ -125,7 +125,7 @@ SET TF_VAR_secret_key=%%TENCENTCLOUD_SECRET_KEY%%
 SET TF_VAR_token=%%TENCENTCLOUD_TOKEN%%
 SET TENCENTKEY_EXPIRATION=%v
 SET TENCENTKEY_ACCOUNT=%v`
-	aws_shellTypeBash = `export AWS_ACCESS_KEY_ID=%v
+	awsShellTypeBash = `export AWS_ACCESS_KEY_ID=%v
 export AWS_SECRET_ACCESS_KEY=%v
 export AWS_SESSION_TOKEN=%v
 export AWS_SECURITY_TOKEN=%v
@@ -135,7 +135,7 @@ export TF_VAR_token=$AWS_SESSION_TOKEN
 export AWSKEY_EXPIRATION=%v
 export AWSKEY_ACCOUNT=%v
 `
-	tencent_shellTypeBash = `export TENCENTCLOUD_SECRET_ID=%v
+	tencentShellTypeBash = `export TENCENTCLOUD_SECRET_ID=%v
 export TENCENTCLOUD_SECRET_KEY=%v
 export TENCENTCLOUD_TOKEN=%v
 export TENCENT_SECURITY_TOKEN=%v
@@ -155,19 +155,19 @@ func (c CloudCredentials) WriteFormat(w io.Writer, format ShellType) (int, error
 
 	switch format {
 	case shellTypePowershell:
-		str = aws_shellTypePowershell
+		str = awsShellTypePowershell
 		if c.credentialsType == cloudTencent {
-			str = tencent_shellTypePowershell
+			str = tencentShellTypePowershell
 		}
 	case shellTypeBasic:
-		str = aws_shellTypeBasic
+		str = awsShellTypeBasic
 		if c.credentialsType == cloudTencent {
-			str = tencent_shellTypeBasic
+			str = tencentShellTypeBasic
 		}
 	case shellTypeBash:
-		str = aws_shellTypeBash
+		str = awsShellTypeBash
 		if c.credentialsType == cloudTencent {
-			str = tencent_shellTypeBash
+			str = tencentShellTypeBash
 		}
 	}
 

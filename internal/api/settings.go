@@ -50,7 +50,7 @@ func NewSettings(ctx context.Context) (*Settings, error) {
 	return entry.FetchSettings(ctx)
 }
 
-func RetrieveSettingsFromEnv(ctx context.Context) (*Settings, error) {
+func RetrieveSettingsFromEnv(_ context.Context) (*Settings, error) {
 	s := Settings{
 		OktaHost:  os.Getenv("OKTA_HOST"),
 		OktaToken: os.Getenv("OKTA_TOKEN"),
@@ -66,7 +66,7 @@ type VaultRetriever struct {
 	SecretPath      string
 }
 
-func (v VaultRetriever) FetchSettings(ctx context.Context) (*Settings, error) {
+func (v VaultRetriever) FetchSettings(_ context.Context) (*Settings, error) {
 	var settings Settings
 	client, err := vault.NewClient(vault.DefaultConfig())
 	if err != nil {

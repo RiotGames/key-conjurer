@@ -43,7 +43,7 @@ var accountsCmd = &cobra.Command{
 		}
 
 		serverAddr, _ := cmd.Flags().GetString(FlagServerAddress)
-		serverAddrUri, err := url.Parse(serverAddr)
+		serverAddrURI, err := url.Parse(serverAddr)
 		if err != nil {
 			cmd.PrintErrf("--%s had an invalid value: %s\n", FlagServerAddress, err)
 			return nil
@@ -62,7 +62,7 @@ var accountsCmd = &cobra.Command{
 			TokenType:    config.Tokens.TokenType,
 		}
 
-		accounts, err := refreshAccounts(cmd.Context(), serverAddrUri, &tok)
+		accounts, err := refreshAccounts(cmd.Context(), serverAddrURI, &tok)
 		if err != nil {
 			cmd.PrintErrf("Error refreshing accounts: %s\n", err)
 			cmd.PrintErrln("If you don't need to refresh your accounts, consider adding the --no-refresh flag")

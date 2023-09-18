@@ -12,7 +12,7 @@ import (
 // Intentionally missing the `ini` notation sections,keys, and values are being handled by the ini library
 type CloudCliEntry struct {
 	profileName string
-	keyId       string
+	keyID       string
 	key         string
 	token       string
 }
@@ -25,7 +25,7 @@ func NewCloudCliEntry(c CloudCredentials, a *Account) CloudCliEntry {
 
 	return CloudCliEntry{
 		profileName: name,
-		keyId:       c.AccessKeyID,
+		keyID:       c.AccessKeyID,
 		key:         c.SecretAccessKey,
 		token:       c.SessionToken,
 	}
@@ -56,11 +56,11 @@ func ResolveAWSCredentialsPath(rootPath string) string {
 func saveCredentialEntry(file *ini.File, entry CloudCliEntry, cloud string) error {
 	section := file.Section(entry.profileName)
 	if cloud == cloudAws {
-		section.Key("aws_access_key_id").SetValue(entry.keyId)
+		section.Key("aws_access_key_id").SetValue(entry.keyID)
 		section.Key("aws_secret_access_key").SetValue(entry.key)
 		section.Key("aws_session_token").SetValue(entry.token)
 	} else if cloud == cloudTencent {
-		section.Key("tencent_access_key_id").SetValue(entry.keyId)
+		section.Key("tencent_access_key_id").SetValue(entry.keyID)
 		section.Key("tencent_secret_access_key").SetValue(entry.key)
 		section.Key("tencent_session_token").SetValue(entry.token)
 	}

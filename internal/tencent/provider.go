@@ -100,9 +100,9 @@ func NewCAMClient(region string) (*CAMClient, error) {
 }
 
 // API： GetRoleName
-func (c *CAMClient) GetRoleName(roleId string) (roleName string, err error) {
+func (c *CAMClient) GetRoleName(roleID string) (roleName string, err error) {
 	req := cam.NewGetRoleRequest()
-	req.RoleId = &roleId
+	req.RoleId = &roleID
 	roleRsp, err := c.client.GetRole(req)
 	fmt.Println(roleRsp.ToJsonString())
 	if err != nil {
@@ -121,35 +121,35 @@ func ChainedCredsToCli() (common.CredentialIface, error) {
 
 // for tools login to STS auth
 type EnvProvider struct {
-	secretIdENV  string
-	secretKeyENV string
-	tokenENV     string
+	secretID  string
+	secretKey string
+	token     string
 }
 
 // DefaultEnvProvider return a default provider
 // The default environment variable name are TENCENTCLOUD_SECRET_ID and TENCENTCLOUD_SECRET_KEY and TOKEN
 func DefaultEnvProvider() *EnvProvider {
 	return &EnvProvider{
-		secretIdENV:  "TENCENTCLOUD_SECRET_ID",
-		secretKeyENV: "TENCENTCLOUD_SECRET_KEY",
-		tokenENV:     "TENCENTCLOUD_TOKEN",
+		secretID:  "TENCENTCLOUD_SECRET_ID",
+		secretKey: "TENCENTCLOUD_SECRET_KEY",
+		token:     "TENCENTCLOUD_TOKEN",
 	}
 }
 
 // GetCredential
 func (p *EnvProvider) GetCredential() (common.CredentialIface, error) {
-	secretId, ok1 := os.LookupEnv(p.secretIdENV)
-	secretKey, ok2 := os.LookupEnv(p.secretKeyENV)
-	token, ok3 := os.LookupEnv(p.tokenENV)
+	secretID, ok1 := os.LookupEnv(p.secretID)
+	secretKey, ok2 := os.LookupEnv(p.secretKey)
+	token, ok3 := os.LookupEnv(p.token)
 	if !ok1 || !ok2 || !ok3 {
 		return nil, envNotSet
 	}
-	if secretId == "" || secretKey == "" || token == "" {
+	if secretID == "" || secretKey == "" || token == "" {
 		return nil, tcerr.NewTencentCloudSDKError(creErr,
-			"Environmental variable ("+p.secretIdENV+" or "+
-				p.secretKeyENV+" or "+p.secretKeyENV+") is empty", "")
+			"Environmental variable ("+p.secretID+" or "+
+				p.secretKey+" or "+p.secretKey+") is empty", "")
 	}
-	return common.NewTokenCredential(secretId, secretKey, token), nil
+	return common.NewTokenCredential(secretID, secretKey, token), nil
 }
 
 var creErr = "ClientError.CredentialError"

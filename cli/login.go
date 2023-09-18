@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"net/http"
 	"os"
 
 	"github.com/spf13/cobra"
@@ -40,7 +39,7 @@ var loginCmd = &cobra.Command{
 		clientID, _ := cmd.Flags().GetString(FlagClientID)
 		urlOnly, _ := cmd.Flags().GetBool(FlagURLOnly)
 		isMachineOutput := ShouldUseMachineOutput(cmd.Flags()) || urlOnly
-		token, err := Login(cmd.Context(), NewHTTPClient(), oidcDomain, clientID, isMachineOutput)
+		token, err := Login(cmd.Context(), oidcDomain, clientID, isMachineOutput)
 		if err != nil {
 			return err
 		}
@@ -49,7 +48,7 @@ var loginCmd = &cobra.Command{
 	},
 }
 
-func Login(ctx context.Context, client *http.Client, domain, clientID string, machineOutput bool) (*oauth2.Token, error) {
+func Login(ctx context.Context, domain, clientID string, machineOutput bool) (*oauth2.Token, error) {
 	oauthCfg, _, err := DiscoverOAuth2Config(ctx, domain, clientID)
 	if err != nil {
 		return nil, err
