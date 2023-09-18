@@ -1,3 +1,4 @@
+# G
 # Manual additions
 *.auto.tfvars
 dev.env
@@ -277,3 +278,4 @@ $RECYCLE.BIN/
 cli/keyconjurer-darwin*
 cli/keyconjurer-linux*
 cli/keyconjurer-windows.exe
+vendor
