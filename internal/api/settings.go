@@ -70,7 +70,7 @@ func (v VaultRetriever) FetchSettings(_ context.Context) (*Settings, error) {
 	var settings Settings
 	client, err := vault.NewClient(vault.DefaultConfig())
 	if err != nil {
-		return nil, fmt.Errorf("unable to get Vault client")
+		return nil, fmt.Errorf("unable to get Vault client: %w", err)
 	}
 
 	opts := vault.IAMLoginOptions{
@@ -85,11 +85,11 @@ func (v VaultRetriever) FetchSettings(_ context.Context) (*Settings, error) {
 	kvOpts := vault.KV2GetOptions{
 		MountPath:     v.SecretMountPath,
 		SecretPath:    v.SecretPath,
-		UnmarshalInto: settings,
+		UnmarshalInto: &settings,
 	}
 
 	if _, err := client.KV2.Get(kvOpts); err != nil {
-		return nil, fmt.Errorf("unable to get vault settings from %s/%s", v.SecretMountPath, v.SecretPath)
+		return nil, fmt.Errorf("unable to get vault settings from %s/%s: %w", v.SecretMountPath, v.SecretPath, err)
 	}
 
 	return &settings, nil
