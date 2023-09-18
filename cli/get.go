@@ -109,11 +109,12 @@ A role must be specified when using this command through the --role flag. You ma
 			return nil
 		}
 
-		if roleName == "" && account.MostRecentRole != "" {
+		if roleName == "" {
+			if account.MostRecentRole == "" {
+				cmd.PrintErrln("You must specify the --role flag with this command")
+				return nil
+			}
 			roleName = account.MostRecentRole
-		} else {
-			cmd.PrintErrln("You must specify the --role flag with this command")
-			return nil
 		}
 
 		if config.TimeRemaining != 0 && timeRemaining == DefaultTimeRemaining {
