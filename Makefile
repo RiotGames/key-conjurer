@@ -2,6 +2,8 @@
 
 RELEASE ?= dev
 VERSION ?= $(shell git rev-parse --short HEAD)
+# This runs on Linux machines. Mac users should override TIMESTAMP.
+TIMESTAMP ?= $(shell date --iso-8601=minutes)
 
 ## Standard targets for all Makefiles in our team
 
@@ -66,7 +68,7 @@ cli/keyconjurer:
 			-X main.Version=$(shell git rev-parse --short HEAD)-$(RELEASE) \
 			-X main.ClientID=$(CLIENT_ID) \
 			-X main.OIDCDomain=$(OIDC_DOMAIN) \
-			-X main.BuildTimestamp='$(shell date --iso-8601=minutes)' \
+			-X main.BuildTimestamp='$(TIMESTAMP)' \
 			-X main.ServerAddress=$(SERVER_ADDRESS)" \
 		-o $(BUILD_TARGET)
 
