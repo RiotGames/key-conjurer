@@ -12,24 +12,24 @@ import (
 	"github.com/okta/okta-sdk-golang/v2/okta"
 )
 
-type oktaService struct {
+type Okta struct {
 	Domain     *url.URL
 	Token      string
 	client     *http.Client
 	oktaClient *okta.Client
 }
 
-func NewOktaService(domain *url.URL, token string) oktaService {
+func NewOktaService(domain *url.URL, token string) Okta {
 	_, oktaClient, _ := okta.NewClient(
 		context.Background(),
 		okta.WithToken(token),
 		okta.WithOrgUrl(domain.String()),
 	)
 
-	return oktaService{domain, token, http.DefaultClient, oktaClient}
+	return Okta{domain, token, http.DefaultClient, oktaClient}
 }
 
-func (o oktaService) ListApplicationsForUser(ctx context.Context, user string) ([]*okta.AppLink, error) {
+func (o Okta) ListApplicationsForUser(ctx context.Context, user string) ([]*okta.AppLink, error) {
 	links, resp, err := o.oktaClient.User.ListAppLinks(ctx, user)
 	if err != nil {
 		return nil, err
@@ -59,7 +59,7 @@ type OktaUserInfo struct {
 }
 
 // GetUserInfo returns user information about the given token
-func (o oktaService) GetUserInfo(ctx context.Context, token string) (info OktaUserInfo, err error) {
+func (o Okta) GetUserInfo(ctx context.Context, token string) (info OktaUserInfo, err error) {
 	if o.client == nil {
 		o.client = http.DefaultClient
 	}

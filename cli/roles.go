@@ -26,7 +26,7 @@ var rolesCmd = cobra.Command{
 			applicationID = account.ID
 		}
 
-		oauthCfg, _, err := DiscoverOAuth2Config(cmd.Context(), oidcDomain, clientID)
+		oauthCfg, err := DiscoverOAuth2Config(cmd.Context(), oidcDomain, clientID)
 		if err != nil {
 			cmd.PrintErrf("could not discover oauth2  config: %s\n", err)
 			return nil

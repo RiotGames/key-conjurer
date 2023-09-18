@@ -30,13 +30,13 @@ func NewHTTPClient() *http.Client {
 		}
 	}
 
-	return &http.Client{Transport: LogRoundTripper(tr)}
+	return &http.Client{Transport: LogRoundTripper{tr}}
 }
 
-func DiscoverOAuth2Config(ctx context.Context, domain, clientID string) (*oauth2.Config, *oidc.Provider, error) {
+func DiscoverOAuth2Config(ctx context.Context, domain, clientID string) (*oauth2.Config, error) {
 	provider, err := oidc.NewProvider(ctx, domain)
 	if err != nil {
-		return nil, nil, fmt.Errorf("couldn't discover OIDC configuration for %s: %w", domain, err)
+		return nil, fmt.Errorf("couldn't discover OIDC configuration for %s: %w", domain, err)
 	}
 
 	cfg := oauth2.Config{
@@ -45,7 +45,7 @@ func DiscoverOAuth2Config(ctx context.Context, domain, clientID string) (*oauth2
 		Scopes:   []string{"openid", "profile", "okta.apps.read", "okta.apps.sso"},
 	}
 
-	return &cfg, provider, nil
+	return &cfg, nil
 }
 
 type OAuth2CallbackInfo struct {
@@ -173,7 +173,7 @@ func RedirectionFlow(ctx context.Context, oauthCfg *oauth2.Config, state, codeCh
 	return oauthCfg.Exchange(ctx, code, oauth2.SetAuthURLParam("code_verifier", codeVerifier))
 }
 
-func ExchangeAccessTokenForWebSSOToken(ctx context.Context, client *http.Client, oauthCfg *oauth2.Config, token *TokenSet, applicationId string) (*oauth2.Token, error) {
+func ExchangeAccessTokenForWebSSOToken(ctx context.Context, client *http.Client, oauthCfg *oauth2.Config, token *TokenSet, applicationID string) (*oauth2.Token, error) {
 	if client == nil {
 		client = http.DefaultClient
 	}
@@ -187,7 +187,7 @@ func ExchangeAccessTokenForWebSSOToken(ctx context.Context, client *http.Client,
 		"grant_type":         {"urn:ietf:params:oauth:grant-type:token-exchange"},
 		// https://www.linkedin.com/pulse/oktas-aws-cli-app-mysterious-case-powerful-okta-apis-chaim-sanders/
 		"requested_token_type": {"urn:okta:oauth:token-type:web_sso_token"},
-		"audience":             {fmt.Sprintf("urn:okta:apps:%s", applicationId)},
+		"audience":             {fmt.Sprintf("urn:okta:apps:%s", applicationID)},
 	}
 	body := strings.NewReader(data.Encode())
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, oauthCfg.Endpoint.TokenURL, body)

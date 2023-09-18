@@ -12,10 +12,8 @@ type RoleProviderPair struct {
 }
 
 const (
-	awsRoleUrl     = "https://aws.amazon.com/SAML/Attributes/Role"
-	tencentRoleUrl = "https://cloud.tencent.com/SAML/Attributes/Role"
-	awsFlag        = 0
-	tencentFlag    = 1
+	awsFlag     = 0
+	tencentFlag = 1
 )
 
 func ListSAMLRoles(response *saml.Response) []string {
@@ -23,15 +21,15 @@ func ListSAMLRoles(response *saml.Response) []string {
 		return nil
 	}
 
-	roleUrl := awsRoleUrl
+	roleURL := "https://aws.amazon.com/SAML/Attributes/Role"
 	roleSubstr := "role/"
-	if response.GetAttribute(roleUrl) == "" {
-		roleUrl = tencentRoleUrl
+	if response.GetAttribute(roleURL) == "" {
+		roleURL = "https://cloud.tencent.com/SAML/Attributes/Role"
 		roleSubstr = "roleName/"
 	}
 
 	var names []string
-	for _, v := range response.GetAttributeValues(roleUrl) {
+	for _, v := range response.GetAttributeValues(roleURL) {
 		p := getARN(v)
 		idx := strings.Index(p.RoleARN, roleSubstr)
 		parts := strings.Split(p.RoleARN[idx:], "/")
@@ -41,38 +39,31 @@ func ListSAMLRoles(response *saml.Response) []string {
 	return names
 }
 
-func FindRoleInSAML(roleName string, response *saml.Response) (RoleProviderPair, int, bool) {
+func FindRoleInSAML(roleName string, response *saml.Response) (RoleProviderPair, bool) {
 	if response == nil {
-		return RoleProviderPair{}, 0, false
+		return RoleProviderPair{}, false
 	}
 
-	cloud := awsFlag
-	roleUrl := awsRoleUrl
+	roleURL := "https://aws.amazon.com/SAML/Attributes/Role"
 	roleSubstr := "role/"
-	if response.GetAttribute(roleUrl) == "" {
-		cloud = tencentFlag
-		roleUrl = tencentRoleUrl
+	attrs := response.GetAttributeValues(roleURL)
+	if len(attrs) == 0 {
+		attrs = response.GetAttributeValues("https://cloud.tencent.com/SAML/Attributes/Role")
 		roleSubstr = "roleName/"
 	}
 
-	if roleName == "" && cloud == awsFlag {
-		// This is for legacy support.
-		// Legacy clients would always retrieve the first two ARNs in the list, which would be
-		//   AWS:
-		//       arn:cloud:iam::[account-id]:role/[onelogin_role]
-		//       arn:cloud:iam::[account-id]:saml-provider/[saml-provider]
-		// If we get weird breakages with Key Conjurer when it's deployed alongside legacy clients, this is almost certainly a culprit!
-		pair := getARN(response.GetAttribute(roleUrl))
-		return pair, cloud, false
+	if len(attrs) == 0 {
+		// The SAML assertoin contains no known roles for AWS or Tencent.
+		return RoleProviderPair{}, false
 	}
 
 	var pairs []RoleProviderPair
-	for _, v := range response.GetAttributeValues(roleUrl) {
+	for _, v := range response.GetAttributeValues(roleURL) {
 		pairs = append(pairs, getARN(v))
 	}
 
 	if len(pairs) == 0 {
-		return RoleProviderPair{}, cloud, false
+		return RoleProviderPair{}, false
 	}
 
 	var pair RoleProviderPair
@@ -85,10 +76,10 @@ func FindRoleInSAML(roleName string, response *saml.Response) (RoleProviderPair,
 	}
 
 	if pair.RoleARN == "" {
-		return RoleProviderPair{}, cloud, false
+		return RoleProviderPair{}, false
 	}
 
-	return pair, cloud, true
+	return pair, true
 }
 
 func getARN(value string) RoleProviderPair {

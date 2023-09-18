@@ -55,12 +55,11 @@ func isMemberOfSlice(slice []string, val string) bool {
 	return false
 }
 
-func resolveApplicationInfo(cfg *Config, bypassCache bool, nameOrId string) (*Account, bool) {
+func resolveApplicationInfo(cfg *Config, bypassCache bool, nameOrID string) (*Account, bool) {
 	if bypassCache {
-		return &Account{ID: nameOrId, Name: nameOrId}, true
-	} else {
-		return cfg.FindAccount(nameOrId)
+		return &Account{ID: nameOrID, Name: nameOrID}, true
 	}
+	return cfg.FindAccount(nameOrID)
 }
 
 var getCmd = &cobra.Command{
@@ -128,11 +127,11 @@ A role must be specified when using this command through the --role flag. You ma
 			credentials = LoadTencentCredentialsFromEnvironment()
 		}
 
-		if credentials.ValidUntil(account, cloudType, time.Duration(timeRemaining)*time.Minute) {
-			return echoCredentials(args[0], args[0], credentials, outputType, shellType, awsCliPath, tencentCliPath, cloudType)
+		if credentials.ValidUntil(account, time.Duration(timeRemaining)*time.Minute) {
+			return echoCredentials(args[0], args[0], credentials, outputType, shellType, awsCliPath, tencentCliPath)
 		}
 
-		oauthCfg, _, err := DiscoverOAuth2Config(cmd.Context(), oidcDomain, clientID)
+		oauthCfg, err := DiscoverOAuth2Config(cmd.Context(), oidcDomain, clientID)
 		if err != nil {
 			cmd.PrintErrf("could not discover oauth2  config: %s\n", err)
 			return nil
@@ -157,7 +156,7 @@ A role must be specified when using this command through the --role flag. You ma
 			return nil
 		}
 
-		pair, _, ok := FindRoleInSAML(roleName, samlResponse)
+		pair, ok := FindRoleInSAML(roleName, samlResponse)
 		if !ok {
 			cmd.PrintErrf("you do not have access to the role %s on application %s\n", roleName, args[0])
 			return nil
@@ -199,10 +198,10 @@ A role must be specified when using this command through the --role flag. You ma
 			account.MostRecentRole = roleName
 		}
 
-		return echoCredentials(args[0], args[0], credentials, outputType, shellType, awsCliPath, tencentCliPath, cloudType)
+		return echoCredentials(args[0], args[0], credentials, outputType, shellType, awsCliPath, tencentCliPath)
 	}}
 
-func echoCredentials(id, name string, credentials CloudCredentials, outputType, shellType, awsCliPath, tencentCliPath, cloudFlag string) error {
+func echoCredentials(id, name string, credentials CloudCredentials, outputType, shellType, awsCliPath, tencentCliPath string) error {
 	switch outputType {
 	case outputTypeEnvironmentVariable:
 		credentials.WriteFormat(os.Stdout, shellType)

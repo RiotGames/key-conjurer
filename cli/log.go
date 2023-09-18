@@ -6,11 +6,11 @@ import (
 	"golang.org/x/exp/slog"
 )
 
-type logRoundTripper struct {
-	rt http.RoundTripper
+type LogRoundTripper struct {
+	RoundTripper http.RoundTripper
 }
 
-func findOktaHeaders(r *http.Response) []slog.Attr {
+func FindOktaHeaders(r *http.Response) []slog.Attr {
 	var attrs []slog.Attr
 	if hdr := r.Header.Get("X-Okta-Request-Id"); hdr != "" {
 		attrs = append(attrs, slog.String("okta_request_id", hdr))
@@ -18,9 +18,9 @@ func findOktaHeaders(r *http.Response) []slog.Attr {
 	return attrs
 }
 
-func (t logRoundTripper) RoundTrip(r *http.Request) (*http.Response, error) {
+func (t LogRoundTripper) RoundTrip(r *http.Request) (*http.Response, error) {
 	slog.Debug("HTTP Request", slog.String("url", r.URL.String()))
-	resp, err := t.rt.RoundTrip(r)
+	resp, err := t.RoundTripper.RoundTrip(r)
 	if err != nil {
 		return nil, err
 	}
@@ -32,14 +32,10 @@ func (t logRoundTripper) RoundTrip(r *http.Request) (*http.Response, error) {
 		slog.Bool("ok", resp.StatusCode == http.StatusOK),
 	}
 
-	for _, attr := range findOktaHeaders(resp) {
+	for _, attr := range FindOktaHeaders(resp) {
 		attrs = append(attrs, any(attr))
 	}
 
 	slog.Debug("HTTP Response", attrs...)
 	return resp, nil
-}
-
-func LogRoundTripper(rt http.RoundTripper) logRoundTripper {
-	return logRoundTripper{rt}
 }

@@ -5,9 +5,9 @@ var (
 	ClientID       string
 	OIDCDomain     string
 	ServerAddress  string
-	Version        string = "TBD"
-	BuildTimestamp string = "BuildTimestamp is not set"
-	DownloadURL    string = "URL not set yet"
+	Version        = "TBD"
+	BuildTimestamp = "BuildTimestamp is not set"
+	DownloadURL    = "URL not set yet"
 )
 
 const (

@@ -15,7 +15,7 @@ func TestAddAWSCliEntry(t *testing.T) {
 
 	entry := CloudCliEntry{
 		profileName: "test-profile",
-		keyId:       "notanid",
+		keyID:       "notanid",
 		key:         "notakey",
 		token:       "notatoken",
 	}
