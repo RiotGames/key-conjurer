@@ -131,7 +131,7 @@ A role must be specified when using this command through the --role flag. You ma
 			return echoCredentials(args[0], args[0], credentials, outputType, shellType, awsCliPath, tencentCliPath)
 		}
 
-		oauthCfg, _, err := DiscoverOAuth2Config(cmd.Context(), oidcDomain, clientID)
+		oauthCfg, err := DiscoverOAuth2Config(cmd.Context(), oidcDomain, clientID)
 		if err != nil {
 			cmd.PrintErrf("could not discover oauth2  config: %s\n", err)
 			return nil

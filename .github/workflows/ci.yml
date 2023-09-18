@@ -31,7 +31,6 @@ jobs:
       - uses: actions/setup-node@v3
         with:
           node-version: "16.17.0"
-      # Tests just need the file to exist with the appropriate exports - the values do not matter.
       - run: cd frontend && npm install && npm test
   go-test:
     runs-on: ubuntu-latest

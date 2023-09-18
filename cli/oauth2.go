@@ -33,10 +33,10 @@ func NewHTTPClient() *http.Client {
 	return &http.Client{Transport: LogRoundTripper{tr}}
 }
 
-func DiscoverOAuth2Config(ctx context.Context, domain, clientID string) (*oauth2.Config, *oidc.Provider, error) {
+func DiscoverOAuth2Config(ctx context.Context, domain, clientID string) (*oauth2.Config, error) {
 	provider, err := oidc.NewProvider(ctx, domain)
 	if err != nil {
-		return nil, nil, fmt.Errorf("couldn't discover OIDC configuration for %s: %w", domain, err)
+		return nil, fmt.Errorf("couldn't discover OIDC configuration for %s: %w", domain, err)
 	}
 
 	cfg := oauth2.Config{
@@ -45,7 +45,7 @@ func DiscoverOAuth2Config(ctx context.Context, domain, clientID string) (*oauth2
 		Scopes:   []string{"openid", "profile", "okta.apps.read", "okta.apps.sso"},
 	}
 
-	return &cfg, provider, nil
+	return &cfg, nil
 }
 
 type OAuth2CallbackInfo struct {
