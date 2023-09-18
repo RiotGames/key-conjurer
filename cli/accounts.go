@@ -23,7 +23,6 @@ var (
 
 func init() {
 	accountsCmd.Flags().Bool(FlagNoRefresh, false, "Indicate that the account list should not be refreshed when executing this command. This is useful if you're not able to reach the account server.")
-	// TODO: Replace the address
 	accountsCmd.Flags().String(FlagServerAddress, ServerAddress, "The address of the account server. This does not usually need to be changed or specified.")
 }
 
