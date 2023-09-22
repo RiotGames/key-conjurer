@@ -1,7 +1,6 @@
 package main
 
 import (
-	"github.com/RobotsAndPencils/go-saml"
 	"github.com/spf13/cobra"
 )
 
@@ -44,8 +43,7 @@ var rolesCmd = cobra.Command{
 			return nil
 		}
 
-		assertionStr := string(assertionBytes)
-		samlResponse, err := saml.ParseEncodedResponse(assertionStr)
+		samlResponse, err := ParseBase64EncodedSAMLResponse(string(assertionBytes))
 		if err != nil {
 			cmd.PrintErrf("could not parse assertion: %s\n", err)
 			return nil

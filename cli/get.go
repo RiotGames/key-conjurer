@@ -5,7 +5,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/RobotsAndPencils/go-saml"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/sts"
@@ -144,14 +143,14 @@ A role must be specified when using this command through the --role flag. You ma
 			return nil
 		}
 
-		assertionBytes, err := ExchangeWebSSOTokenForSAMLAssertion(cmd.Context(), client, oidcDomain, tok)
+		assertion, err := ExchangeWebSSOTokenForSAMLAssertion(cmd.Context(), client, oidcDomain, tok)
 		if err != nil {
 			cmd.PrintErrf("failed to fetch SAML assertion: %s\n", err)
 			return nil
 		}
 
-		assertionStr := string(assertionBytes)
-		samlResponse, err := saml.ParseEncodedResponse(assertionStr)
+		assertionStr := string(assertion)
+		samlResponse, err := ParseBase64EncodedSAMLResponse(assertionStr)
 		if err != nil {
 			cmd.PrintErrf("could not parse assertion: %s\n", err)
 			return nil

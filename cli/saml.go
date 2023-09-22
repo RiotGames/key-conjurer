@@ -96,3 +96,7 @@ func getARN(value string) RoleProviderPair {
 	}
 	return p
 }
+
+func ParseBase64EncodedSAMLResponse(xml string) (*saml.Response, error) {
+	return saml.ParseEncodedResponse(xml)
+}
