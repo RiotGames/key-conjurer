@@ -19,6 +19,10 @@ import (
 	"golang.org/x/oauth2"
 )
 
+// stateBufSize is the size of the buffer used to generate the state parameter.
+// 43 is a magic number - It generates states that are not too short or long for Okta's validation.
+const stateBufSize = 43
+
 func NewHTTPClient() *http.Client {
 	// Some Darwin systems require certs to be loaded from the system certificate store or attempts to verify SSL certs on internal websites may fail.
 	tr := http.DefaultTransport
@@ -136,7 +140,7 @@ func (e OAuth2Error) Error() string {
 }
 
 func GenerateCodeVerifierAndChallenge() (string, string, error) {
-	codeVerifierBuf := make([]byte, 43)
+	codeVerifierBuf := make([]byte, stateBufSize)
 	rand.Read(codeVerifierBuf)
 	codeVerifier := base64.RawURLEncoding.EncodeToString(codeVerifierBuf)
 	codeChallengeHash := sha256.Sum256([]byte(codeVerifier))
@@ -145,7 +149,7 @@ func GenerateCodeVerifierAndChallenge() (string, string, error) {
 }
 
 func GenerateState() (string, error) {
-	stateBuf := make([]byte, 43)
+	stateBuf := make([]byte, stateBufSize)
 	rand.Read(stateBuf)
 	return base64.URLEncoding.EncodeToString([]byte(stateBuf)), nil
 }
