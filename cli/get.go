@@ -1,8 +1,10 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
+	"os/exec"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -179,7 +181,17 @@ A role must be specified when using this command through the --role flag. You ma
 				return nil
 			}
 
+			// TODO: Spin up a web server that listens for a SAML callback.
+
+			// TODO: This only works for OSX.
+			proc := exec.CommandContext(context.Background(), "open", account.Href)
+			if err := proc.Run(); err != nil {
+				cmd.PrintErrf("failed to open %s: %s", account.Href, err)
+				return nil
+			}
+
 			panic("not yet implemented")
+			return nil
 		}
 
 		assertionStr := string(assertionBytes)
