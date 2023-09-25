@@ -92,7 +92,7 @@ func deriveApplicationType(app *okta.AppLink) (ApplicationType, bool) {
 		return ApplicationTypeOIDC, true
 	}
 
-	if strings.Contains(app.AppName, "tencent") {
+	if strings.Contains(strings.ToLower(app.AppName), "tencent") {
 		return ApplicationTypeSAML, true
 	}
 
