@@ -1,91 +1,68 @@
 package main
 
 import (
-	"bufio"
 	"context"
-	"errors"
-	"fmt"
-	"io"
 	"os"
-	"syscall"
-
-	"github.com/riotgames/key-conjurer/api/core"
-	"github.com/riotgames/key-conjurer/providers"
-	"golang.org/x/crypto/ssh/terminal"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
+	"golang.org/x/oauth2"
 )
 
-var errUnableToReadUsername = errors.New("unable to read username")
-
-// getUsernameAndPassword prompts the user for their username and password via stdin
-func getUsernameAndPassword(r io.Reader) (string, string, error) {
-	scanner := bufio.NewScanner(r)
-	fmt.Printf("username: ")
-	username := ""
-	if scanner.Scan() {
-		username = scanner.Text()
-	} else {
-		return "", "", errUnableToReadUsername
-	}
-
-	fmt.Printf("password: ")
-	bytes, err := terminal.ReadPassword(int(syscall.Stdin))
-	if err != nil {
-		return "", "", fmt.Errorf("unable to get password: %w", err)
-	}
-
-	password := string(bytes)
-	// Need to add our own newline
-	fmt.Println()
-	return username, password, nil
-}
-
-func promptForCredentials(r io.Reader) (core.Credentials, error) {
-	username, password, err := getUsernameAndPassword(r)
-	return core.Credentials{Username: username, Password: password}, err
-}
+var FlagURLOnly = "url-only"
 
 func init() {
-	loginCmd.Flags().StringVar(&identityProvider, "identity-provider", providers.Okta, "The identity provider to use.")
+	loginCmd.Flags().BoolP(FlagURLOnly, "u", false, "Print only the URL to visit rather than a user-friendly message")
+}
+
+// ShouldUseMachineOutput indicates whether or not we should write to standard output as if the user is a machine.
+//
+// What this means is implementation specific, but this usually indicates the user is trying to use this program in a script and we should avoid user-friendly output messages associated with values a user might find useful.
+func ShouldUseMachineOutput(flags *pflag.FlagSet) bool {
+	quiet, _ := flags.GetBool(FlagQuiet)
+	fi, _ := os.Stdout.Stat()
+	isPiped := fi.Mode()&os.ModeCharDevice == 0
+	return isPiped || quiet
 }
 
 var loginCmd = &cobra.Command{
 	Use:   "login",
 	Short: "Authenticate with KeyConjurer.",
-	Long:  "Login using your AD creds. This stores encrypted credentials on the local system.",
-	// Example: appname + " login",
+	Long:  "Login to KeyConjurer using OAuth2. You will be required to open the URL printed to the console or scan a QR code.",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		ctx := context.Background()
-		client, err := newClient()
+		config := ConfigFromCommand(cmd)
+		if !HasTokenExpired(config.Tokens) {
+			return nil
+		}
+
+		oidcDomain, _ := cmd.Flags().GetString(FlagOIDCDomain)
+		clientID, _ := cmd.Flags().GetString(FlagClientID)
+		urlOnly, _ := cmd.Flags().GetBool(FlagURLOnly)
+		isMachineOutput := ShouldUseMachineOutput(cmd.Flags()) || urlOnly
+		token, err := Login(cmd.Context(), oidcDomain, clientID, isMachineOutput)
 		if err != nil {
 			return err
 		}
 
-		creds, err := promptForCredentials(os.Stdin)
-		if err != nil {
-			return err
-		}
-
-		data, err := client.GetUserData(ctx, &GetUserDataOptions{
-			Credentials:            creds,
-			AuthenticationProvider: identityProvider,
-		})
-
-		if err != nil {
-			return err
-		}
-
-		config.Creds = data.EncryptedCredentials
-		var entries []Account
-		for _, acc := range data.Apps {
-			entries = append(entries, Account{ID: acc.ID, Name: acc.Name, Alias: generateDefaultAlias(acc.Name)})
-		}
-
-		config.Accounts.ReplaceWith(entries)
-		if !quiet {
-			fmt.Fprintf(os.Stderr, "logged into %q successfully\n", creds.Username)
-		}
-		return nil
+		return config.SaveOAuthToken(token)
 	},
+}
+
+func Login(ctx context.Context, domain, clientID string, machineOutput bool) (*oauth2.Token, error) {
+	oauthCfg, err := DiscoverOAuth2Config(ctx, domain, clientID)
+	if err != nil {
+		return nil, err
+	}
+
+	state, err := GenerateState()
+	if err != nil {
+		return nil, err
+	}
+
+	codeVerifier, codeChallenge, err := GenerateCodeVerifierAndChallenge()
+	if err != nil {
+		return nil, err
+	}
+
+	return RedirectionFlow(ctx, oauthCfg, state, codeChallenge, codeVerifier, machineOutput)
 }

@@ -1,61 +1,32 @@
 package main
 
 import (
+	"encoding/csv"
 	"encoding/json"
 	"errors"
 	"io"
-	"strconv"
+	"os"
+	"path/filepath"
+	"time"
 
 	"strings"
 
-	"github.com/olekukonko/tablewriter"
-	"github.com/riotgames/key-conjurer/api/core"
+	"golang.org/x/oauth2"
 )
 
-type maybeLegacyID string
-
-func (i *maybeLegacyID) UnmarshalJSON(buf []byte) error {
-	var id1 uint64
-	var id2 string
-
-	if err := json.Unmarshal(buf, &id1); err == nil {
-		*i = maybeLegacyID(strconv.FormatUint(id1, 10))
-		return nil
-	}
-
-	if err := json.Unmarshal(buf, &id2); err != nil {
-		return err
-	}
-
-	*i = maybeLegacyID(id2)
-	return nil
+type TokenSet struct {
+	AccessToken  string    `json:"access_token"`
+	RefreshToken string    `json:"refresh_token"`
+	IDToken      string    `json:"id_token"`
+	Expiry       time.Time `json:"expiry"`
+	TokenType    string    `json:"token_type"`
 }
 
-// Account is used to store information related to the AWS OneLogin App/AWS Account
 type Account struct {
 	ID             string `json:"id"`
 	Name           string `json:"name"`
 	Alias          string `json:"alias"`
 	MostRecentRole string `json:"most_recent_role"`
-}
-
-func (a *Account) UnmarshalJSON(buf []byte) error {
-	var onDiskRepresentation struct {
-		ID             maybeLegacyID `json:"id"`
-		Name           string        `json:"name"`
-		Alias          string        `json:"alias"`
-		MostRecentRole string        `json:"most_recent_role"`
-	}
-
-	if err := json.Unmarshal(buf, &onDiskRepresentation); err != nil {
-		return err
-	}
-
-	a.ID = string(onDiskRepresentation.ID)
-	a.Name = onDiskRepresentation.Name
-	a.Alias = onDiskRepresentation.Alias
-	a.MostRecentRole = onDiskRepresentation.MostRecentRole
-	return nil
 }
 
 func (a *Account) NormalizeName() string {
@@ -101,9 +72,9 @@ func generateDefaultAlias(name string) string {
 	return strings.ToLower(strings.ReplaceAll(name, " ", "-"))
 }
 
-func (a *accountSet) ForEach(f func(id string, account Account, aliases []string)) {
+func (a *accountSet) ForEach(f func(id string, account Account, alias string)) {
 	for id, acc := range a.accounts {
-		f(id, *acc, []string{acc.Alias})
+		f(id, *acc, acc.Alias)
 	}
 }
 
@@ -179,13 +150,13 @@ func (a *accountSet) ReplaceWith(other []Account) {
 
 	m := map[string]struct{}{}
 	for _, acc := range other {
-		copy := acc
+		clone := acc
 		// Preserve the alias if the account ID is the same and it already exists
 		if entry, ok := a.accounts[acc.ID]; ok {
 			// The name is the only thing that might change.
 			entry.Name = acc.Name
 		} else {
-			a.accounts[acc.ID] = &copy
+			a.accounts[acc.ID] = &clone
 		}
 
 		m[acc.ID] = struct{}{}
@@ -198,31 +169,56 @@ func (a *accountSet) ReplaceWith(other []Account) {
 	}
 }
 
-func (s accountSet) WriteTable(w io.Writer) {
-	tbl := tablewriter.NewWriter(w)
-	tbl.SetHeader([]string{"ID", "Name", "Aliases (comma-separated)"})
-	s.ForEach(func(id string, acc Account, aliases []string) {
-		tbl.Append([]string{id, acc.Name, strings.Join(aliases, ",")})
+func (a accountSet) WriteTable(w io.Writer) {
+	tbl := csv.NewWriter(w)
+	tbl.Write([]string{"id,name,alias"})
+	a.ForEach(func(id string, acc Account, alias string) {
+		tbl.Write([]string{id, acc.Name, alias})
 	})
-
-	tbl.Render()
+	tbl.Flush()
 }
 
 // Config stores all information related to the user
 type Config struct {
 	Accounts      *accountSet `json:"accounts"`
-	Creds         string      `json:"creds"`
 	TTL           uint        `json:"ttl"`
 	TimeRemaining uint        `json:"time_remaining"`
+	Tokens        *TokenSet   `json:"tokens"`
 }
 
-func (c *Config) GetCredentials() (core.Credentials, error) {
-	if c.Creds == "" {
-		// No credentials have been saved (or they have been cleared recently)
-		return core.Credentials{}, ErrNoCredentials
+func (c Config) GetOAuthToken() (*TokenSet, bool) {
+	return c.Tokens, c.Tokens != nil
+}
+
+func HasTokenExpired(tok *TokenSet) bool {
+	if tok == nil {
+		return true
 	}
 
-	return core.Credentials{Username: "encrypted", Password: c.Creds}, nil
+	if tok.Expiry.IsZero() {
+		return false
+	}
+
+	return time.Now().After(tok.Expiry)
+}
+
+func (c *Config) SaveOAuthToken(tok *oauth2.Token) error {
+	if tok == nil {
+		c.Tokens = nil
+		return nil
+	}
+
+	idToken, _ := tok.Extra("id_token").(string)
+	tok2 := TokenSet{
+		AccessToken:  tok.AccessToken,
+		RefreshToken: tok.RefreshToken,
+		TokenType:    tok.TokenType,
+		Expiry:       tok.Expiry,
+		IDToken:      idToken,
+	}
+
+	c.Tokens = &tok2
+	return nil
 }
 
 // Write writes the config to the file provided overwriting the file if it exists
@@ -279,7 +275,7 @@ func (c *Config) Unalias(name string) {
 
 func (c *Config) FindAccount(name string) (*Account, bool) {
 	if c.Accounts == nil {
-		return nil, false
+		return &Account{}, false
 	}
 
 	val, ok := c.Accounts.Resolve(name)
@@ -287,7 +283,7 @@ func (c *Config) FindAccount(name string) (*Account, bool) {
 		return val, true
 	}
 
-	return nil, false
+	return &Account{}, false
 }
 
 func (c *Config) UpdateAccounts(entries []Account) {
@@ -296,4 +292,12 @@ func (c *Config) UpdateAccounts(entries []Account) {
 
 func (c *Config) DumpAccounts(w io.Writer) {
 	c.Accounts.WriteTable(w)
+}
+
+func EnsureConfigFileExists(fp string) (io.ReadWriteCloser, error) {
+	if err := os.MkdirAll(filepath.Dir(fp), os.ModeDir|os.FileMode(0755)); err != nil {
+		return nil, err
+	}
+
+	return os.OpenFile(fp, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 }

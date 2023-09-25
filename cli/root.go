@@ -1,189 +1,104 @@
 package main
 
 import (
-	"errors"
+	"context"
 	"fmt"
-	"net"
-	"net/url"
 	"os"
 	"path/filepath"
-	"strings"
+	"runtime"
+	"time"
 
 	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
 )
 
 var (
-	//  Config json storage location
-	keyConjurerRcPath string
-	// host of the API server. Don't use this. You probably meant to use newClient() instead.
-	host string
-	// This is set by the Makefile during build of the CLI. Don't use this.
-	defaultHost      string
-	identityProvider string
-	// config is a cache-like datastore for this application. It is loaded at app start-up.
-	config                   Config
-	quiet                    bool
-	buildTimestamp           string = BuildDate + " " + BuildTime + " " + BuildTimeZone
-	cmdShortVersionFlag      bool   = false
-	cmdOneLineVersionFlag    bool   = false
-	cloudAws                        = "aws"
-	cloudTencent                    = "tencent"
-	clientHttpTimeoutSeconds int    = 120
+	FlagOIDCDomain = "oidc-domain"
+	FlagClientID   = "client-id"
+	FlagConfigPath = "config"
+	FlagQuiet      = "quiet"
+	FlagTimeout    = "timeout"
+	cloudAws       = "aws"
+	cloudTencent   = "tencent"
 )
 
 func init() {
-	rootCmd.PersistentFlags().IntVar(&clientHttpTimeoutSeconds, "http-timeout", 120, "the amount of time in seconds to wait for keyconjurer to respond")
-	rootCmd.PersistentFlags().StringVar(&keyConjurerRcPath, "keyconjurer-rc-path", "~/.keyconjurerrc", "path to .keyconjurerrc file")
-	rootCmd.PersistentFlags().StringVar(&host, "host", defaultHost, "The host of the KeyConjurer API")
-	rootCmd.PersistentFlags().BoolVar(&quiet, "quiet", false, "tells the CLI to be quiet; stdout will not contain human-readable informational messages")
-	rootCmd.SetVersionTemplate(`{{printf "%s" .Version}}`)
+	rootCmd.PersistentFlags().String(FlagOIDCDomain, OIDCDomain, "The domain name of your OIDC server")
+	rootCmd.PersistentFlags().String(FlagClientID, ClientID, "The OAuth2 Client ID for the application registered with your OIDC server")
+	rootCmd.PersistentFlags().Int(FlagTimeout, 120, "the amount of time in seconds to wait for keyconjurer to respond")
+	rootCmd.PersistentFlags().String(FlagConfigPath, "~/.keyconjurerrc", "path to .keyconjurerrc file")
+	rootCmd.PersistentFlags().Bool(FlagQuiet, false, "tells the CLI to be quiet; stdout will not contain human-readable informational messages")
 	rootCmd.AddCommand(loginCmd)
 	rootCmd.AddCommand(accountsCmd)
 	rootCmd.AddCommand(getCmd)
 	rootCmd.AddCommand(setCmd)
 	rootCmd.AddCommand(upgradeCmd)
 	rootCmd.AddCommand(&switchCmd)
-	rootCmd.AddCommand(&providersCmd)
 	rootCmd.AddCommand(&aliasCmd)
 	rootCmd.AddCommand(&unaliasCmd)
 	rootCmd.AddCommand(&rolesCmd)
-	rootCmd.Flags().BoolVarP(&cmdShortVersionFlag, "short-version", "s", false, "version for "+appname+" (short format)")
-	rootCmd.Flags().BoolVarP(&cmdOneLineVersionFlag, "oneline-version", "1", false, "version for "+appname+" (single line format)")
-}
-
-// hack to remove the leading blank line in the --version output
-const versionString string = "" +
-	"	Version: 		%s\n" +
-	"	Build Timestamp:	%s\n" +
-	"	Client: 		%s\n" +
-	"	Default Hostname:	%s\n" +
-	"	Upgrade URL:		%s\n"
-
-func alternateVersions(cmd *cobra.Command, short, oneline bool) {
-	if oneline {
-		cmd.Printf("%s %s (Build Timestamp:%s - Client:%s)\n", appname, Version, buildTimestamp, ClientName)
-	} else {
-		cmd.Printf("%s %s\n", appname, Version)
-	}
+	rootCmd.SetVersionTemplate("{{.Version}}\n")
 }
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
-	Use:     appname,
-	Version: fmt.Sprintf(versionString, Version, buildTimestamp, ClientName, defaultHost, DownloadURL),
+	Use:     "keyconjurer",
+	Version: fmt.Sprintf("keyconjurer-%s-%s %s (%s)", runtime.GOOS, runtime.GOARCH, Version, BuildTimestamp),
 	Short:   "Retrieve temporary cloud credentials.",
-	Long: `Key Conjurer retrieves temporary credentials from the Key Conjurer API.
+	Long: `KeyConjurer retrieves temporary credentials from Okta with the assistance of an optional API.
 
 To get started run the following commands:
-  ` + appname + ` login # You will get prompted for your AD credentials
-  ` + appname + ` accounts
-  ` + appname + ` get <accountName>
+  keyconjurer login
+  keyconjurer accounts
+  keyconjurer get <accountName>
 `,
-	SilenceUsage:  true,
-	SilenceErrors: true,
+	FParseErrWhitelist: cobra.FParseErrWhitelist{
+		UnknownFlags: true,
+	},
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-		fp := keyConjurerRcPath
-		if expanded, err := homedir.Expand(fp); err == nil {
-			fp = expanded
+		var config Config
+		// The error of this function call is only non-nil if the flag was not provided or is not a string.
+		configPath, _ := cmd.Flags().GetString(FlagConfigPath)
+		if expanded, err := homedir.Expand(configPath); err == nil {
+			configPath = expanded
 		}
 
-		if err := os.MkdirAll(filepath.Dir(fp), os.ModeDir|os.FileMode(0755)); err != nil {
-			return err
-		}
-
-		file, err := os.OpenFile(fp, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
-		if os.IsNotExist(err) {
-			return nil
-		} else if err != nil {
-			return err
-		}
-
-		return config.Read(file)
-	},
-	Run: func(cmd *cobra.Command, args []string) {
-		if cmdShortVersionFlag || cmdOneLineVersionFlag {
-			alternateVersions(cmd, cmdShortVersionFlag, cmdOneLineVersionFlag)
-		} else {
-			cmd.Help()
-		}
-	},
-	PersistentPostRunE: func(*cobra.Command, []string) error {
-		var fp string
-		if expanded, err := homedir.Expand(keyConjurerRcPath); err == nil {
-			fp = expanded
-		}
-
-		dir := filepath.Dir(fp)
-		if err := os.MkdirAll(dir, os.ModeDir|os.FileMode(0755)); err != nil {
-			return err
-		}
-
-		file, err := os.Create(fp)
+		file, err := EnsureConfigFileExists(configPath)
 		if err != nil {
-			return fmt.Errorf("unable to create %s reason: %w", fp, err)
+			return err
+		}
+
+		if err := config.Read(file); err != nil {
+			return err
+		}
+
+		// We don't care about this being cancelled.
+		timeout, _ := cmd.Flags().GetInt(FlagTimeout)
+		nextCtx, _ := context.WithTimeout(cmd.Context(), time.Duration(timeout)*time.Second)
+		cmd.SetContext(ConfigContext(nextCtx, &config, configPath))
+		return nil
+	},
+	PersistentPostRunE: func(cmd *cobra.Command, _ []string) error {
+		config := ConfigFromCommand(cmd)
+		path := ConfigPathFromCommand(cmd)
+		if expanded, err := homedir.Expand(path); err == nil {
+			path = expanded
+		}
+
+		// Do not use EnsureConfigFileExists here!
+		// EnsureConfigFileExists opens the file in append mode.
+		// If we open the file in append mode, we'll always append to the file. If we open the file in truncate mode before reading from the file, the content will be truncated _before we read from it_, which will cause a users configuration to be discarded every time we run the program.
+
+		if err := os.MkdirAll(filepath.Dir(path), os.ModeDir|os.FileMode(0755)); err != nil {
+			return err
+		}
+
+		file, err := os.Create(path)
+		if err != nil {
+			return fmt.Errorf("unable to create %s reason: %w", path, err)
 		}
 
 		defer file.Close()
 		return config.Write(file)
 	},
-}
-
-var errHostnameCannotContainPath = errors.New("hostname must not contain a path")
-
-func ParseAddress(addr string) (url.URL, error) {
-	uri, err := url.Parse(addr)
-	// Sometimes url.Parse is not smart enough to return an error but fails parsing all the same.
-	// This enables us to self-heal if the user passes something like "idp.example.com" or "idp.example.com:4000"
-	if err != nil {
-		// url.Parse may fail parsing if we received an ip address and port, which should still be valid.
-		_, _, err2 := net.SplitHostPort(addr)
-		if err2 != nil {
-			// Just looks like a completely invalid string
-			return url.URL{}, err
-		}
-
-		return url.URL{
-			Scheme: "http",
-			Host:   addr,
-		}, nil
-	}
-
-	// This indicate the user passed a URL with a path & a port *or* a hostname with a path and neither specified scheme.
-	if strings.Contains(uri.Opaque, "/") || strings.Contains(uri.Path, "/") {
-		return url.URL{}, errHostnameCannotContainPath
-	}
-
-	// If the user passes something like foo.example.com, this will all be dumped inside the Path
-	if uri.Host == "" && uri.Path != "" {
-		uri.Scheme = "http"
-		uri.Host = uri.Path
-		uri.Path = ""
-	}
-
-	// If the user passes something that has the format %s:%d, Go is going to interpret %s as being the scheme and %d being the opaque portion.
-	if uri.Opaque != "" && uri.Host == "" {
-		uri.Host = net.JoinHostPort(uri.Scheme, uri.Opaque)
-		uri.Scheme = "http"
-		uri.Opaque = ""
-	}
-
-	if uri.Host == "" || err != nil {
-		return url.URL{}, err
-	}
-
-	if uri.Path != "" && uri.Path != "/" {
-		return url.URL{}, errHostnameCannotContainPath
-	}
-
-	return *uri, nil
-}
-
-func newClient() (Client, error) {
-	url, err := ParseAddress(host)
-	if err != nil {
-		return Client{}, fmt.Errorf("invalid address: %w", err)
-	}
-
-	return NewClient(url)
 }

@@ -1,8 +1,10 @@
+# G
 # Manual additions
 *.auto.tfvars
 dev.env
 prod.env
 shared.env
+build/
 frontend/build/**
 **/builds/**
 api/lambdas/get_aws_creds/get_aws_creds
@@ -272,3 +274,8 @@ $RECYCLE.BIN/
 *.lnk
 
 # End of https://www.gitignore.io/api/go,vim,osx,node,emacs,windows,terrafomr
+
+cli/keyconjurer-darwin*
+cli/keyconjurer-linux*
+cli/keyconjurer-windows.exe
+vendor

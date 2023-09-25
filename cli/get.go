@@ -1,24 +1,22 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"os"
-	"strings"
 	"time"
 
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/sts"
 	"github.com/spf13/cobra"
 )
 
 var (
-	ttl            uint
-	timeRemaining  uint
-	outputType     string
-	awsCliPath     string
-	tencentCliPath string
-	roleName       string
-	cloudFlag      string
-	shell          string = shellTypeInfer
+	FlagRegion        = "region"
+	FlagRoleName      = "role"
+	FlagTimeRemaining = "time-remaining"
+	FlagTimeToLive    = "ttl"
+	FlagBypassCache   = "bypass-cache"
 )
 
 var (
@@ -33,57 +31,69 @@ var (
 )
 
 func init() {
-	getCmd.Flags().UintVar(&ttl, "ttl", 1, "The key timeout in hours from 1 to 8.")
-	getCmd.Flags().UintVarP(&timeRemaining, "time-remaining", "t", DefaultTimeRemaining, "Request new keys if there are no keys in the environment or the current keys expire within <time-remaining> minutes. Defaults to 60.")
-	getCmd.Flags().StringVarP(&outputType, "out", "o", outputTypeEnvironmentVariable, "Format to save new credentials in. Supported outputs: env, awscli,tencentcli")
-	getCmd.Flags().StringVarP(&shell, "shell", "", shellTypeInfer, "If output type is env, determines which format to output credentials in - by default, the format is inferred based on the execution environment. WSL users may wish to overwrite this to `bash`")
-	getCmd.Flags().StringVarP(&awsCliPath, "awscli", "", "~/.aws/", "Path for directory used by the aws-cli tool. Default is \"~/.aws\".")
-	getCmd.Flags().StringVarP(&tencentCliPath, "tencentcli", "", "~/.tencent/", "Path for directory used by the tencent-cli tool. Default is \"~/.tencent\".")
-	getCmd.Flags().StringVar(&roleName, "role", "", "The name of the role to assume.")
-	getCmd.Flags().StringVarP(&cloudFlag, "cloud", "", "aws", "Choose a cloud vendor. Default is aws. Can choose aws or tencent")
-	getCmd.Flags().StringVar(&identityProvider, "identity-provider", defaultIdentityProvider, "The identity provider to use. Refer to `"+appname+" identity-providers` for more info.")
+	getCmd.Flags().String(FlagRegion, "us-west-2", "The AWS region to use")
+	getCmd.Flags().Uint(FlagTimeToLive, 1, "The key timeout in hours from 1 to 8.")
+	getCmd.Flags().UintP(FlagTimeRemaining, "t", DefaultTimeRemaining, "Request new keys if there are no keys in the environment or the current keys expire within <time-remaining> minutes. Defaults to 60.")
+	getCmd.Flags().StringP(FlagRoleName, "r", "", "The name of the role to assume.")
+	getCmd.Flags().String(FlagRoleSessionName, "KeyConjurer-AssumeRole", "the name of the role session name that will show up in CloudTrail logs")
+	getCmd.Flags().StringP(FlagOutputType, "o", outputTypeEnvironmentVariable, "Format to save new credentials in. Supported outputs: env, awscli,tencentcli")
+	getCmd.Flags().String(FlagShellType, shellTypeInfer, "If output type is env, determines which format to output credentials in - by default, the format is inferred based on the execution environment. WSL users may wish to overwrite this to `bash`")
+	getCmd.Flags().String(FlagAWSCLIPath, "~/.aws/", "Path for directory used by the aws-cli tool. Default is \"~/.aws\".")
+	getCmd.Flags().String(FlagTencentCLIPath, "~/.tencent/", "Path for directory used by the tencent-cli tool. Default is \"~/.tencent\".")
+	getCmd.Flags().String(FlagCloudType, "aws", "Choose a cloud vendor. Default is aws. Can choose aws or tencent")
+	getCmd.Flags().Bool(FlagBypassCache, false, "Do not check the cache for accounts and send the application ID as-is to Okta. This is useful if you have an ID you know is an Okta application ID and it is not stored in your local account cache.")
+}
+
+func isMemberOfSlice(slice []string, val string) bool {
+	for _, member := range slice {
+		if member == val {
+			return true
+		}
+	}
+
+	return false
+}
+
+func resolveApplicationInfo(cfg *Config, bypassCache bool, nameOrID string) (*Account, bool) {
+	if bypassCache {
+		return &Account{ID: nameOrID, Name: nameOrID}, true
+	}
+	return cfg.FindAccount(nameOrID)
 }
 
 var getCmd = &cobra.Command{
 	Use:   "get <accountName/alias>",
-	Short: "Retrieves temporary Cloud(AWS|Tencent) API credentials.",
-	Long: `Retrieves temporary Cloud(AWS|Tencent) API credentials for the specified account.  It sends a push request to the first Duo device it finds associated with your account.
+	Short: "Retrieves temporary cloud API credentials.",
+	Long: `Retrieves temporary cloud API credentials for the specified account.  It sends a push request to the first Duo device it finds associated with your account.
 
-	A role must be specified when using this command through the --role flag. You may list the roles you can assume through the roles command.`,
-	// Example: appname + " get <accountName/alias>",
+A role must be specified when using this command through the --role flag. You may list the roles you can assume through the roles command.`,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		ctx := context.Background()
-		client, err := newClient()
-		if err != nil {
-			return err
+		config := ConfigFromCommand(cmd)
+		ctx := cmd.Context()
+		if HasTokenExpired(config.Tokens) {
+			cmd.PrintErrln("Your session has expired. Please login again.")
+			return nil
 		}
+		client := NewHTTPClient()
 
-		valid := false
-		for _, permitted := range permittedOutputTypes {
-			if outputType == permitted {
-				valid = true
-			}
-		}
+		ttl, _ := cmd.Flags().GetUint(FlagTimeToLive)
+		timeRemaining, _ := cmd.Flags().GetUint(FlagTimeRemaining)
+		outputType, _ := cmd.Flags().GetString(FlagOutputType)
+		shellType, _ := cmd.Flags().GetString(FlagShellType)
+		roleName, _ := cmd.Flags().GetString(FlagRoleName)
+		cloudType, _ := cmd.Flags().GetString(FlagCloudType)
+		oidcDomain, _ := cmd.Flags().GetString(FlagOIDCDomain)
+		clientID, _ := cmd.Flags().GetString(FlagClientID)
+		awsCliPath, _ := cmd.Flags().GetString(FlagAWSCLIPath)
+		tencentCliPath, _ := cmd.Flags().GetString(FlagTencentCLIPath)
 
-		if !valid {
+		if !isMemberOfSlice(permittedOutputTypes, outputType) {
 			return invalidValueError(outputType, permittedOutputTypes)
 		}
 
-		valid = false
-		for _, permitted := range permittedShellTypes {
-			if shell == permitted {
-				valid = true
-			}
-		}
-
-		if !valid {
-			return invalidValueError(shell, permittedShellTypes)
-		}
-
-		creds, err := config.GetCredentials()
-		if err != nil {
-			return err
+		if !isMemberOfSlice(permittedShellTypes, shellType) {
+			return invalidValueError(shellType, permittedShellTypes)
 		}
 
 		// make sure we enforce limit
@@ -91,16 +101,18 @@ var getCmd = &cobra.Command{
 			ttl = 8
 		}
 
-		var label, applicationID = args[0], args[0]
-		account, ok := config.FindAccount(applicationID)
-		if ok {
-			applicationID = account.ID
-			label = account.Name
-		} else {
-			account = &Account{}
+		bypassCache, _ := cmd.Flags().GetBool(FlagBypassCache)
+		account, ok := resolveApplicationInfo(config, bypassCache, args[0])
+		if !ok {
+			cmd.PrintErrf("%q is not a known account name in your account cache. Your cache can be refreshed by entering executing `keyconjurer accounts`. If the value provided is an Okta application ID, you may provide %s as an option to this command and try again.", args[0], FlagBypassCache)
+			return nil
 		}
 
-		if account.MostRecentRole != "" && roleName == "" {
+		if roleName == "" {
+			if account.MostRecentRole == "" {
+				cmd.PrintErrln("You must specify the --role flag with this command")
+				return nil
+			}
 			roleName = account.MostRecentRole
 		}
 
@@ -108,47 +120,91 @@ var getCmd = &cobra.Command{
 			timeRemaining = config.TimeRemaining
 		}
 
-		if cloudFlag == "" {
-			cloudFlag = cloudAws
-			if strings.Contains(account.Name, "Tencent") {
-				cloudFlag = cloudTencent
-			}
-		}
-
 		var credentials CloudCredentials
-		credentials.LoadFromEnv(cloudFlag)
-		if credentials.ValidUntil(*account, cloudFlag, time.Duration(timeRemaining)*time.Minute) {
-			return echoCredentials(args[0], args[0], credentials, outputType, cloudFlag)
+		if cloudType == cloudAws {
+			credentials = LoadAWSCredentialsFromEnvironment()
+		} else if cloudType == cloudTencent {
+			credentials = LoadTencentCredentialsFromEnvironment()
 		}
 
-		if !quiet {
-			fmt.Fprintf(os.Stderr, "sending authentication request for account %q - you may be asked to authenticate with Duo\n", label)
+		if credentials.ValidUntil(account, time.Duration(timeRemaining)*time.Minute) {
+			return echoCredentials(args[0], args[0], credentials, outputType, shellType, awsCliPath, tencentCliPath)
+		}
+
+		oauthCfg, err := DiscoverOAuth2Config(cmd.Context(), oidcDomain, clientID)
+		if err != nil {
+			cmd.PrintErrf("could not discover oauth2  config: %s\n", err)
+			return nil
+		}
+
+		tok, err := ExchangeAccessTokenForWebSSOToken(cmd.Context(), client, oauthCfg, config.Tokens, account.ID)
+		if err != nil {
+			cmd.PrintErrf("error exchanging token: %s\n", err)
+			return nil
+		}
+
+		assertion, err := ExchangeWebSSOTokenForSAMLAssertion(cmd.Context(), client, oidcDomain, tok)
+		if err != nil {
+			cmd.PrintErrf("failed to fetch SAML assertion: %s\n", err)
+			return nil
+		}
+
+		assertionStr := string(assertion)
+		samlResponse, err := ParseBase64EncodedSAMLResponse(assertionStr)
+		if err != nil {
+			cmd.PrintErrf("could not parse assertion: %s\n", err)
+			return nil
+		}
+
+		pair, ok := FindRoleInSAML(roleName, samlResponse)
+		if !ok {
+			cmd.PrintErrf("you do not have access to the role %s on application %s\n", roleName, args[0])
+			return nil
 		}
 
 		if ttl == 1 && config.TTL != 0 {
 			ttl = config.TTL
 		}
 
-		credentials, err = client.GetCredentials(ctx, &GetCredentialsOptions{
-			Credentials:            creds,
-			ApplicationID:          applicationID,
-			RoleName:               roleName,
-			TimeoutInHours:         uint8(ttl),
-			AuthenticationProvider: identityProvider,
-		})
+		if cloudType == cloudAws {
+			region, _ := cmd.Flags().GetString(FlagRegion)
+			session, _ := session.NewSession(&aws.Config{Region: aws.String(region)})
+			stsClient := sts.New(session)
+			timeoutInSeconds := int64(3600 * ttl)
+			resp, err := stsClient.AssumeRoleWithSAMLWithContext(ctx, &sts.AssumeRoleWithSAMLInput{
+				DurationSeconds: &timeoutInSeconds,
+				PrincipalArn:    &pair.ProviderARN,
+				RoleArn:         &pair.RoleARN,
+				SAMLAssertion:   &assertionStr,
+			})
 
-		if err != nil {
-			return err
+			if err != nil {
+				cmd.PrintErrf("failed to exchange credentials: %s", err)
+				return nil
+			}
+
+			credentials = CloudCredentials{
+				AccessKeyID:     *resp.Credentials.AccessKeyId,
+				Expiration:      resp.Credentials.Expiration.Format(time.RFC3339),
+				SecretAccessKey: *resp.Credentials.SecretAccessKey,
+				SessionToken:    *resp.Credentials.SessionToken,
+				credentialsType: cloudType,
+			}
+		} else {
+			panic("not yet implemented")
 		}
 
-		account.MostRecentRole = roleName
-		return echoCredentials(args[0], args[0], credentials, outputType, cloudFlag)
+		if account != nil {
+			account.MostRecentRole = roleName
+		}
+
+		return echoCredentials(args[0], args[0], credentials, outputType, shellType, awsCliPath, tencentCliPath)
 	}}
 
-func echoCredentials(id, name string, credentials CloudCredentials, outputType, cloudFlag string) error {
+func echoCredentials(id, name string, credentials CloudCredentials, outputType, shellType, awsCliPath, tencentCliPath string) error {
 	switch outputType {
 	case outputTypeEnvironmentVariable:
-		credentials.WriteFormat(os.Stdout, shell, cloudFlag)
+		credentials.WriteFormat(os.Stdout, shellType)
 		return nil
 	case outputTypeAWSCredentialsFile, outputTypeTencentCredentialsFile:
 		acc := Account{ID: id, Name: name}

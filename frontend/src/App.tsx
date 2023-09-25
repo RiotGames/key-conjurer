@@ -9,14 +9,6 @@ import { TroubleshootingCard } from "./components/TroubleshootingCard";
 import { updateUserInfo } from "./actions";
 
 export const App = () => {
-  useEffect(() => {
-    // We used to support OneLogin as a provider; this ensures it isn't kept around.
-    if (localStorage.getItem("provider") !== "okta") {
-      updateUserInfo({ username: "", password: "" });
-      localStorage.removeItem("provider");
-    }
-  }, []);
-
   return (
     <div>
       <Header />

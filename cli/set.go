@@ -24,6 +24,7 @@ var setTTLCmd = &cobra.Command{
 	Long:  "Sets ttl value in number of hours.",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
+		config := ConfigFromCommand(cmd)
 		ttl, err := strconv.ParseUint(args[0], 10, 32)
 		if err != nil {
 			return fmt.Errorf("unable to parse value %s", args[0])
@@ -40,6 +41,7 @@ var setTimeRemainingCmd = &cobra.Command{
 	Long:  "Sets time remaining value in number of minutes. Using minutes is an artifact from when keys could only live for 1 hour.",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
+		config := ConfigFromCommand(cmd)
 		timeRemaining, err := strconv.ParseUint(args[0], 10, 32)
 		if err != nil {
 			return fmt.Errorf("unable to parse value %s", args[0])

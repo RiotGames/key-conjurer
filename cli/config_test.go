@@ -15,7 +15,7 @@ func TestFindAccount(t *testing.T) {
 	assert.Equal(t, "1", account.ID, "account id should be 1")
 	assert.Equal(t, "test account", account.Name, "account name should be %q", "test account")
 
-	account, ok = set.Resolve("testaccount2")
+	_, ok = set.Resolve("testaccount2")
 	assert.False(t, ok, "account shouldn't exist")
 }
 
@@ -57,26 +57,14 @@ func TestUnmarshalJSON(t *testing.T) {
 
 	assert.Equal(t, uint(0), c.TimeRemaining)
 	assert.Equal(t, uint(1), c.TTL)
-
-	assert.Equal(t, "eyJ1c2VybmFtZSI6InVzZXJuYW1lIiwicGFzc3dvcmQiOiJwYXNzd29yZCJ9", c.Creds)
 }
 
 func TestLegacyUnmarshalJSON(t *testing.T) {
 	blob := `{"migrated":false,"apps":null,"accounts":{"1":{"id":1,"name":"AWS - name","alias":"name"}},"ttl":1,"time_remaining":0,"creds":"eyJ1c2VybmFtZSI6InVzZXJuYW1lIiwicGFzc3dvcmQiOiJwYXNzd29yZCJ9"}`
 	c := Config{}
 
-	assert.NoError(t, json.Unmarshal([]byte(blob), &c))
-
-	acc, ok := c.Accounts.Resolve("name")
-	assert.True(t, ok)
-	assert.Equal(t, "AWS - name", acc.Name)
-	assert.Equal(t, "name", acc.Alias)
-	assert.Equal(t, "1", acc.ID)
-
-	assert.Equal(t, uint(0), c.TimeRemaining)
-	assert.Equal(t, uint(1), c.TTL)
-
-	assert.Equal(t, "eyJ1c2VybmFtZSI6InVzZXJuYW1lIiwicGFzc3dvcmQiOiJwYXNzd29yZCJ9", c.Creds)
+	var err *json.UnmarshalTypeError
+	assert.ErrorAs(t, json.Unmarshal([]byte(blob), &c), &err)
 }
 
 func TestConfigAliasesWork(t *testing.T) {

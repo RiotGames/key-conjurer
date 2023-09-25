@@ -28,7 +28,7 @@ type UsageError struct {
 }
 
 func (u *UsageError) Error() string {
-	return u.ShortMessage
+	return u.Help
 }
 
 // ErrNoCredentials indicates the user attempted to use a command that requires credentials to be stored on disk but had not logged in beforehand.
