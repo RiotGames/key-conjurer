@@ -58,6 +58,7 @@ func resolveApplicationInfo(cfg *Config, bypassCache bool, nameOrID string) (*Ac
 	if bypassCache {
 		return &Account{ID: nameOrID, Name: nameOrID}, true
 	}
+
 	return cfg.FindAccount(nameOrID)
 }
 
@@ -113,6 +114,7 @@ A role must be specified when using this command through the --role flag. You ma
 				cmd.PrintErrln("You must specify the --role flag with this command")
 				return nil
 			}
+
 			roleName = account.MostRecentRole
 		}
 
@@ -131,25 +133,34 @@ A role must be specified when using this command through the --role flag. You ma
 			return echoCredentials(args[0], args[0], credentials, outputType, shellType, awsCliPath, tencentCliPath)
 		}
 
-		oauthCfg, err := DiscoverOAuth2Config(cmd.Context(), oidcDomain, clientID)
-		if err != nil {
-			cmd.PrintErrf("could not discover oauth2  config: %s\n", err)
-			return nil
+		var assertionBytes []byte
+		switch cloudType {
+		case cloudAws:
+			oauthCfg, err := DiscoverOAuth2Config(cmd.Context(), oidcDomain, clientID)
+			if err != nil {
+				cmd.PrintErrf("could not discover oauth2  config: %s\n", err)
+				return nil
+			}
+
+			tok, err := ExchangeAccessTokenForWebSSOToken(cmd.Context(), client, oauthCfg, config.Tokens, account.ID)
+			if err != nil {
+				cmd.PrintErrf("error exchanging token: %s\n", err)
+				return nil
+			}
+
+			assertionBytes, err = ExchangeWebSSOTokenForSAMLAssertion(cmd.Context(), client, oidcDomain, tok)
+			if err != nil {
+				cmd.PrintErrf("failed to fetch SAML assertion: %s\n", err)
+				return nil
+			}
+		case cloudTencent:
+			// Tencent applications aren't supported by the Okta API, so we can't use the same flow as AWS.
+			// Instead, we can construct a URL to initiate logging into the application that has been pre-configured to support KeyConjurer.
+			// This URL will redirect back to a web server known ahead of time with a SAML assertion which we can then exchange for credentials.
+			panic("not yet implemented")
 		}
 
-		tok, err := ExchangeAccessTokenForWebSSOToken(cmd.Context(), client, oauthCfg, config.Tokens, account.ID)
-		if err != nil {
-			cmd.PrintErrf("error exchanging token: %s\n", err)
-			return nil
-		}
-
-		assertion, err := ExchangeWebSSOTokenForSAMLAssertion(cmd.Context(), client, oidcDomain, tok)
-		if err != nil {
-			cmd.PrintErrf("failed to fetch SAML assertion: %s\n", err)
-			return nil
-		}
-
-		assertionStr := string(assertion)
+		assertionStr := string(assertionBytes)
 		samlResponse, err := ParseBase64EncodedSAMLResponse(assertionStr)
 		if err != nil {
 			cmd.PrintErrf("could not parse assertion: %s\n", err)
@@ -166,7 +177,8 @@ A role must be specified when using this command through the --role flag. You ma
 			ttl = config.TTL
 		}
 
-		if cloudType == cloudAws {
+		switch cloudType {
+		case cloudAws:
 			region, _ := cmd.Flags().GetString(FlagRegion)
 			session, _ := session.NewSession(&aws.Config{Region: aws.String(region)})
 			stsClient := sts.New(session)
@@ -190,7 +202,7 @@ A role must be specified when using this command through the --role flag. You ma
 				SessionToken:    *resp.Credentials.SessionToken,
 				credentialsType: cloudType,
 			}
-		} else {
+		default:
 			panic("not yet implemented")
 		}
 
