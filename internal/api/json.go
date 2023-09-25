@@ -18,7 +18,9 @@ func ServeJSON[T any](w http.ResponseWriter, data T) {
 	// Nothing we can do to respond to the error message here either
 	w.Header().Set("Content-Type", "application/json")
 	_, err = w.Write(buf)
-	slog.Error("could not write JSON to the client: %s", err)
+	if err != nil {
+		slog.Error("could not write JSON to the client: %s", err)
+	}
 }
 
 type JSONError struct {
