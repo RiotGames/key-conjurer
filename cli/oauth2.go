@@ -19,7 +19,24 @@ import (
 	"golang.org/x/oauth2"
 )
 
-var ErrInvalidDomain = errors.New("invalid domain")
+var (
+	ErrInvalidDomain = errors.New("invalid domain")
+	// ErrTokenExchangeNotSupported indicates that token exchange is not supported for the given application.
+	//
+	// This most commonly occurs when attempting to use token exchange on non-AWS applications with Okta.
+	// Okta currently (2023-09-25) only supports the web sso grant type for AWS applications.
+	ErrTokenExchangeNotSupported = errors.New("token exchange not supported")
+)
+
+// ErrOktaErrorResponse is returned when Okta returns a non-200 response that is not covered by other well-defined errors.
+type ErrOktaErrorResponse struct {
+	StatusCode int
+	Response   *http.Response
+}
+
+func (e ErrOktaErrorResponse) Error() string {
+	return fmt.Sprintf("bad response code: %d", e.StatusCode)
+}
 
 // stateBufSize is the size of the buffer used to generate the state parameter.
 // 43 is a magic number - It generates states that are not too short or long for Okta's validation.
@@ -212,9 +229,20 @@ func ExchangeAccessTokenForWebSSOToken(ctx context.Context, client *http.Client,
 		return nil, err
 	}
 
-	var tok oauth2.Token
-	return &tok, json.NewDecoder(resp.Body).Decode(&tok)
+	switch resp.StatusCode {
+	case http.StatusOK:
+		var tok oauth2.Token
+		return &tok, json.NewDecoder(resp.Body).Decode(&tok)
+	case http.StatusBadRequest:
+		// Unsupported application - This application probably hasn't been configured to support token exchange.
+		// In other words, it's probably not an AWS application.
+		return nil, ErrTokenExchangeNotSupported
+	default:
+		return nil, ErrOktaErrorResponse{resp.StatusCode, resp}
+	}
 }
+
+var ()
 
 // TODO: This is actually an Okta-specific API
 func ExchangeWebSSOTokenForSAMLAssertion(ctx context.Context, client *http.Client, issuer string, token *oauth2.Token) ([]byte, error) {
