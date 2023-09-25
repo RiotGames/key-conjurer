@@ -8,6 +8,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/sts"
+	"github.com/riotgames/key-conjurer/internal/api"
 	"github.com/spf13/cobra"
 )
 
@@ -40,7 +41,6 @@ func init() {
 	getCmd.Flags().String(FlagShellType, shellTypeInfer, "If output type is env, determines which format to output credentials in - by default, the format is inferred based on the execution environment. WSL users may wish to overwrite this to `bash`")
 	getCmd.Flags().String(FlagAWSCLIPath, "~/.aws/", "Path for directory used by the aws-cli tool. Default is \"~/.aws\".")
 	getCmd.Flags().String(FlagTencentCLIPath, "~/.tencent/", "Path for directory used by the tencent-cli tool. Default is \"~/.tencent\".")
-	getCmd.Flags().String(FlagCloudType, "aws", "Choose a cloud vendor. Default is aws. Can choose aws or tencent")
 	getCmd.Flags().Bool(FlagBypassCache, false, "Do not check the cache for accounts and send the application ID as-is to Okta. This is useful if you have an ID you know is an Okta application ID and it is not stored in your local account cache.")
 }
 
@@ -83,7 +83,6 @@ A role must be specified when using this command through the --role flag. You ma
 		outputType, _ := cmd.Flags().GetString(FlagOutputType)
 		shellType, _ := cmd.Flags().GetString(FlagShellType)
 		roleName, _ := cmd.Flags().GetString(FlagRoleName)
-		cloudType, _ := cmd.Flags().GetString(FlagCloudType)
 		oidcDomain, _ := cmd.Flags().GetString(FlagOIDCDomain)
 		clientID, _ := cmd.Flags().GetString(FlagClientID)
 		awsCliPath, _ := cmd.Flags().GetString(FlagAWSCLIPath)
@@ -107,6 +106,22 @@ A role must be specified when using this command through the --role flag. You ma
 		if !ok {
 			cmd.PrintErrf("%q is not a known account name in your account cache. Your cache can be refreshed by entering executing `keyconjurer accounts`. If the value provided is an Okta application ID, you may provide %s as an option to this command and try again.", args[0], FlagBypassCache)
 			return nil
+		}
+
+		cloudType := cloudAws
+		if account.Type == api.ApplicationTypeTencent {
+			if account.Href == "" {
+				cmd.PrintErrf(
+					"The application %q is a Tencent application, but it does not have a URL configured. Please run %s again. If this error persists, confirm that %q is a Tencent application",
+					account.Name,
+					"keyconjurer login",
+					account.Name,
+				)
+
+				return nil
+			}
+
+			cloudType = cloudTencent
 		}
 
 		if roleName == "" {
@@ -157,6 +172,13 @@ A role must be specified when using this command through the --role flag. You ma
 			// Tencent applications aren't supported by the Okta API, so we can't use the same flow as AWS.
 			// Instead, we can construct a URL to initiate logging into the application that has been pre-configured to support KeyConjurer.
 			// This URL will redirect back to a web server known ahead of time with a SAML assertion which we can then exchange for credentials.
+			//
+			// Because we need to know the URL of the application, --bypass-cache can't be used.
+			if bypassCache {
+				cmd.PrintErrf("cannot use --%s with Tencent applications\n", FlagBypassCache)
+				return nil
+			}
+
 			panic("not yet implemented")
 		}
 

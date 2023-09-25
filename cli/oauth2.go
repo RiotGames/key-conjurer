@@ -242,9 +242,6 @@ func ExchangeAccessTokenForWebSSOToken(ctx context.Context, client *http.Client,
 	}
 }
 
-var ()
-
-// TODO: This is actually an Okta-specific API
 func ExchangeWebSSOTokenForSAMLAssertion(ctx context.Context, client *http.Client, issuer string, token *oauth2.Token) ([]byte, error) {
 	if client == nil {
 		client = http.DefaultClient

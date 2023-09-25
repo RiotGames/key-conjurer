@@ -13,8 +13,8 @@ import (
 type ApplicationType string
 
 var (
-	ApplicationTypeOIDC ApplicationType = "oidc"
-	ApplicationTypeSAML ApplicationType = "saml"
+	ApplicationTypeAWS     ApplicationType = "aws"
+	ApplicationTypeTencent ApplicationType = "tencent"
 )
 
 type Application struct {
@@ -89,11 +89,11 @@ func ServeUserApplications(okta OktaService) http.Handler {
 
 func deriveApplicationType(app *okta.AppLink) (ApplicationType, bool) {
 	if app.AppName == "amazon_aws" {
-		return ApplicationTypeOIDC, true
+		return ApplicationTypeAWS, true
 	}
 
 	if strings.Contains(strings.ToLower(app.AppName), "tencent") {
-		return ApplicationTypeSAML, true
+		return ApplicationTypeTencent, true
 	}
 
 	return "", false
