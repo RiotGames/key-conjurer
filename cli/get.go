@@ -2,7 +2,10 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"log"
+	"net/http"
 	"os"
 	"os/exec"
 	"time"
@@ -181,11 +184,19 @@ A role must be specified when using this command through the --role flag. You ma
 				return nil
 			}
 
-			// TODO: Spin up a web server that listens for a SAML callback.
+			// TODO: We should only open the browser if we're able to start the server,
+			// and this branch should only terminate once the server is closed.
+			server := http.Server{
+				Addr:    "127.0.0.1:57468",
+				Handler: SAMLCallbackHandler{},
+			}
 
-			// TODO: This only works for OSX.
-			proc := exec.CommandContext(context.Background(), "open", account.Href)
-			if err := proc.Run(); err != nil {
+			err := server.ListenAndServe()
+			if err != nil && !errors.Is(err, http.ErrServerClosed) {
+				log.Panicln(err)
+			}
+
+			if err = OpenBrowser(account.Href); err != nil {
 				cmd.PrintErrf("failed to open %s: %s", account.Href, err)
 				return nil
 			}
@@ -263,4 +274,10 @@ func echoCredentials(id, name string, credentials CloudCredentials, outputType, 
 	default:
 		return fmt.Errorf("%s is an invalid output type", outputType)
 	}
+}
+
+func OpenBrowser(url string) error {
+	// TODO: This only works for OSX.
+	proc := exec.CommandContext(context.Background(), "open", url)
+	return proc.Run()
 }

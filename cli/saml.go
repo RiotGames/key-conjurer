@@ -1,6 +1,7 @@
 package main
 
 import (
+	"net/http"
 	"strings"
 
 	"github.com/RobotsAndPencils/go-saml"
@@ -99,4 +100,10 @@ func getARN(value string) RoleProviderPair {
 
 func ParseBase64EncodedSAMLResponse(xml string) (*saml.Response, error) {
 	return saml.ParseEncodedResponse(xml)
+}
+
+type SAMLCallbackHandler struct{}
+
+func (SAMLCallbackHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	// TODO: Implement
 }
