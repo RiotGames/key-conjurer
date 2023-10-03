@@ -186,29 +186,31 @@ A role must be specified when using this command through the --role flag. You ma
 
 			// TODO: We should only open the browser if we're able to start the server,
 			// and this branch should only terminate once the server is closed.
-			server := http.Server{
-				Addr:    "127.0.0.1:57468",
-				Handler: SAMLCallbackHandler{},
+			handler := SAMLCallbackHandler{
+				AssertionChannel: make(chan []byte, 1),
 			}
 
-			done := make(chan struct{})
+			server := http.Server{
+				Addr:    "127.0.0.1:57468",
+				Handler: &handler,
+			}
+
 			go func() {
 				err := server.ListenAndServe()
 				if err != nil && !errors.Is(err, http.ErrServerClosed) {
+					// TODO: Don't panic - instead, pass error to caller
 					log.Panicln(err)
 				}
-				done <- struct{}{}
 			}()
 
+			// TODO: We should probably wait a second before opening the browser to see if the http server is going to throw an error
+			// If it throws an error, we should bail
 			if err := OpenBrowser(account.Href); err != nil {
 				cmd.PrintErrf("failed to open %s: %s", account.Href, err)
 				return nil
 			}
 
-			<-done
-
-			panic("not yet implemented")
-			return nil
+			assertionBytes = <-handler.AssertionChannel
 		}
 
 		assertionStr := string(assertionBytes)

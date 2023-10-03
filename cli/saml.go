@@ -1,7 +1,10 @@
 package main
 
 import (
+	"io"
+	"log"
 	"net/http"
+	"net/url"
 	"strings"
 
 	"github.com/RobotsAndPencils/go-saml"
@@ -102,8 +105,24 @@ func ParseBase64EncodedSAMLResponse(xml string) (*saml.Response, error) {
 	return saml.ParseEncodedResponse(xml)
 }
 
-type SAMLCallbackHandler struct{}
+type SAMLCallbackHandler struct {
+	AssertionChannel chan []byte
+}
 
-func (SAMLCallbackHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	// TODO: Implement
+func (h SAMLCallbackHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	// TODO: Handle panics gracefully
+	assertionBytes, err := io.ReadAll(r.Body)
+	if err != nil {
+		log.Fatalf("Failed to read request body: %s", err)
+	}
+
+	// A correctly formed body will be a url-encoded param response, with the SAMLResponse being base64 encoded.
+	v, err := url.ParseQuery(string(assertionBytes))
+	if err != nil {
+		log.Fatalf("Incorrectly formatted request body: %s", err)
+	}
+	r.Body.Close()
+
+	// TODO: This can panic if the body doesn't contain SAMLResponse
+	h.AssertionChannel <- []byte(v["SAMLResponse"][0])
 }
