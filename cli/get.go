@@ -153,27 +153,16 @@ A role must be specified when using this command through the --role flag. You ma
 			return echoCredentials(args[0], args[0], credentials, outputType, shellType, awsCliPath, tencentCliPath)
 		}
 
-		var assertionBytes []byte
-		switch cloudType {
-		case cloudAws:
-			oauthCfg, err := DiscoverOAuth2Config(cmd.Context(), oidcDomain, clientID)
-			if err != nil {
-				cmd.PrintErrf("could not discover oauth2  config: %s\n", err)
-				return nil
+		var provider SAMLAssertionProvider
+		if cloudType == cloudAws {
+			provider = OktaAWSSAMLProvider{
+				OIDCDomain: oidcDomain,
+				ClientID:   clientID,
+				Tokens:     config.Tokens,
+				AccountID:  account.ID,
+				Client:     client,
 			}
-
-			tok, err := ExchangeAccessTokenForWebSSOToken(cmd.Context(), client, oauthCfg, config.Tokens, account.ID)
-			if err != nil {
-				cmd.PrintErrf("error exchanging token: %s\n", err)
-				return nil
-			}
-
-			assertionBytes, err = ExchangeWebSSOTokenForSAMLAssertion(cmd.Context(), client, oidcDomain, tok)
-			if err != nil {
-				cmd.PrintErrf("failed to fetch SAML assertion: %s\n", err)
-				return nil
-			}
-		case cloudTencent:
+		} else if cloudType == cloudTencent {
 			// Tencent applications aren't supported by the Okta API, so we can't use the same flow as AWS.
 			// Instead, we can construct a URL to initiate logging into the application that has been pre-configured to support KeyConjurer.
 			// This URL will redirect back to a web server known ahead of time with a SAML assertion which we can then exchange for credentials.
@@ -184,33 +173,15 @@ A role must be specified when using this command through the --role flag. You ma
 				return nil
 			}
 
-			// TODO: We should only open the browser if we're able to start the server,
-			// and this branch should only terminate once the server is closed.
-			handler := SAMLCallbackHandler{
-				AssertionChannel: make(chan []byte, 1),
+			provider = OktaTencentCloudSAMLProvider{
+				Href: account.Href,
 			}
+		}
 
-			server := http.Server{
-				Addr:    "127.0.0.1:57468",
-				Handler: &handler,
-			}
-
-			go func() {
-				err := server.ListenAndServe()
-				if err != nil && !errors.Is(err, http.ErrServerClosed) {
-					// TODO: Don't panic - instead, pass error to caller
-					log.Panicln(err)
-				}
-			}()
-
-			// TODO: We should probably wait a second before opening the browser to see if the http server is going to throw an error
-			// If it throws an error, we should bail
-			if err := OpenBrowser(account.Href); err != nil {
-				cmd.PrintErrf("failed to open %s: %s", account.Href, err)
-				return nil
-			}
-
-			assertionBytes = <-handler.AssertionChannel
+		assertionBytes, err := provider.FetchSAMLAssertion(cmd.Context())
+		if err != nil {
+			cmd.PrintErrf("could not fetch SAML assertion: %s\n", err)
+			return nil
 		}
 
 		assertionStr := string(assertionBytes)
@@ -265,6 +236,70 @@ A role must be specified when using this command through the --role flag. You ma
 
 		return echoCredentials(args[0], args[0], credentials, outputType, shellType, awsCliPath, tencentCliPath)
 	}}
+
+type SAMLAssertionProvider interface {
+	FetchSAMLAssertion(ctx context.Context) ([]byte, error)
+}
+
+type OktaAWSSAMLProvider struct {
+	OIDCDomain string
+	ClientID   string
+	Tokens     *TokenSet
+	AccountID  string
+	Client     *http.Client
+}
+
+func (r OktaAWSSAMLProvider) FetchSAMLAssertion(ctx context.Context) ([]byte, error) {
+	oauthCfg, err := DiscoverOAuth2Config(ctx, r.OIDCDomain, r.ClientID)
+	if err != nil {
+		return nil, fmt.Errorf("could not discover OAuth2 configuration: %w", err)
+	}
+
+	tok, err := ExchangeAccessTokenForWebSSOToken(ctx, r.Client, oauthCfg, r.Tokens, r.AccountID)
+	if err != nil {
+		return nil, fmt.Errorf("could not exchange access token for web sso token: %w", err)
+	}
+
+	assertion, err := ExchangeWebSSOTokenForSAMLAssertion(ctx, r.Client, r.OIDCDomain, tok)
+	if err != nil {
+		return nil, fmt.Errorf("could not exchange web sso token for saml assertion: %w", err)
+	}
+
+	return assertion, nil
+}
+
+type OktaTencentCloudSAMLProvider struct {
+	Href string
+}
+
+func (p OktaTencentCloudSAMLProvider) FetchSAMLAssertion(ctx context.Context) ([]byte, error) {
+	// TODO: We should only open the browser if we're able to start the server,
+	// and this branch should only terminate once the server is closed.
+	handler := SAMLCallbackHandler{
+		AssertionChannel: make(chan []byte, 1),
+	}
+
+	server := http.Server{
+		Addr:    "127.0.0.1:57468",
+		Handler: &handler,
+	}
+
+	go func() {
+		err := server.ListenAndServe()
+		if err != nil && !errors.Is(err, http.ErrServerClosed) {
+			// TODO: Don't panic - instead, pass error to caller
+			log.Panicln(err)
+		}
+	}()
+
+	// TODO: We should probably wait a second before opening the browser to see if the http server is going to throw an error
+	// If it throws an error, we should bail
+	if err := OpenBrowser(p.Href); err != nil {
+		return nil, fmt.Errorf("failed to open web browser to URL %s: %w", p.Href, err)
+	}
+
+	return <-handler.AssertionChannel, nil
+}
 
 func echoCredentials(id, name string, credentials CloudCredentials, outputType, shellType, awsCliPath, tencentCliPath string) error {
 	switch outputType {
