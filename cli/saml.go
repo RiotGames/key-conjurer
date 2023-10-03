@@ -10,6 +10,27 @@ import (
 	"github.com/RobotsAndPencils/go-saml"
 )
 
+type SAMLResponse struct {
+	original []byte
+	inner    *saml.Response
+}
+
+func (r *SAMLResponse) AddAttribute(name, value string) {
+	if r.inner == nil {
+		r.inner = &saml.Response{}
+	}
+
+	r.inner.AddAttribute(name, value)
+}
+
+func (r SAMLResponse) GetAttribute(name string) string {
+	return r.inner.GetAttribute(name)
+}
+
+func (r SAMLResponse) GetAttributeValues(name string) []string {
+	return r.inner.GetAttributeValues(name)
+}
+
 type RoleProviderPair struct {
 	RoleARN     string
 	ProviderARN string
@@ -20,7 +41,7 @@ const (
 	tencentFlag = 1
 )
 
-func ListSAMLRoles(response *saml.Response) []string {
+func ListSAMLRoles(response *SAMLResponse) []string {
 	if response == nil {
 		return nil
 	}
@@ -43,7 +64,7 @@ func ListSAMLRoles(response *saml.Response) []string {
 	return names
 }
 
-func FindRoleInSAML(roleName string, response *saml.Response) (RoleProviderPair, bool) {
+func FindRoleInSAML(roleName string, response *SAMLResponse) (RoleProviderPair, bool) {
 	if response == nil {
 		return RoleProviderPair{}, false
 	}
@@ -101,8 +122,12 @@ func getARN(value string) RoleProviderPair {
 	return p
 }
 
-func ParseBase64EncodedSAMLResponse(xml string) (*saml.Response, error) {
-	return saml.ParseEncodedResponse(xml)
+func ParseBase64EncodedSAMLResponse(xml string) (*SAMLResponse, error) {
+	res, err := saml.ParseEncodedResponse(xml)
+	if err != nil {
+		return nil, nil
+	}
+	return &SAMLResponse{original: []byte(xml), inner: res}, nil
 }
 
 type SAMLCallbackHandler struct {
