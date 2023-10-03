@@ -191,15 +191,21 @@ A role must be specified when using this command through the --role flag. You ma
 				Handler: SAMLCallbackHandler{},
 			}
 
-			err := server.ListenAndServe()
-			if err != nil && !errors.Is(err, http.ErrServerClosed) {
-				log.Panicln(err)
-			}
+			done := make(chan struct{})
+			go func() {
+				err := server.ListenAndServe()
+				if err != nil && !errors.Is(err, http.ErrServerClosed) {
+					log.Panicln(err)
+				}
+				done <- struct{}{}
+			}()
 
-			if err = OpenBrowser(account.Href); err != nil {
+			if err := OpenBrowser(account.Href); err != nil {
 				cmd.PrintErrf("failed to open %s: %s", account.Href, err)
 				return nil
 			}
+
+			<-done
 
 			panic("not yet implemented")
 			return nil
