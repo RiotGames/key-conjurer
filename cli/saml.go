@@ -36,11 +36,6 @@ type RoleProviderPair struct {
 	ProviderARN string
 }
 
-const (
-	awsFlag     = 0
-	tencentFlag = 1
-)
-
 func ListSAMLRoles(response *SAMLResponse) []string {
 	if response == nil {
 		return nil
