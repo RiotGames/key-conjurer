@@ -13,7 +13,7 @@ import (
 )
 
 type SAMLResponse struct {
-	original []byte
+	original string
 	inner    *types.Assertion
 }
 
@@ -160,7 +160,7 @@ func ParseBase64EncodedSAMLResponse(xml string) (*SAMLResponse, error) {
 	if err != nil {
 		return nil, nil
 	}
-	return &SAMLResponse{original: []byte(xml), inner: res}, nil
+	return &SAMLResponse{original: xml, inner: res}, nil
 }
 
 type SAMLCallbackHandler struct {

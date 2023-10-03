@@ -183,8 +183,7 @@ A role must be specified when using this command through the --role flag. You ma
 			return nil
 		}
 
-		assertionStr := string(assertionBytes)
-		samlResponse, err := ParseBase64EncodedSAMLResponse(assertionStr)
+		samlResponse, err := ParseBase64EncodedSAMLResponse(string(assertionBytes))
 		if err != nil {
 			cmd.PrintErrf("could not parse assertion: %s\n", err)
 			return nil
@@ -210,7 +209,7 @@ A role must be specified when using this command through the --role flag. You ma
 				DurationSeconds: &timeoutInSeconds,
 				PrincipalArn:    &pair.ProviderARN,
 				RoleArn:         &pair.RoleARN,
-				SAMLAssertion:   &assertionStr,
+				SAMLAssertion:   &samlResponse.original,
 			})
 
 			if err != nil {
