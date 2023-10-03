@@ -152,6 +152,10 @@ A role must be specified when using this command through the --role flag. You ma
 			return echoCredentials(args[0], args[0], credentials, outputType, shellType, awsCliPath, tencentCliPath)
 		}
 
+		if ttl == 1 && config.TTL != 0 {
+			ttl = config.TTL
+		}
+		region, _ := cmd.Flags().GetString(FlagRegion)
 		var provider SAMLAssertionProvider
 		if cloudType == cloudAws {
 			provider = OktaAWSSAMLProvider{
@@ -160,6 +164,8 @@ A role must be specified when using this command through the --role flag. You ma
 				Tokens:     config.Tokens,
 				AccountID:  account.ID,
 				Client:     client,
+				Region:     region,
+				TTL:        ttl,
 			}
 		} else if cloudType == cloudTencent {
 			// Tencent applications aren't supported by the Okta API, so we can't use the same flow as AWS.
@@ -173,7 +179,9 @@ A role must be specified when using this command through the --role flag. You ma
 			}
 
 			provider = OktaTencentCloudSAMLProvider{
-				Href: account.Href,
+				Href:   account.Href,
+				Region: region,
+				TTL:    ttl,
 			}
 		}
 
@@ -195,37 +203,10 @@ A role must be specified when using this command through the --role flag. You ma
 			return nil
 		}
 
-		if ttl == 1 && config.TTL != 0 {
-			ttl = config.TTL
-		}
-
-		switch cloudType {
-		case cloudAws:
-			region, _ := cmd.Flags().GetString(FlagRegion)
-			session, _ := session.NewSession(&aws.Config{Region: aws.String(region)})
-			stsClient := sts.New(session)
-			timeoutInSeconds := int64(3600 * ttl)
-			resp, err := stsClient.AssumeRoleWithSAMLWithContext(ctx, &sts.AssumeRoleWithSAMLInput{
-				DurationSeconds: &timeoutInSeconds,
-				PrincipalArn:    &pair.ProviderARN,
-				RoleArn:         &pair.RoleARN,
-				SAMLAssertion:   &samlResponse.original,
-			})
-
-			if err != nil {
-				cmd.PrintErrf("failed to exchange credentials: %s", err)
-				return nil
-			}
-
-			credentials = CloudCredentials{
-				AccessKeyID:     *resp.Credentials.AccessKeyId,
-				Expiration:      resp.Credentials.Expiration.Format(time.RFC3339),
-				SecretAccessKey: *resp.Credentials.SecretAccessKey,
-				SessionToken:    *resp.Credentials.SessionToken,
-				credentialsType: cloudType,
-			}
-		default:
-			panic("not yet implemented")
+		credentials, err = provider.ExchangeAssertionForCredentials(ctx, *samlResponse, pair)
+		if err != nil {
+			cmd.PrintErrf("failed to exchange SAML assertion for credentials: %s", err)
+			return nil
 		}
 
 		if account != nil {
@@ -237,6 +218,7 @@ A role must be specified when using this command through the --role flag. You ma
 
 type SAMLAssertionProvider interface {
 	FetchSAMLAssertion(ctx context.Context) ([]byte, error)
+	ExchangeAssertionForCredentials(ctx context.Context, response SAMLResponse, rp RoleProviderPair) (CloudCredentials, error)
 }
 
 type OktaAWSSAMLProvider struct {
@@ -245,6 +227,32 @@ type OktaAWSSAMLProvider struct {
 	Tokens     *TokenSet
 	AccountID  string
 	Client     *http.Client
+	TTL        uint
+	Region     string
+}
+
+func (r OktaAWSSAMLProvider) ExchangeAssertionForCredentials(ctx context.Context, response SAMLResponse, rp RoleProviderPair) (CloudCredentials, error) {
+	session, _ := session.NewSession(&aws.Config{Region: aws.String(r.Region)})
+	stsClient := sts.New(session)
+	timeoutInSeconds := int64(3600 * r.TTL)
+	resp, err := stsClient.AssumeRoleWithSAMLWithContext(ctx, &sts.AssumeRoleWithSAMLInput{
+		DurationSeconds: &timeoutInSeconds,
+		PrincipalArn:    &rp.ProviderARN,
+		RoleArn:         &rp.RoleARN,
+		SAMLAssertion:   &response.original,
+	})
+
+	if err != nil {
+		return CloudCredentials{}, err
+	}
+
+	return CloudCredentials{
+		AccessKeyID:     *resp.Credentials.AccessKeyId,
+		Expiration:      resp.Credentials.Expiration.Format(time.RFC3339),
+		SecretAccessKey: *resp.Credentials.SecretAccessKey,
+		SessionToken:    *resp.Credentials.SessionToken,
+		credentialsType: cloudAws,
+	}, nil
 }
 
 func (r OktaAWSSAMLProvider) FetchSAMLAssertion(ctx context.Context) ([]byte, error) {
@@ -267,7 +275,9 @@ func (r OktaAWSSAMLProvider) FetchSAMLAssertion(ctx context.Context) ([]byte, er
 }
 
 type OktaTencentCloudSAMLProvider struct {
-	Href string
+	Href   string
+	Region string
+	TTL    uint
 }
 
 func (p OktaTencentCloudSAMLProvider) FetchSAMLAssertion(ctx context.Context) ([]byte, error) {
@@ -297,6 +307,10 @@ func (p OktaTencentCloudSAMLProvider) FetchSAMLAssertion(ctx context.Context) ([
 	}
 
 	return <-handler.AssertionChannel, nil
+}
+
+func (p OktaTencentCloudSAMLProvider) ExchangeAssertionForCredentials(ctx context.Context, response SAMLResponse, rp RoleProviderPair) (CloudCredentials, error) {
+	panic("not yet implemented")
 }
 
 func echoCredentials(id, name string, credentials CloudCredentials, outputType, shellType, awsCliPath, tencentCliPath string) error {
