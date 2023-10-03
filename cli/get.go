@@ -7,7 +7,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"os/exec"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -317,10 +316,4 @@ func echoCredentials(id, name string, credentials CloudCredentials, outputType, 
 	default:
 		return fmt.Errorf("%s is an invalid output type", outputType)
 	}
-}
-
-func OpenBrowser(url string) error {
-	// TODO: This only works for OSX.
-	proc := exec.CommandContext(context.Background(), "open", url)
-	return proc.Run()
 }
