@@ -1,34 +1,58 @@
 package main
 
 import (
+	"encoding/base64"
+	"encoding/xml"
 	"io"
 	"log"
 	"net/http"
 	"net/url"
 	"strings"
 
-	"github.com/RobotsAndPencils/go-saml"
+	"github.com/russellhaering/gosaml2/types"
 )
 
 type SAMLResponse struct {
 	original []byte
-	inner    *saml.Response
+	inner    *types.Assertion
 }
 
 func (r *SAMLResponse) AddAttribute(name, value string) {
 	if r.inner == nil {
-		r.inner = &saml.Response{}
+		r.inner = &types.Assertion{}
 	}
 
-	r.inner.AddAttribute(name, value)
+	if r.inner.AttributeStatement == nil {
+		r.inner.AttributeStatement = &types.AttributeStatement{}
+	}
+
+	val := types.AttributeValue{Type: "xs:string", Value: value}
+	r.inner.AttributeStatement.Attributes = append(r.inner.AttributeStatement.Attributes, types.Attribute{
+		Name:   name,
+		Values: []types.AttributeValue{val},
+	})
 }
 
 func (r SAMLResponse) GetAttribute(name string) string {
-	return r.inner.GetAttribute(name)
+	vals := r.GetAttributeValues(name)
+	if len(vals) > 0 {
+		return vals[0]
+	} else {
+		return ""
+	}
 }
 
 func (r SAMLResponse) GetAttributeValues(name string) []string {
-	return r.inner.GetAttributeValues(name)
+	var vals []string
+	for _, attr := range r.inner.AttributeStatement.Attributes {
+		if attr.Name == name {
+			for _, v := range attr.Values {
+				vals = append(vals, v.Value)
+			}
+		}
+	}
+
+	return vals
 }
 
 type RoleProviderPair struct {
@@ -117,8 +141,22 @@ func getARN(value string) RoleProviderPair {
 	return p
 }
 
+func ParseEncodedResponse(b64ResponseXML string) (*types.Assertion, error) {
+	var response types.Assertion
+	bytesXML, err := base64.StdEncoding.DecodeString(b64ResponseXML)
+	if err != nil {
+		return nil, err
+	}
+
+	err = xml.Unmarshal(bytesXML, &response)
+	if err != nil {
+		return nil, err
+	}
+	return &response, nil
+}
+
 func ParseBase64EncodedSAMLResponse(xml string) (*SAMLResponse, error) {
-	res, err := saml.ParseEncodedResponse(xml)
+	res, err := ParseEncodedResponse(xml)
 	if err != nil {
 		return nil, nil
 	}

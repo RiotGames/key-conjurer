@@ -98,7 +98,6 @@ func NewOAuth2Listener(bindAddr string) OAuth2Listener {
 	}
 
 	return OAuth2Listener{
-		// 5RIOT on a phone pad
 		Addr:       bindAddr,
 		errCh:      make(chan error),
 		callbackCh: make(chan OAuth2CallbackInfo),
