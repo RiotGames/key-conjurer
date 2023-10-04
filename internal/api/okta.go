@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -58,6 +59,11 @@ type OktaUserInfo struct {
 	UpdatedAt         time.Time `json:"updated_at"`
 }
 
+var (
+	ErrBadRequest   = errors.New("bad request")
+	ErrUnauthorized = errors.New("unauthorized")
+)
+
 // GetUserInfo returns user information about the given token
 func (o Okta) GetUserInfo(ctx context.Context, token string) (info OktaUserInfo, err error) {
 	if o.client == nil {
@@ -72,12 +78,22 @@ func (o Okta) GetUserInfo(ctx context.Context, token string) (info OktaUserInfo,
 	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
 	resp, err := o.client.Do(req)
 	if err != nil {
-		err = fmt.Errorf("invalid token: %w", err)
 		return
 	}
 	defer resp.Body.Close()
 
-	buf, _ := io.ReadAll(resp.Body)
-	json.Unmarshal(buf, &info)
+	switch resp.StatusCode {
+	case http.StatusOK:
+		buf, _ := io.ReadAll(resp.Body)
+		err = json.Unmarshal(buf, &info)
+		return
+	case http.StatusUnauthorized:
+		err = ErrUnauthorized
+		return
+	case http.StatusBadRequest:
+		err = ErrBadRequest
+		return
+	}
+
 	return
 }

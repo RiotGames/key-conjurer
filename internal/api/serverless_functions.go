@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"strings"
 
@@ -32,6 +33,13 @@ func ServeUserApplications(okta OktaService) http.Handler {
 
 		info, err := okta.GetUserInfo(ctx, idToken)
 		if err != nil {
+			if errors.Is(err, ErrBadRequest) {
+				// Something went wrong within Okta, and the user can't do anything about it.
+				slog.Error("okta indicated the request was poorly formed", requestAttrs...)
+				ServeJSONError(w, http.StatusInternalServerError, "internal error when talking to the Okta API")
+				return
+			}
+
 			requestAttrs = append(requestAttrs, slog.String("error", err.Error()))
 			slog.Error("okta rejected id token", requestAttrs...)
 			ServeJSONError(w, http.StatusForbidden, "unauthorized")
