@@ -154,7 +154,7 @@ func GenerateState() (string, error) {
 	return base64.URLEncoding.EncodeToString([]byte(stateBuf)), nil
 }
 
-func RedirectionFlow(ctx context.Context, oauthCfg *oauth2.Config, state, codeChallenge, codeVerifier string, machineOutput bool) (*oauth2.Token, error) {
+func RedirectionFlow(ctx context.Context, oauthCfg *oauth2.Config, state, codeChallenge, codeVerifier string, outputMode LoginOutputMode) (*oauth2.Token, error) {
 	listener := NewOAuth2Listener()
 	go listener.Listen(ctx)
 	oauthCfg.RedirectURL = "http://localhost:57468"
@@ -163,10 +163,9 @@ func RedirectionFlow(ctx context.Context, oauthCfg *oauth2.Config, state, codeCh
 		oauth2.SetAuthURLParam("code_challenge", codeChallenge),
 	)
 
-	if machineOutput {
-		fmt.Println(url)
-	} else {
-		fmt.Printf("Visit the following link in your terminal: %s\n", url)
+	if err := outputMode.PrintURL(url); err != nil {
+		// This is unlikely to ever happen
+		return nil, fmt.Errorf("failed to display link: %w", err)
 	}
 
 	code, err := listener.WaitForAuthorizationCode(ctx, state)

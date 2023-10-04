@@ -2,17 +2,24 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"os"
 
+	"github.com/pkg/browser"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
+	"golang.org/x/exp/slog"
 	"golang.org/x/oauth2"
 )
 
-var FlagURLOnly = "url-only"
+var (
+	FlagURLOnly   = "url-only"
+	FlagNoBrowser = "no-browser"
+)
 
 func init() {
 	loginCmd.Flags().BoolP(FlagURLOnly, "u", false, "Print only the URL to visit rather than a user-friendly message")
+	loginCmd.Flags().BoolP(FlagNoBrowser, "b", false, "Do not open a browser window, printing the URL instead")
 }
 
 // ShouldUseMachineOutput indicates whether or not we should write to standard output as if the user is a machine.
@@ -38,8 +45,17 @@ var loginCmd = &cobra.Command{
 		oidcDomain, _ := cmd.Flags().GetString(FlagOIDCDomain)
 		clientID, _ := cmd.Flags().GetString(FlagClientID)
 		urlOnly, _ := cmd.Flags().GetBool(FlagURLOnly)
-		isMachineOutput := ShouldUseMachineOutput(cmd.Flags()) || urlOnly
-		token, err := Login(cmd.Context(), oidcDomain, clientID, isMachineOutput)
+
+		var outputMode LoginOutputMode = LoginOutputModeBrowser{}
+		if noBrowser, _ := cmd.Flags().GetBool(FlagNoBrowser); noBrowser {
+			if ShouldUseMachineOutput(cmd.Flags()) || urlOnly {
+				outputMode = LoginOutputModeURLOnly{}
+			} else {
+				outputMode = LoginOutputModeHumanFriendlyMessage{}
+			}
+		}
+
+		token, err := Login(cmd.Context(), oidcDomain, clientID, outputMode)
 		if err != nil {
 			return err
 		}
@@ -48,7 +64,7 @@ var loginCmd = &cobra.Command{
 	},
 }
 
-func Login(ctx context.Context, domain, clientID string, machineOutput bool) (*oauth2.Token, error) {
+func Login(ctx context.Context, domain, clientID string, outputMode LoginOutputMode) (*oauth2.Token, error) {
 	oauthCfg, err := DiscoverOAuth2Config(ctx, domain, clientID)
 	if err != nil {
 		return nil, err
@@ -64,5 +80,30 @@ func Login(ctx context.Context, domain, clientID string, machineOutput bool) (*o
 		return nil, err
 	}
 
-	return RedirectionFlow(ctx, oauthCfg, state, codeChallenge, codeVerifier, machineOutput)
+	return RedirectionFlow(ctx, oauthCfg, state, codeChallenge, codeVerifier, outputMode)
+}
+
+type LoginOutputMode interface {
+	PrintURL(url string) error
+}
+
+type LoginOutputModeBrowser struct{}
+
+func (LoginOutputModeBrowser) PrintURL(url string) error {
+	slog.Debug("trying to open browser window", slog.String("url", url))
+	return browser.OpenURL(url)
+}
+
+type LoginOutputModeURLOnly struct{}
+
+func (LoginOutputModeURLOnly) PrintURL(url string) error {
+	fmt.Fprintln(os.Stdout, url)
+	return nil
+}
+
+type LoginOutputModeHumanFriendlyMessage struct{}
+
+func (LoginOutputModeHumanFriendlyMessage) PrintURL(url string) error {
+	fmt.Printf("Visit the following link in your terminal: %s\n", url)
+	return nil
 }
