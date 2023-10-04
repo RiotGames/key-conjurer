@@ -33,11 +33,14 @@ var accountsCmd = &cobra.Command{
 		config := ConfigFromCommand(cmd)
 		stdOut := cmd.OutOrStdout()
 		noRefresh, _ := cmd.Flags().GetBool(FlagNoRefresh)
+		loud := !ShouldUseMachineOutput(cmd.Flags())
 		if noRefresh {
-			config.DumpAccounts(stdOut)
-			if q, _ := cmd.Flags().GetBool(FlagQuiet); !q {
+			config.DumpAccounts(stdOut, loud)
+
+			if loud {
 				cmd.PrintErrf("--%s was specified - these results may be out of date, and you may not have access to accounts in this list.\n", FlagNoRefresh)
 			}
+
 			return nil
 		}
 
@@ -69,7 +72,7 @@ var accountsCmd = &cobra.Command{
 		}
 
 		config.UpdateAccounts(accounts)
-		config.DumpAccounts(stdOut)
+		config.DumpAccounts(stdOut, loud)
 		return nil
 	},
 }

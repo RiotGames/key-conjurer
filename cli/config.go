@@ -169,9 +169,14 @@ func (a *accountSet) ReplaceWith(other []Account) {
 	}
 }
 
-func (a accountSet) WriteTable(w io.Writer) {
+func (a accountSet) WriteTable(w io.Writer, withHeaders bool) {
 	tbl := csv.NewWriter(w)
-	tbl.Write([]string{"id,name,alias"})
+	tbl.Comma = '\t'
+
+	if withHeaders {
+		tbl.Write([]string{"id", "name", "alias"})
+	}
+
 	a.ForEach(func(id string, acc Account, alias string) {
 		tbl.Write([]string{id, acc.Name, alias})
 	})
@@ -290,8 +295,8 @@ func (c *Config) UpdateAccounts(entries []Account) {
 	c.Accounts.ReplaceWith(entries)
 }
 
-func (c *Config) DumpAccounts(w io.Writer) {
-	c.Accounts.WriteTable(w)
+func (c *Config) DumpAccounts(w io.Writer, withHeaders bool) {
+	c.Accounts.WriteTable(w, withHeaders)
 }
 
 func EnsureConfigFileExists(fp string) (io.ReadWriteCloser, error) {
