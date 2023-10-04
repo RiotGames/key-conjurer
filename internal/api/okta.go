@@ -8,7 +8,6 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"time"
 
 	"github.com/okta/okta-sdk-golang/v2/okta"
 )
@@ -49,14 +48,13 @@ func (o Okta) ListApplicationsForUser(ctx context.Context, user string) ([]*okta
 }
 
 type OktaUserInfo struct {
-	Sub               string    `json:"sub"`
-	GivenName         string    `json:"given_name"`
-	FamilyName        string    `json:"family_name"`
-	PreferredUsername string    `json:"preferred_username"`
-	Email             string    `json:"email"`
-	ZoneInfo          string    `json:"zoneinfo"`
-	Locale            string    `json:"locale"`
-	UpdatedAt         time.Time `json:"updated_at"`
+	Sub               string `json:"sub"`
+	GivenName         string `json:"given_name"`
+	FamilyName        string `json:"family_name"`
+	PreferredUsername string `json:"preferred_username"`
+	Email             string `json:"email"`
+	ZoneInfo          string `json:"zoneinfo"`
+	Locale            string `json:"locale"`
 }
 
 var (
