@@ -12,16 +12,21 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/sts"
+	"github.com/pkg/browser"
 	"github.com/riotgames/key-conjurer/internal/api"
 	"github.com/spf13/cobra"
 )
 
 var (
-	FlagRegion        = "region"
-	FlagRoleName      = "role"
-	FlagTimeRemaining = "time-remaining"
-	FlagTimeToLive    = "ttl"
-	FlagBypassCache   = "bypass-cache"
+	FlagRegion         = "region"
+	FlagRoleName       = "role"
+	FlagTimeRemaining  = "time-remaining"
+	FlagTimeToLive     = "ttl"
+	FlagBypassCache    = "bypass-cache"
+	FlagOutputType     = "out"
+	FlagShellType      = "shell"
+	FlagAWSCLIPath     = "awscli"
+	FlagTencentCLIPath = "tencentcli"
 )
 
 var (
@@ -40,7 +45,6 @@ func init() {
 	getCmd.Flags().Uint(FlagTimeToLive, 1, "The key timeout in hours from 1 to 8.")
 	getCmd.Flags().UintP(FlagTimeRemaining, "t", DefaultTimeRemaining, "Request new keys if there are no keys in the environment or the current keys expire within <time-remaining> minutes. Defaults to 60.")
 	getCmd.Flags().StringP(FlagRoleName, "r", "", "The name of the role to assume.")
-	getCmd.Flags().String(FlagRoleSessionName, "KeyConjurer-AssumeRole", "the name of the role session name that will show up in CloudTrail logs")
 	getCmd.Flags().StringP(FlagOutputType, "o", outputTypeEnvironmentVariable, "Format to save new credentials in. Supported outputs: env, awscli,tencentcli")
 	getCmd.Flags().String(FlagShellType, shellTypeInfer, "If output type is env, determines which format to output credentials in - by default, the format is inferred based on the execution environment. WSL users may wish to overwrite this to `bash`")
 	getCmd.Flags().String(FlagAWSCLIPath, "~/.aws/", "Path for directory used by the aws-cli tool. Default is \"~/.aws\".")
@@ -302,7 +306,7 @@ func (p OktaTencentCloudSAMLProvider) FetchSAMLAssertion(ctx context.Context) ([
 
 	// TODO: We should probably wait a second before opening the browser to see if the http server is going to throw an error
 	// If it throws an error, we should bail
-	if err := OpenBrowser(p.Href); err != nil {
+	if err := browser.OpenURL(p.Href); err != nil {
 		return nil, fmt.Errorf("failed to open web browser to URL %s: %w", p.Href, err)
 	}
 
