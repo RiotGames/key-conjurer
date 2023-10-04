@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"sort"
 	"time"
 
 	"strings"
@@ -73,8 +74,18 @@ func generateDefaultAlias(name string) string {
 }
 
 func (a *accountSet) ForEach(f func(id string, account Account, alias string)) {
-	for id, acc := range a.accounts {
-		f(id, *acc, acc.Alias)
+	// Golang does not maintain the order of maps, so we create a slice which is sorted instead.
+	var accounts []*Account
+	for _, acc := range a.accounts {
+		accounts = append(accounts, acc)
+	}
+
+	sort.SliceStable(accounts, func(i, j int) bool {
+		return accounts[i].Name < accounts[j].Name
+	})
+
+	for _, acc := range accounts {
+		f(acc.ID, *acc, acc.Alias)
 	}
 }
 
@@ -180,6 +191,7 @@ func (a accountSet) WriteTable(w io.Writer, withHeaders bool) {
 	a.ForEach(func(id string, acc Account, alias string) {
 		tbl.Write([]string{id, acc.Name, alias})
 	})
+
 	tbl.Flush()
 }
 
