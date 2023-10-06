@@ -15,6 +15,9 @@ import (
 	"github.com/pkg/browser"
 	"github.com/riotgames/key-conjurer/internal/api"
 	"github.com/spf13/cobra"
+	"github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/common"
+	"github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/common/profile"
+	tencentsts "github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/sts/v20180813"
 )
 
 var (
@@ -310,11 +313,38 @@ func (p OktaTencentCloudSAMLProvider) FetchSAMLAssertion(ctx context.Context) ([
 		return nil, fmt.Errorf("failed to open web browser to URL %s: %w", p.Href, err)
 	}
 
-	return <-handler.AssertionChannel, nil
+	select {
+	case assert := <-handler.AssertionChannel:
+		return assert, nil
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
 }
 
 func (p OktaTencentCloudSAMLProvider) ExchangeAssertionForCredentials(ctx context.Context, response SAMLResponse, rp RoleProviderPair) (CloudCredentials, error) {
-	panic("not yet implemented")
+	cpf := profile.NewClientProfile()
+	cpf.HttpProfile.Endpoint = "sts.tencentcloudapi.com"
+	client, _ := tencentsts.NewClient(&common.Credential{}, p.Region, cpf)
+
+	timeoutInSeconds := int64(3600 * p.TTL)
+	req := tencentsts.NewAssumeRoleWithSAMLRequest()
+	req.RoleSessionName = common.StringPtr(fmt.Sprintf("riot-keyConjurer-%s", rp.RoleARN))
+	req.DurationSeconds = common.Uint64Ptr(uint64(timeoutInSeconds))
+	req.PrincipalArn = &rp.ProviderARN
+	req.RoleArn = &rp.RoleARN
+	req.SAMLAssertion = &response.original
+	resp, err := client.AssumeRoleWithSAMLWithContext(ctx, req)
+	if err != nil {
+		return CloudCredentials{}, err
+	}
+
+	credentials := resp.Response.Credentials
+	return CloudCredentials{
+		AccessKeyID:     *credentials.TmpSecretId,
+		SecretAccessKey: *credentials.TmpSecretKey,
+		SessionToken:    *credentials.Token,
+		Expiration:      *resp.Response.Expiration,
+	}, nil
 }
 
 func echoCredentials(id, name string, credentials CloudCredentials, outputType, shellType, awsCliPath, tencentCliPath string) error {
