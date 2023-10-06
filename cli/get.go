@@ -2,9 +2,8 @@ package main
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"log"
+	"net"
 	"net/http"
 	"os"
 	"time"
@@ -288,27 +287,23 @@ type OktaTencentCloudSAMLProvider struct {
 }
 
 func (p OktaTencentCloudSAMLProvider) FetchSAMLAssertion(ctx context.Context) ([]byte, error) {
-	// TODO: We should only open the browser if we're able to start the server,
-	// and this branch should only terminate once the server is closed.
 	handler := SAMLCallbackHandler{
 		AssertionChannel: make(chan []byte, 1),
 	}
 
-	server := http.Server{
-		Addr:    "127.0.0.1:57468",
-		Handler: &handler,
+	// Listening and serving are done separately, so that we can confirm the port is available before launching a browser.
+	// Listening attempts to reserves the port, but doesn't block.
+	addr := "127.0.0.1:57468"
+	sock, err := net.Listen("tcp", addr)
+	if err != nil {
+		return nil, fmt.Errorf("failed to listen on %s: %w", addr, err)
 	}
 
-	go func() {
-		err := server.ListenAndServe()
-		if err != nil && !errors.Is(err, http.ErrServerClosed) {
-			// TODO: Don't panic - instead, pass error to caller
-			log.Panicln(err)
-		}
-	}()
+	server := http.Server{Handler: &handler}
+	go server.Serve(sock)
+	// The socket becomes owned by the server so we don't need to close it.
+	defer server.Close()
 
-	// TODO: We should probably wait a second before opening the browser to see if the http server is going to throw an error
-	// If it throws an error, we should bail
 	if err := browser.OpenURL(p.Href); err != nil {
 		return nil, fmt.Errorf("failed to open web browser to URL %s: %w", p.Href, err)
 	}
