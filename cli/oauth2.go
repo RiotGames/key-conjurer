@@ -19,6 +19,8 @@ import (
 	"golang.org/x/oauth2"
 )
 
+var ErrInvalidDomain = errors.New("invalid domain")
+
 // stateBufSize is the size of the buffer used to generate the state parameter.
 // 43 is a magic number - It generates states that are not too short or long for Okta's validation.
 const stateBufSize = 43
@@ -38,7 +40,12 @@ func NewHTTPClient() *http.Client {
 }
 
 func DiscoverOAuth2Config(ctx context.Context, domain, clientID string) (*oauth2.Config, error) {
-	provider, err := oidc.NewProvider(ctx, domain)
+	uri, err := url.Parse(domain)
+	if domain == "" || err != nil {
+		return nil, ErrInvalidDomain
+	}
+
+	provider, err := oidc.NewProvider(ctx, uri.String())
 	if err != nil {
 		return nil, fmt.Errorf("couldn't discover OIDC configuration for %s: %w", domain, err)
 	}
