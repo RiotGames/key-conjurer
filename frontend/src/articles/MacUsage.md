@@ -16,6 +16,7 @@ Open a terminal and execute the following commands.
     $ chmod +x ~/.bin/keyconjurer
 
 Next, add `~/.bin` to your `$PATH`. With the Zsh shell (pre-installed with most Macs), this can be accomplished in the Terminal with:
+
     $ echo 'export PATH="$PATH:~/.bin"' >> ~/.zshrc
 
 Restart your shell.
