@@ -7,12 +7,6 @@ const binaryName = process.env.REACT_APP_BINARY_NAME;
 
 export const DownloadLinks = () => {
   return <>
-    <a href={`/${binaryName}-darwin-amd64`}>{`${binaryName}`}-darwin</a>
-    <br />
-    <a href={`/${binaryName}-darwin-arm64`}>
-      {`${binaryName}`}-darwin ARM64 (M1/M2 etc)
-    </a>
-    <br />
     <a href={`${binaryName}-linux-amd64`}>
       {`${binaryName}`}-linux AMD64 (This is probably the one you want)
     </a>
@@ -38,15 +32,6 @@ export const History = () => (
       </Card.Content>
       <Divider />
       <Card.Content>
-        This service provides temporary AWS API keys. Log in to retrieve a list
-        of AWS accounts available to you.
-      </Card.Content>
-      <Divider />
-      <Card.Content>
-        <p>
-          If you prefer the cli, we have you covered. Just download one of the
-          following and move it into your $PATH:
-        </p>
         <DownloadLinks />
       </Card.Content>
     </Card.Content>
