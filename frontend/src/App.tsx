@@ -1,12 +1,7 @@
-import React, { useEffect } from "react";
+import React from "react";
 import { Grid } from "semantic-ui-react";
 import { Header } from "./components/Header";
 import { History } from "./components/History";
-import { KeyCard } from "./components/KeyCard";
-import { KeyRequestForm } from "./components/KeyRequestForm";
-import { LoginForm } from "./components/LoginForm";
-import { TroubleshootingCard } from "./components/TroubleshootingCard";
-import { updateUserInfo } from "./actions";
 
 export const App = () => {
   return (
@@ -14,18 +9,10 @@ export const App = () => {
       <Header />
       <Grid>
         <Grid.Row />
-        <Grid.Row columns={4}>
-          <Grid.Column width={2}></Grid.Column>
-          <Grid.Column width={4}>
+        <Grid.Row columns={4} centered>
+          <Grid.Column>
             <History />
           </Grid.Column>
-          <Grid.Column width={8}>
-            <LoginForm />
-            <KeyRequestForm />
-            <KeyCard />
-            <TroubleshootingCard />
-          </Grid.Column>
-          <Grid.Column width={2} />
         </Grid.Row>
       </Grid>
     </div>
