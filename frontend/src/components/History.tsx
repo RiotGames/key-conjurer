@@ -4,6 +4,25 @@ import keyConjurerLogo from "./../images/KeyConjurer.png";
 
 const binaryName = process.env.REACT_APP_BINARY_NAME;
 
+
+export const DownloadLinks = () => {
+  return <>
+    <a href={`/${binaryName}-darwin-amd64`}>{`${binaryName}`}-darwin</a>
+    <br />
+    <a href={`/${binaryName}-darwin-arm64`}>
+      {`${binaryName}`}-darwin ARM64 (M1/M2 etc)
+    </a>
+    <br />
+    <a href={`${binaryName}-linux-amd64`}>
+      {`${binaryName}`}-linux AMD64 (This is probably the one you want)
+    </a>
+    <br />
+    <a href={`${binaryName}-linux-arm64`}>{`${binaryName}`}-linux ARM64</a>
+    <br />
+    <a href={`${binaryName}-windows.exe`}>{`${binaryName}`}-windows</a>
+  </>;
+}
+
 export const History = () => (
   <Card fluid>
     <Image src={keyConjurerLogo} />
@@ -24,23 +43,11 @@ export const History = () => (
       </Card.Content>
       <Divider />
       <Card.Content>
-        If you prefer the cli, we have you covered. Just download one of the
-        following and move it into your $PATH:
-        <br />
-        <br />
-        <a href={`/${binaryName}-darwin-amd64`}>{`${binaryName}`}-darwin</a>
-        <br />
-        <a href={`/${binaryName}-darwin-arm64`}>
-          {`${binaryName}`}-darwin ARM64 (M1/M2 etc)
-        </a>
-        <br />
-        <a href={`${binaryName}-linux-amd64`}>
-          {`${binaryName}`}-linux AMD64 (This is probably the one you want)
-        </a>
-        <br />
-        <a href={`${binaryName}-linux-arm64`}>{`${binaryName}`}-linux ARM64</a>
-        <br />
-        <a href={`${binaryName}-windows.exe`}>{`${binaryName}`}-windows</a>
+        <p>
+          If you prefer the cli, we have you covered. Just download one of the
+          following and move it into your $PATH:
+        </p>
+        <DownloadLinks />
       </Card.Content>
     </Card.Content>
   </Card>
