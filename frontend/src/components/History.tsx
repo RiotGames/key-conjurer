@@ -30,10 +30,10 @@ export const History = () => (
         modify AWS infrastructures, though the worst case of having player data
         compromised has thankfully not been realised.
       </Card.Content>
-      <Divider />
+      {/* <Divider />
       <Card.Content>
         <DownloadLinks />
-      </Card.Content>
+      </Card.Content> */}
     </Card.Content>
   </Card>
 );
