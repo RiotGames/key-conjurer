@@ -1,10 +1,10 @@
-import * as marked from 'marked';
+import * as marked from "marked";
 import React from "react";
 import { Card, Image, Menu, Tab, TabPane } from "semantic-ui-react";
 import keyConjurerLogo from "./images/KeyConjurer.png";
-import styles from './App.module.css';
-import MacUsageDocument from './articles/MacUsage.md';
-import UsageTemplateDocument from './articles/UsageTemplate.md';
+import styles from "./App.module.css";
+import MacUsageDocument from "./articles/MacUsage.md";
+import UsageTemplateDocument from "./articles/UsageTemplate.md";
 
 const macUsageDocument = marked.parse(MacUsageDocument);
 const usageTemplateDocument = marked.parse(UsageTemplateDocument);
@@ -14,23 +14,50 @@ export const App = () => (
     <Header />
 
     <div className={styles.Content}>
-      <p className={styles.Para1}>KeyConjurer is an application for generating temporary session credentials for AWS and Tencent Cloud.</p>
-      <div className={styles.History}><History /></div>
-      <div className={styles.Usage}><Usage /></div>
+      <p className={styles.Para1}>
+        KeyConjurer is an application for generating temporary session
+        credentials for AWS and Tencent Cloud.
+      </p>
+      <div className={styles.History}>
+        <History />
+      </div>
+      <div className={styles.Usage}>
+        <Usage />
+      </div>
     </div>
   </>
 );
 
 const Usage = () => {
   const panes = [
-    { menuItem: "Mac", render: () => <TabPane dangerouslySetInnerHTML={{ __html: macUsageDocument }} /> },
-    { menuItem: "Windows", render: () => <TabPane dangerouslySetInnerHTML={{ __html: usageTemplateDocument }} /> },
-    { menuItem: "WSL", render: () => <TabPane dangerouslySetInnerHTML={{ __html: usageTemplateDocument }} /> },
-    { menuItem: "Linux", render: () => <TabPane dangerouslySetInnerHTML={{ __html: usageTemplateDocument }} /> },
-  ]
+    {
+      menuItem: "Mac",
+      render: () => (
+        <TabPane dangerouslySetInnerHTML={{ __html: macUsageDocument }} />
+      ),
+    },
+    {
+      menuItem: "Windows",
+      render: () => (
+        <TabPane dangerouslySetInnerHTML={{ __html: usageTemplateDocument }} />
+      ),
+    },
+    {
+      menuItem: "WSL",
+      render: () => (
+        <TabPane dangerouslySetInnerHTML={{ __html: usageTemplateDocument }} />
+      ),
+    },
+    {
+      menuItem: "Linux",
+      render: () => (
+        <TabPane dangerouslySetInnerHTML={{ __html: usageTemplateDocument }} />
+      ),
+    },
+  ];
 
-  return <Tab panes={panes} />
-}
+  return <Tab panes={panes} />;
+};
 
 // TODO: Move this into the Usage tabs
 // const DownloadLinks = () => {
@@ -60,7 +87,6 @@ const History = () => (
     </Card.Content>
   </Card>
 );
-
 
 const appVersion = process.env.REACT_APP_VERSION;
 const Header = () => (
