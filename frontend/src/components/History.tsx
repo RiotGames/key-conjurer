@@ -1,5 +1,5 @@
 import React from "react";
-import { Card, Image, Divider } from "semantic-ui-react";
+import { Card, Image, } from "semantic-ui-react";
 import keyConjurerLogo from "./../images/KeyConjurer.png";
 
 const binaryName = process.env.REACT_APP_BINARY_NAME;
@@ -22,7 +22,6 @@ export const History = () => (
     <Image src={keyConjurerLogo} />
     <Card.Content>
       <Card.Header>History</Card.Header>
-      <Divider />
       <Card.Content>
         Publishing AWS API keys publicly (e.g. to Github) is a significant
         security risk to Riot and our players. On several occasions, Rioters
@@ -30,10 +29,6 @@ export const History = () => (
         modify AWS infrastructures, though the worst case of having player data
         compromised has thankfully not been realised.
       </Card.Content>
-      {/* <Divider />
-      <Card.Content>
-        <DownloadLinks />
-      </Card.Content> */}
     </Card.Content>
   </Card>
 );

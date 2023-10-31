@@ -1,24 +1,23 @@
 import React from "react";
-import { Grid } from "semantic-ui-react";
 import { Header } from "./components/Header";
 import { History } from "./components/History";
 import { Usage } from "./components/Usage";
+import styles from './App.module.css';
 
-export const App = () => {
-  return (
-    <div>
-      <Header />
-      <Grid>
-        <Grid.Row />
-        <Grid.Row columns={3} centered>
-          <Grid.Column>
-            <History />
-          </Grid.Column>
-          <Grid.Column>
-            <Usage />
-          </Grid.Column>
-        </Grid.Row>
-      </Grid>
+export const App = () => (
+  <>
+    <Header />
+
+    <div className={styles.Content}>
+      <p className={styles.Para1}>KeyConjurer is an application for generating temporary session credentials for AWS and Tencent Cloud.</p>
+
+      <div className={styles.History}>
+        <History />
+      </div>
+
+      <div className={styles.Usage}>
+        <Usage />
+      </div>
     </div>
-  );
-};
+  </>
+);

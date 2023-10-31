@@ -1,0 +1,45 @@
+/* Unset semantics default menu margin */
+:global(.ui.menu.fluid) {
+    margin-bottom: 0;
+}
+
+.Content {
+    display: grid;
+    grid-template-columns: 2 2fr;
+    grid-template-rows: 2;
+
+    padding: 10px;
+}
+
+.Para1 {
+    grid-column: span 2;
+    grid-row: 1;
+
+    margin-bottom: 10px;
+    padding: 0;
+}
+
+.Usage {
+    grid-column: span 2;
+    grid-row: 2;
+}
+
+.History {
+    display: none;
+}
+
+@media screen and (min-width: 1440px) {
+    .Content {
+        column-gap: 20px;
+    }
+
+    .History {
+        display: initial;
+        grid-row: 2;
+        grid-column: 1;
+    }
+
+    .Usage {
+        grid-column: 2;
+    }
+}
