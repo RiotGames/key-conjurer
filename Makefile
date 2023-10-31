@@ -35,7 +35,6 @@ frontend/build/index.html: frontend/node_modules
 	cd frontend && \
 	REACT_APP_VERSION='$$(git rev-parse --short HEAD)-$(RELEASE)' \
 	REACT_APP_API_URL=${API_URL} \
-	REACT_APP_BINARY_NAME=${BINARY_NAME} \
 	REACT_APP_DOCUMENTATION_URL=${REACT_APP_DOCUMENTATION_URL} \
 	REACT_APP_CLIENT=webUI npm run-script build
 
