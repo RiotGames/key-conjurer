@@ -17,7 +17,7 @@ Open a terminal and execute the following commands.
 
 Next, add `~/.bin` to your `$PATH`. With the Zsh shell (pre-installed with most Macs), this can be accomplished in the Terminal with:
 
-    $ echo 'export PATH="$PATH:~/.bin"' >> ~/.zshrc
+    $ echo 'export PATH="$PATH:$HOME/.bin"' >> ~/.zshrc
 
 Restart your shell.
 
