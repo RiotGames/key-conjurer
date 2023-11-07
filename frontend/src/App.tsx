@@ -5,13 +5,13 @@ import keyConjurerLogo from "./images/KeyConjurer.png";
 import styles from "./App.module.css";
 import MacUsageDocument from "./articles/MacUsage.md";
 import LinuxUsageDocument from "./articles/LinuxUsage.md";
-import WindowsTemplate from "./articles/WindowsTemplate.md";
-import WSLTemplate from "./articles/WSLTemplate.md";
+import WindowsUsageDocument from "./articles/WindowsUsage.md";
+import WSLUsageDocument from "./articles/WSLUsage.md";
 
 const macUsageDocument = marked.parse(MacUsageDocument);
 const linuxUsageDocument = marked.parse(LinuxUsageDocument);
-const windowsTemplateDocument = marked.parse(WindowsTemplate);
-const wslTemplateDocument = marked.parse(WSLTemplate);
+const windowsUsageDocument = marked.parse(WindowsUsageDocument);
+const wslUsageDocument = marked.parse(WSLUsageDocument);
 
 export const App = () => (
   <>
@@ -44,14 +44,14 @@ const Usage = () => {
       menuItem: "Windows",
       render: () => (
         <TabPane
-          dangerouslySetInnerHTML={{ __html: windowsTemplateDocument }}
+          dangerouslySetInnerHTML={{ __html: windowsUsageDocument }}
         />
       ),
     },
     {
       menuItem: "WSL",
       render: () => (
-        <TabPane dangerouslySetInnerHTML={{ __html: wslTemplateDocument }} />
+        <TabPane dangerouslySetInnerHTML={{ __html: wslUsageDocument }} />
       ),
     },
     {
