@@ -4,9 +4,11 @@ import { Card, Image, Menu, Tab, TabPane } from "semantic-ui-react";
 import keyConjurerLogo from "./images/KeyConjurer.png";
 import styles from "./App.module.css";
 import MacUsageDocument from "./articles/MacUsage.md";
+import LinuxUsageDocument from "./articles/LinuxUsage.md";
 import UsageTemplateDocument from "./articles/UsageTemplate.md";
 
 const macUsageDocument = marked.parse(MacUsageDocument);
+const linuxUsageDocument = marked.parse(LinuxUsageDocument);
 const usageTemplateDocument = marked.parse(UsageTemplateDocument);
 
 export const App = () => (
@@ -51,7 +53,7 @@ const Usage = () => {
     {
       menuItem: "Linux",
       render: () => (
-        <TabPane dangerouslySetInnerHTML={{ __html: usageTemplateDocument }} />
+        <TabPane dangerouslySetInnerHTML={{ __html: linuxUsageDocument }} />
       ),
     },
   ];
