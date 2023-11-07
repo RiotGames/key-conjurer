@@ -33,10 +33,9 @@ frontend/build/index.html: frontend/node_modules
 	@test $${FRONTEND_URL?is not set}
 	@test $${API_URL?is not set}
 	cd frontend && \
-	REACT_APP_VERSION='$$(git rev-parse --short HEAD)-$(RELEASE)' \
+	REACT_APP_VERSION='$(shell git rev-parse --short HEAD)-$(RELEASE)' \
 	REACT_APP_API_URL=${API_URL} \
-	REACT_APP_DOCUMENTATION_URL=${REACT_APP_DOCUMENTATION_URL} \
-	REACT_APP_CLIENT=webUI npm run-script build
+	npm run-script build
 
 ### CLI Build Targets
 cli/keyconjurer-linux-arm64 cli/keyconjurer-linux:
