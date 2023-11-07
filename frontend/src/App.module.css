@@ -37,6 +37,8 @@
         display: initial;
         grid-row: 2;
         grid-column: 1;
+        max-width: 600px;
+        width: 600px;
     }
 
     .Usage {
