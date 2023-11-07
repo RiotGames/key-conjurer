@@ -43,9 +43,7 @@ const Usage = () => {
     {
       menuItem: "Windows",
       render: () => (
-        <TabPane
-          dangerouslySetInnerHTML={{ __html: windowsUsageDocument }}
-        />
+        <TabPane dangerouslySetInnerHTML={{ __html: windowsUsageDocument }} />
       ),
     },
     {
