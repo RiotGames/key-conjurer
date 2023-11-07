@@ -5,11 +5,13 @@ import keyConjurerLogo from "./images/KeyConjurer.png";
 import styles from "./App.module.css";
 import MacUsageDocument from "./articles/MacUsage.md";
 import LinuxUsageDocument from "./articles/LinuxUsage.md";
-import UsageTemplateDocument from "./articles/UsageTemplate.md";
+import WindowsTemplate from "./articles/WindowsTemplate.md";
+import WSLTemplate from "./articles/WSLTemplate.md";
 
 const macUsageDocument = marked.parse(MacUsageDocument);
 const linuxUsageDocument = marked.parse(LinuxUsageDocument);
-const usageTemplateDocument = marked.parse(UsageTemplateDocument);
+const windowsTemplateDocument = marked.parse(WindowsTemplate);
+const wslTemplateDocument = marked.parse(WSLTemplate);
 
 export const App = () => (
   <>
@@ -41,13 +43,13 @@ const Usage = () => {
     {
       menuItem: "Windows",
       render: () => (
-        <TabPane dangerouslySetInnerHTML={{ __html: usageTemplateDocument }} />
+        <TabPane dangerouslySetInnerHTML={{ __html: windowsTemplateDocument }} />
       ),
     },
     {
       menuItem: "WSL",
       render: () => (
-        <TabPane dangerouslySetInnerHTML={{ __html: usageTemplateDocument }} />
+        <TabPane dangerouslySetInnerHTML={{ __html: wslTemplateDocument }} />
       ),
     },
     {
@@ -60,19 +62,6 @@ const Usage = () => {
 
   return <Tab panes={panes} />;
 };
-
-// TODO: Move this into the Usage tabs
-// const DownloadLinks = () => {
-//   return <>
-//     <a href="keyconjurer-linux-amd64">
-//       keyconjurer-linux AMD64 (This is probably the one you want)
-//     </a>
-//     <br />
-//     <a href="keyconjurer-linux-arm64">keyconjurer-linux ARM64</a>
-//     <br />
-//     <a href="keyconjurer-windows.exe">keyconjurer-windows</a>
-//   </>;
-// }
 
 const History = () => (
   <Card fluid>
