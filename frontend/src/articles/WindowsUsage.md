@@ -2,4 +2,4 @@ We're still waiting for a brave explorer to write this section for us, as we don
 
 # Download
 
-* Windows (x64) (./keyconjurer-windows.exe)
+* Windows (x64) [keyconjurer-windows.exe](./keyconjurer-windows.exe)
