@@ -19,6 +19,8 @@ import (
 	"golang.org/x/oauth2"
 )
 
+var ErrNoSAMLAssertion = errors.New("no saml assertion")
+
 // stateBufSize is the size of the buffer used to generate the state parameter.
 // 43 is a magic number - It generates states that are not too short or long for Okta's validation.
 const stateBufSize = 43
@@ -231,12 +233,12 @@ func ExchangeWebSSOTokenForSAMLAssertion(ctx context.Context, client *http.Clien
 	doc, _ := html.Parse(resp.Body)
 	form, ok := FindFirstForm(doc)
 	if !ok {
-		return nil, errors.New("could not find form")
+		return nil, ErrNoSAMLAssertion
 	}
 
 	saml, ok := form.Inputs["SAMLResponse"]
 	if !ok {
-		return nil, errors.New("no SAML assertion")
+		return nil, ErrNoSAMLAssertion
 	}
 
 	return []byte(saml), nil
