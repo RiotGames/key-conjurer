@@ -7,17 +7,16 @@ import (
 	"golang.org/x/exp/slog"
 )
 
-func init() {
+func main() {
 	var opts slog.HandlerOptions
 	if os.Getenv("DEBUG") == "1" {
 		opts.Level = slog.LevelDebug
 	}
 
-	handler := slog.NewTextHandler(os.Stdout, &opts)
+	w := NewTelemetryWriter(os.Stdout)
+	handler := slog.NewTextHandler(w, &opts)
 	slog.SetDefault(slog.New(handler))
-}
 
-func main() {
 	args := os.Args[1:]
 	if flag, ok := os.LookupEnv("KEYCONJURERFLAGS"); ok {
 		args = append(args, strings.Split(flag, " ")...)

@@ -9,6 +9,8 @@ require (
 	github.com/hashicorp/go-rootcerts v1.0.2
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/mitchellh/go-ps v1.0.0
+	github.com/newrelic/go-agent/v3 v3.19.1
+	github.com/newrelic/go-agent/v3/integrations/logcontext-v2/logWriter v1.0.1
 	github.com/okta/okta-sdk-golang/v2 v2.2.1
 	github.com/pkg/browser v0.0.0-20210911075715-681adbf594b8
 	github.com/riotgames/vault-go-client v0.0.3
@@ -42,6 +44,7 @@ require (
 	github.com/kelseyhightower/envconfig v1.4.0 // indirect
 	github.com/kr/text v0.2.0 // indirect
 	github.com/mitchellh/mapstructure v1.3.3 // indirect
+	github.com/newrelic/go-agent/v3/integrations/logcontext-v2/nrwriter v1.0.0 // indirect
 	github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e // indirect
 	github.com/nu7hatch/gouuid v0.0.0-20131221200532-179d4d0c4d8d // indirect
 	github.com/patrickmn/go-cache v0.0.0-20180815053127-5633e0862627 // indirect
@@ -55,6 +58,8 @@ require (
 	golang.org/x/text v0.8.0 // indirect
 	golang.org/x/time v0.0.0-20200630173020-3af7569d3a1e // indirect
 	google.golang.org/appengine v1.6.7 // indirect
+	google.golang.org/genproto v0.0.0-20200526211855-cb27e3aa2013 // indirect
+	google.golang.org/grpc v1.39.0 // indirect
 	google.golang.org/protobuf v1.28.0 // indirect
 	gopkg.in/check.v1 v1.0.0-20200227125254-8fa46927fb4f // indirect
 	gopkg.in/ini.v1 v1.42.0 // indirect
