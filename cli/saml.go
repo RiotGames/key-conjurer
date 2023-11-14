@@ -1,22 +1,66 @@
 package main
 
 import (
+	"encoding/base64"
+	"encoding/xml"
+	"io"
+	"log"
+	"net/http"
+	"net/url"
 	"strings"
 
-	"github.com/RobotsAndPencils/go-saml"
+	"github.com/russellhaering/gosaml2/types"
 )
+
+type SAMLResponse struct {
+	original string
+	inner    *types.Assertion
+}
+
+func (r *SAMLResponse) AddAttribute(name, value string) {
+	if r.inner == nil {
+		r.inner = &types.Assertion{}
+	}
+
+	if r.inner.AttributeStatement == nil {
+		r.inner.AttributeStatement = &types.AttributeStatement{}
+	}
+
+	val := types.AttributeValue{Type: "xs:string", Value: value}
+	r.inner.AttributeStatement.Attributes = append(r.inner.AttributeStatement.Attributes, types.Attribute{
+		Name:   name,
+		Values: []types.AttributeValue{val},
+	})
+}
+
+func (r SAMLResponse) GetAttribute(name string) string {
+	vals := r.GetAttributeValues(name)
+	if len(vals) > 0 {
+		return vals[0]
+	} else {
+		return ""
+	}
+}
+
+func (r SAMLResponse) GetAttributeValues(name string) []string {
+	var vals []string
+	for _, attr := range r.inner.AttributeStatement.Attributes {
+		if attr.Name == name {
+			for _, v := range attr.Values {
+				vals = append(vals, v.Value)
+			}
+		}
+	}
+
+	return vals
+}
 
 type RoleProviderPair struct {
 	RoleARN     string
 	ProviderARN string
 }
 
-const (
-	awsFlag     = 0
-	tencentFlag = 1
-)
-
-func ListSAMLRoles(response *saml.Response) []string {
+func ListSAMLRoles(response *SAMLResponse) []string {
 	if response == nil {
 		return nil
 	}
@@ -39,7 +83,7 @@ func ListSAMLRoles(response *saml.Response) []string {
 	return names
 }
 
-func FindRoleInSAML(roleName string, response *saml.Response) (RoleProviderPair, bool) {
+func FindRoleInSAML(roleName string, response *SAMLResponse) (RoleProviderPair, bool) {
 	if response == nil {
 		return RoleProviderPair{}, false
 	}
@@ -97,6 +141,46 @@ func getARN(value string) RoleProviderPair {
 	return p
 }
 
-func ParseBase64EncodedSAMLResponse(xml string) (*saml.Response, error) {
-	return saml.ParseEncodedResponse(xml)
+func ParseEncodedResponse(b64ResponseXML string) (*types.Assertion, error) {
+	var response types.Assertion
+	bytesXML, err := base64.StdEncoding.DecodeString(b64ResponseXML)
+	if err != nil {
+		return nil, err
+	}
+
+	err = xml.Unmarshal(bytesXML, &response)
+	if err != nil {
+		return nil, err
+	}
+	return &response, nil
+}
+
+func ParseBase64EncodedSAMLResponse(xml string) (*SAMLResponse, error) {
+	res, err := ParseEncodedResponse(xml)
+	if err != nil {
+		return nil, nil
+	}
+	return &SAMLResponse{original: xml, inner: res}, nil
+}
+
+type SAMLCallbackHandler struct {
+	AssertionChannel chan []byte
+}
+
+func (h SAMLCallbackHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	// TODO: Handle panics gracefully
+	assertionBytes, err := io.ReadAll(r.Body)
+	if err != nil {
+		log.Fatalf("Failed to read request body: %s", err)
+	}
+
+	// A correctly formed body will be a url-encoded param response, with the SAMLResponse being base64 encoded.
+	v, err := url.ParseQuery(string(assertionBytes))
+	if err != nil {
+		log.Fatalf("Incorrectly formatted request body: %s", err)
+	}
+	r.Body.Close()
+
+	// TODO: This can panic if the body doesn't contain SAMLResponse
+	h.AssertionChannel <- []byte(v["SAMLResponse"][0])
 }

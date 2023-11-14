@@ -12,6 +12,7 @@ import (
 
 	"strings"
 
+	"github.com/riotgames/key-conjurer/internal/api"
 	"golang.org/x/oauth2"
 )
 
@@ -24,10 +25,12 @@ type TokenSet struct {
 }
 
 type Account struct {
-	ID             string `json:"id"`
-	Name           string `json:"name"`
-	Alias          string `json:"alias"`
-	MostRecentRole string `json:"most_recent_role"`
+	ID             string              `json:"id"`
+	Name           string              `json:"name"`
+	Alias          string              `json:"alias"`
+	MostRecentRole string              `json:"most_recent_role"`
+	Href           string              `json:"href"`
+	Type           api.ApplicationType `json:"type"`
 }
 
 func (a *Account) NormalizeName() string {
@@ -164,8 +167,9 @@ func (a *accountSet) ReplaceWith(other []Account) {
 		clone := acc
 		// Preserve the alias if the account ID is the same and it already exists
 		if entry, ok := a.accounts[acc.ID]; ok {
-			// The name is the only thing that might change.
 			entry.Name = acc.Name
+			entry.Href = acc.Href
+			entry.Type = acc.Type
 		} else {
 			a.accounts[acc.ID] = &clone
 		}

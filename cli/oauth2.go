@@ -19,6 +19,25 @@ import (
 	"golang.org/x/oauth2"
 )
 
+var (
+	ErrInvalidDomain = errors.New("invalid domain")
+	// ErrTokenExchangeNotSupported indicates that token exchange is not supported for the given application.
+	//
+	// This most commonly occurs when attempting to use token exchange on non-AWS applications with Okta.
+	// Okta currently (2023-09-25) only supports the web sso grant type for AWS applications.
+	ErrTokenExchangeNotSupported = errors.New("token exchange not supported")
+)
+
+// ErrOktaErrorResponse is returned when Okta returns a non-200 response that is not covered by other well-defined errors.
+type ErrOktaErrorResponse struct {
+	StatusCode int
+	Response   *http.Response
+}
+
+func (e ErrOktaErrorResponse) Error() string {
+	return fmt.Sprintf("bad response code: %d", e.StatusCode)
+}
+
 // stateBufSize is the size of the buffer used to generate the state parameter.
 // 43 is a magic number - It generates states that are not too short or long for Okta's validation.
 const stateBufSize = 43
@@ -38,15 +57,21 @@ func NewHTTPClient() *http.Client {
 }
 
 func DiscoverOAuth2Config(ctx context.Context, domain, clientID string) (*oauth2.Config, error) {
-	provider, err := oidc.NewProvider(ctx, domain)
+	uri, err := url.Parse(domain)
+	if domain == "" || err != nil {
+		return nil, ErrInvalidDomain
+	}
+
+	provider, err := oidc.NewProvider(ctx, uri.String())
 	if err != nil {
 		return nil, fmt.Errorf("couldn't discover OIDC configuration for %s: %w", domain, err)
 	}
 
 	cfg := oauth2.Config{
-		ClientID: clientID,
-		Endpoint: provider.Endpoint(),
-		Scopes:   []string{"openid", "profile", "okta.apps.read", "okta.apps.sso"},
+		ClientID:    clientID,
+		Endpoint:    provider.Endpoint(),
+		Scopes:      []string{"openid", "profile", "okta.apps.read", "okta.apps.sso"},
+		RedirectURL: "http://localhost:57468",
 	}
 
 	return &cfg, nil
@@ -65,10 +90,15 @@ type OAuth2Listener struct {
 	callbackCh chan OAuth2CallbackInfo
 }
 
-func NewOAuth2Listener() OAuth2Listener {
+func NewOAuth2Listener(bindAddr string) OAuth2Listener {
+	// If the user gave us a fully formed URL, strip the scheme off
+	if bindAddr[:4] == "http" {
+		slashIdx := strings.LastIndexByte(bindAddr, '/')
+		bindAddr = bindAddr[slashIdx+1:]
+	}
+
 	return OAuth2Listener{
-		// 5RIOT on a phone pad
-		Addr:       ":57468",
+		Addr:       bindAddr,
 		errCh:      make(chan error),
 		callbackCh: make(chan OAuth2CallbackInfo),
 	}
@@ -153,11 +183,9 @@ func GenerateState() (string, error) {
 	rand.Read(stateBuf)
 	return base64.URLEncoding.EncodeToString([]byte(stateBuf)), nil
 }
-
 func RedirectionFlow(ctx context.Context, oauthCfg *oauth2.Config, state, codeChallenge, codeVerifier string, outputMode LoginOutputMode) (*oauth2.Token, error) {
-	listener := NewOAuth2Listener()
+	listener := NewOAuth2Listener(oauthCfg.RedirectURL)
 	go listener.Listen(ctx)
-	oauthCfg.RedirectURL = "http://localhost:57468"
 	url := oauthCfg.AuthCodeURL(state,
 		oauth2.SetAuthURLParam("code_challenge_method", "S256"),
 		oauth2.SetAuthURLParam("code_challenge", codeChallenge),
@@ -205,11 +233,19 @@ func ExchangeAccessTokenForWebSSOToken(ctx context.Context, client *http.Client,
 		return nil, err
 	}
 
-	var tok oauth2.Token
-	return &tok, json.NewDecoder(resp.Body).Decode(&tok)
+	switch resp.StatusCode {
+	case http.StatusOK:
+		var tok oauth2.Token
+		return &tok, json.NewDecoder(resp.Body).Decode(&tok)
+	case http.StatusBadRequest:
+		// Unsupported application - This application probably hasn't been configured to support token exchange.
+		// In other words, it's probably not an AWS application.
+		return nil, ErrTokenExchangeNotSupported
+	default:
+		return nil, ErrOktaErrorResponse{resp.StatusCode, resp}
+	}
 }
 
-// TODO: This is actually an Okta-specific API
 func ExchangeWebSSOTokenForSAMLAssertion(ctx context.Context, client *http.Client, issuer string, token *oauth2.Token) ([]byte, error) {
 	if client == nil {
 		client = http.DefaultClient

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 
@@ -57,6 +58,11 @@ var loginCmd = &cobra.Command{
 
 		token, err := Login(cmd.Context(), oidcDomain, clientID, outputMode)
 		if err != nil {
+			if errors.Is(err, ErrInvalidDomain) {
+				cmd.PrintErrf("The provided domain %q is not a valid domain. Please correct the domain and try again by passing it to --%s.\n", oidcDomain, FlagOIDCDomain)
+				return nil
+			}
+
 			return err
 		}
 

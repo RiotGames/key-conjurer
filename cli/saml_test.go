@@ -3,12 +3,11 @@ package main
 import (
 	"testing"
 
-	"github.com/RobotsAndPencils/go-saml"
 	"github.com/stretchr/testify/require"
 )
 
 func TestAwsFindRoleDoesntBreakIfYouHaveMultipleRoles(t *testing.T) {
-	var resp saml.Response
+	var resp SAMLResponse
 	resp.AddAttribute("https://aws.amazon.com/SAML/Attributes/Role", "arn:cloud:iam::1234:saml-provider/Okta,arn:cloud:iam::1234:role/Admin")
 	resp.AddAttribute("https://aws.amazon.com/SAML/Attributes/Role", "arn:cloud:iam::1234:saml-provider/Okta,arn:cloud:iam::1234:role/Power")
 	pair, err := FindRoleInSAML("Power", &resp)

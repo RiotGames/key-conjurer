@@ -10,9 +10,18 @@ import (
 	"golang.org/x/exp/slog"
 )
 
+type ApplicationType string
+
+var (
+	ApplicationTypeAWS     ApplicationType = "aws"
+	ApplicationTypeTencent ApplicationType = "tencent"
+)
+
 type Application struct {
-	ID   string `json:"@id"`
-	Name string `json:"name"`
+	ID   string          `json:"@id"`
+	Name string          `json:"name"`
+	Type ApplicationType `json:"type"`
+	Href string          `json:"href"`
 }
 
 type OktaService interface {
@@ -57,16 +66,35 @@ func ServeUserApplications(okta OktaService) http.Handler {
 
 		var accounts []Application
 		for _, app := range applications {
-			if app.AppName == "amazon_aws" || strings.Contains(app.AppName, "tencent") {
-				accounts = append(accounts, Application{
-					ID:   app.AppInstanceId,
-					Name: app.Label,
-				})
+			typ, ok := deriveApplicationType(app)
+			if !ok {
+				continue
 			}
+
+			app := Application{
+				ID:   app.AppInstanceId,
+				Name: app.Label,
+				Type: typ,
+				Href: app.LinkUrl,
+			}
+
+			accounts = append(accounts, app)
 		}
 
 		requestAttrs = append(requestAttrs, slog.Int("application_count", len(accounts)))
 		slog.Info("served applications", requestAttrs...)
 		ServeJSON(w, accounts)
 	})
+}
+
+func deriveApplicationType(app *okta.AppLink) (ApplicationType, bool) {
+	if app.AppName == "amazon_aws" {
+		return ApplicationTypeAWS, true
+	}
+
+	if strings.Contains(strings.ToLower(app.AppName), "tencent") {
+		return ApplicationTypeTencent, true
+	}
+
+	return "", false
 }
