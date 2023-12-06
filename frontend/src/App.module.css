@@ -5,9 +5,7 @@
 
 .Content {
     display: grid;
-    grid-template-columns: 2 2fr;
-    grid-template-rows: 2;
-
+    grid-template-columns: auto 100%;
     padding: 10px;
 }
 
