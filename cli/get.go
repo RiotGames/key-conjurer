@@ -67,7 +67,6 @@ var getCmd = &cobra.Command{
 	Long: `Retrieves temporary cloud API credentials for the specified account.  It sends a push request to the first Duo device it finds associated with your account.
 
 A role must be specified when using this command through the --role flag. You may list the roles you can assume through the roles command.`,
-	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		config := ConfigFromCommand(cmd)
 		ctx := cmd.Context()
@@ -101,10 +100,20 @@ A role must be specified when using this command through the --role flag. You ma
 			ttl = 8
 		}
 
+		var accountID string
+		if len(args) > 0 {
+			accountID = args[0]
+		} else if config.LastUsedAccount != nil {
+			// No account specified. Can we use the most recent one?
+			accountID = *config.LastUsedAccount
+		} else {
+			return cmd.Usage()
+		}
+
 		bypassCache, _ := cmd.Flags().GetBool(FlagBypassCache)
-		account, ok := resolveApplicationInfo(config, bypassCache, args[0])
+		account, ok := resolveApplicationInfo(config, bypassCache, accountID)
 		if !ok {
-			cmd.PrintErrf("%q is not a known account name in your account cache. Your cache can be refreshed by entering executing `keyconjurer accounts`. If the value provided is an Okta application ID, you may provide %s as an option to this command and try again.", args[0], FlagBypassCache)
+			cmd.PrintErrf("%q is not a known account name in your account cache. Your cache can be refreshed by entering executing `keyconjurer accounts`. If the value provided is an Okta application ID, you may provide %s as an option to this command and try again.", accountID, FlagBypassCache)
 			return nil
 		}
 
@@ -128,7 +137,7 @@ A role must be specified when using this command through the --role flag. You ma
 		}
 
 		if credentials.ValidUntil(account, time.Duration(timeRemaining)*time.Minute) {
-			return echoCredentials(args[0], args[0], credentials, outputType, shellType, awsCliPath, tencentCliPath)
+			return echoCredentials(accountID, accountID, credentials, outputType, shellType, awsCliPath, tencentCliPath)
 		}
 
 		oauthCfg, err := DiscoverOAuth2Config(cmd.Context(), oidcDomain, clientID)
@@ -158,7 +167,7 @@ A role must be specified when using this command through the --role flag. You ma
 
 		pair, ok := FindRoleInSAML(roleName, samlResponse)
 		if !ok {
-			cmd.PrintErrf("you do not have access to the role %s on application %s\n", roleName, args[0])
+			cmd.PrintErrf("you do not have access to the role %s on application %s\n", roleName, accountID)
 			return nil
 		}
 
@@ -197,8 +206,9 @@ A role must be specified when using this command through the --role flag. You ma
 		if account != nil {
 			account.MostRecentRole = roleName
 		}
+		config.LastUsedAccount = &accountID
 
-		return echoCredentials(args[0], args[0], credentials, outputType, shellType, awsCliPath, tencentCliPath)
+		return echoCredentials(accountID, accountID, credentials, outputType, shellType, awsCliPath, tencentCliPath)
 	}}
 
 func echoCredentials(id, name string, credentials CloudCredentials, outputType, shellType, awsCliPath, tencentCliPath string) error {

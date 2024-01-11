@@ -197,10 +197,11 @@ func (a accountSet) WriteTable(w io.Writer, withHeaders bool) {
 
 // Config stores all information related to the user
 type Config struct {
-	Accounts      *accountSet `json:"accounts"`
-	TTL           uint        `json:"ttl"`
-	TimeRemaining uint        `json:"time_remaining"`
-	Tokens        *TokenSet   `json:"tokens"`
+	Accounts        *accountSet `json:"accounts"`
+	TTL             uint        `json:"ttl"`
+	TimeRemaining   uint        `json:"time_remaining"`
+	Tokens          *TokenSet   `json:"tokens"`
+	LastUsedAccount *string     `json:"last_used_account"`
 }
 
 func (c Config) GetOAuthToken() (*TokenSet, bool) {
