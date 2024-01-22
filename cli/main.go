@@ -24,9 +24,12 @@ func main() {
 	}
 	rootCmd.SetArgs(args)
 
-	if err := rootCmd.Execute(); err == nil {
-		return
+	err := rootCmd.Execute()
+	if e, ok := err.(codeError); ok {
+		rootCmd.PrintErrln(e.Error())
+		os.Exit(int(e.Code()))
+	} else if err != nil {
+		rootCmd.PrintErrf("An unexpected error occurred: %s", err.Error())
+		os.Exit(ExitCodeUnknownError)
 	}
-
-	os.Exit(1)
 }

@@ -11,8 +11,7 @@ var rolesCmd = cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		config := ConfigFromCommand(cmd)
 		if HasTokenExpired(config.Tokens) {
-			cmd.PrintErrln("Your session has expired. Please login again.")
-			return nil
+			return ErrTokensExpiredOrAbsent
 		}
 		client := NewHTTPClient()
 

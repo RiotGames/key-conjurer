@@ -72,11 +72,10 @@ A role must be specified when using this command through the --role flag. You ma
 		config := ConfigFromCommand(cmd)
 		ctx := cmd.Context()
 		if HasTokenExpired(config.Tokens) {
-			cmd.PrintErrln("Your session has expired. Please login again.")
-			return nil
+			return ErrTokensExpiredOrAbsent
 		}
-		client := NewHTTPClient()
 
+		client := NewHTTPClient()
 		ttl, _ := cmd.Flags().GetUint(FlagTimeToLive)
 		timeRemaining, _ := cmd.Flags().GetUint(FlagTimeRemaining)
 		outputType, _ := cmd.Flags().GetString(FlagOutputType)
@@ -89,11 +88,11 @@ A role must be specified when using this command through the --role flag. You ma
 		tencentCliPath, _ := cmd.Flags().GetString(FlagTencentCLIPath)
 
 		if !isMemberOfSlice(permittedOutputTypes, outputType) {
-			return invalidValueError(outputType, permittedOutputTypes)
+			return ValueError{Value: outputType, ValidValues: permittedOutputTypes}
 		}
 
 		if !isMemberOfSlice(permittedShellTypes, shellType) {
-			return invalidValueError(shellType, permittedShellTypes)
+			return ValueError{Value: shellType, ValidValues: permittedShellTypes}
 		}
 
 		// make sure we enforce limit

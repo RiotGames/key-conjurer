@@ -51,11 +51,11 @@ This command will fail if you do not have active Cloud credentials.
 		cloudType, _ := cmd.Flags().GetString(FlagCloudType)
 		awsCliPath, _ := cmd.Flags().GetString(FlagAWSCLIPath)
 		if !isMemberOfSlice(permittedOutputTypes, outputType) {
-			return invalidValueError(outputType, permittedOutputTypes)
+			return ValueError{Value: outputType, ValidValues: permittedOutputTypes}
 		}
 
 		if !isMemberOfSlice(permittedShellTypes, shellType) {
-			return invalidValueError(shellType, permittedShellTypes)
+			return ValueError{Value: shellType, ValidValues: permittedShellTypes}
 		}
 
 		// We could read the environment variable for the assumed role ARN, but it might be expired which isn't very useful to the user.

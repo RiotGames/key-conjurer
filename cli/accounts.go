@@ -52,9 +52,7 @@ var accountsCmd = &cobra.Command{
 		}
 
 		if HasTokenExpired(config.Tokens) {
-			cmd.PrintErrln("Your session has expired. Please run login again.")
-			config.SaveOAuthToken(nil)
-			return nil
+			return ErrTokensExpiredOrAbsent
 		}
 
 		tok := oauth2.Token{
