@@ -13,6 +13,7 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/RobotsAndPencils/go-saml"
 	"github.com/coreos/go-oidc"
 	rootcerts "github.com/hashicorp/go-rootcerts"
 	"golang.org/x/net/html"
@@ -242,4 +243,28 @@ func ExchangeWebSSOTokenForSAMLAssertion(ctx context.Context, client *http.Clien
 	}
 
 	return []byte(saml), nil
+}
+
+func DiscoverConfigAndExchangeTokenForAssertion(ctx context.Context, client *http.Client, toks *TokenSet, oidcDomain, clientID, applicationID string) (*saml.Response, string, error) {
+	oauthCfg, err := DiscoverOAuth2Config(ctx, oidcDomain, clientID)
+	if err != nil {
+		return nil, "", OktaError{Message: "could not discover oauth2  config", InnerError: err}
+	}
+
+	tok, err := ExchangeAccessTokenForWebSSOToken(ctx, client, oauthCfg, toks, applicationID)
+	if err != nil {
+		return nil, "", OktaError{Message: "error exchanging token", InnerError: err}
+	}
+
+	assertionBytes, err := ExchangeWebSSOTokenForSAMLAssertion(ctx, client, oidcDomain, tok)
+	if err != nil {
+		return nil, "", OktaError{Message: "failed to fetch SAML assertion", InnerError: err}
+	}
+
+	response, err := ParseBase64EncodedSAMLResponse(string(assertionBytes))
+	if err != nil {
+		return nil, "", OktaError{Message: "failed to parse SAML response", InnerError: err}
+	}
+
+	return response, string(assertionBytes), nil
 }

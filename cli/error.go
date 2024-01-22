@@ -56,3 +56,20 @@ func (v ValueError) Error() string {
 func (v ValueError) Code() uint8 {
 	return ExitCodeValueError
 }
+
+type OktaError struct {
+	InnerError error
+	Message    string
+}
+
+func (o OktaError) Unwrap() error {
+	return o.InnerError
+}
+
+func (o OktaError) Error() string {
+	return o.Message
+}
+
+func (o OktaError) Code() uint8 {
+	return ExitCodeUndisclosedOktaError
+}

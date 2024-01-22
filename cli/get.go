@@ -130,29 +130,9 @@ A role must be specified when using this command through the --role flag. You ma
 			return echoCredentials(args[0], args[0], credentials, outputType, shellType, awsCliPath, tencentCliPath)
 		}
 
-		oauthCfg, err := DiscoverOAuth2Config(cmd.Context(), oidcDomain, clientID)
+		samlResponse, assertionStr, err := DiscoverConfigAndExchangeTokenForAssertion(cmd.Context(), NewHTTPClient(), config.Tokens, oidcDomain, clientID, applicationID)
 		if err != nil {
-			cmd.PrintErrf("could not discover oauth2  config: %s\n", err)
-			return nil
-		}
-
-		tok, err := ExchangeAccessTokenForWebSSOToken(cmd.Context(), client, oauthCfg, config.Tokens, account.ID)
-		if err != nil {
-			cmd.PrintErrf("error exchanging token: %s\n", err)
-			return nil
-		}
-
-		assertion, err := ExchangeWebSSOTokenForSAMLAssertion(cmd.Context(), client, oidcDomain, tok)
-		if err != nil {
-			cmd.PrintErrf("failed to fetch SAML assertion: %s\n", err)
-			return nil
-		}
-
-		assertionStr := string(assertion)
-		samlResponse, err := ParseBase64EncodedSAMLResponse(assertionStr)
-		if err != nil {
-			cmd.PrintErrf("could not parse assertion: %s\n", err)
-			return nil
+			return err
 		}
 
 		pair, ok := FindRoleInSAML(roleName, samlResponse)

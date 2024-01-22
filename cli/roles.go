@@ -13,7 +13,6 @@ var rolesCmd = cobra.Command{
 		if HasTokenExpired(config.Tokens) {
 			return ErrTokensExpiredOrAbsent
 		}
-		client := NewHTTPClient()
 
 		oidcDomain, _ := cmd.Flags().GetString(FlagOIDCDomain)
 		clientID, _ := cmd.Flags().GetString(FlagClientID)
@@ -24,28 +23,9 @@ var rolesCmd = cobra.Command{
 			applicationID = account.ID
 		}
 
-		oauthCfg, err := DiscoverOAuth2Config(cmd.Context(), oidcDomain, clientID)
+		samlResponse, _, err := DiscoverConfigAndExchangeTokenForAssertion(cmd.Context(), NewHTTPClient(), config.Tokens, oidcDomain, clientID, applicationID)
 		if err != nil {
-			cmd.PrintErrf("could not discover oauth2  config: %s\n", err)
-			return nil
-		}
-
-		tok, err := ExchangeAccessTokenForWebSSOToken(cmd.Context(), client, oauthCfg, config.Tokens, applicationID)
-		if err != nil {
-			cmd.PrintErrf("error exchanging token: %s\n", err)
-			return nil
-		}
-
-		assertionBytes, err := ExchangeWebSSOTokenForSAMLAssertion(cmd.Context(), client, oidcDomain, tok)
-		if err != nil {
-			cmd.PrintErrf("failed to fetch SAML assertion: %s\n", err)
-			return nil
-		}
-
-		samlResponse, err := ParseBase64EncodedSAMLResponse(string(assertionBytes))
-		if err != nil {
-			cmd.PrintErrf("could not parse assertion: %s\n", err)
-			return nil
+			return err
 		}
 
 		for _, name := range ListSAMLRoles(samlResponse) {
