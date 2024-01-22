@@ -11,6 +11,7 @@ const (
 	ExitCodeAuthenticationError         = 0x3
 	ExitCodeConnectivityError           = 0x4
 	ExitCodeValueError                  = 0x5
+	ExitCodeAWSError                    = 0x6
 	ExitCodeUnknownError                = 0x7D
 )
 
@@ -21,6 +22,19 @@ var (
 		Description:  "Your session has expired. Please login again.",
 	}
 )
+
+type genericError struct {
+	Message  string
+	ExitCode uint8
+}
+
+func (e genericError) Error() string {
+	return e.Message
+}
+
+func (e genericError) Code() uint8 {
+	return e.ExitCode
+}
 
 type codeError interface {
 	Error() string
@@ -36,6 +50,20 @@ type UsageError struct {
 
 func (u UsageError) Error() string {
 	return u.Description
+}
+
+func UnknownRoleError(role, applicationID string) error {
+	return genericError{
+		Message:  fmt.Sprintf("You do not have access to the role %s on application %s", role, applicationID),
+		ExitCode: ExitCodeValueError,
+	}
+}
+
+func UnknownAccountError(accountID, bypassCacheFlag string) error {
+	return genericError{
+		Message:  fmt.Sprintf("%q is not a known account name in your account cache. Your cache can be refreshed by entering executing `keyconjurer accounts`. If the value provided is an Okta application ID, you may provide --%s as an option to this command and try again.", accountID, bypassCacheFlag),
+		ExitCode: ExitCodeValueError,
+	}
 }
 
 type ValueError struct {
@@ -72,4 +100,21 @@ func (o OktaError) Error() string {
 
 func (o OktaError) Code() uint8 {
 	return ExitCodeUndisclosedOktaError
+}
+
+type AWSError struct {
+	InnerError error
+	Message    string
+}
+
+func (o AWSError) Unwrap() error {
+	return o.InnerError
+}
+
+func (o AWSError) Error() string {
+	return o.Message
+}
+
+func (o AWSError) Code() uint8 {
+	return ExitCodeAWSError
 }

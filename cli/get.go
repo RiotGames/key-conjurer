@@ -75,7 +75,6 @@ A role must be specified when using this command through the --role flag. You ma
 			return ErrTokensExpiredOrAbsent
 		}
 
-		client := NewHTTPClient()
 		ttl, _ := cmd.Flags().GetUint(FlagTimeToLive)
 		timeRemaining, _ := cmd.Flags().GetUint(FlagTimeRemaining)
 		outputType, _ := cmd.Flags().GetString(FlagOutputType)
@@ -103,8 +102,7 @@ A role must be specified when using this command through the --role flag. You ma
 		bypassCache, _ := cmd.Flags().GetBool(FlagBypassCache)
 		account, ok := resolveApplicationInfo(config, bypassCache, args[0])
 		if !ok {
-			cmd.PrintErrf("%q is not a known account name in your account cache. Your cache can be refreshed by entering executing `keyconjurer accounts`. If the value provided is an Okta application ID, you may provide %s as an option to this command and try again.", args[0], FlagBypassCache)
-			return nil
+			return UnknownAccountError(args[0], FlagBypassCache)
 		}
 
 		if roleName == "" {
@@ -130,15 +128,14 @@ A role must be specified when using this command through the --role flag. You ma
 			return echoCredentials(args[0], args[0], credentials, outputType, shellType, awsCliPath, tencentCliPath)
 		}
 
-		samlResponse, assertionStr, err := DiscoverConfigAndExchangeTokenForAssertion(cmd.Context(), NewHTTPClient(), config.Tokens, oidcDomain, clientID, applicationID)
+		samlResponse, assertionStr, err := DiscoverConfigAndExchangeTokenForAssertion(cmd.Context(), NewHTTPClient(), config.Tokens, oidcDomain, clientID, account.ID)
 		if err != nil {
 			return err
 		}
 
 		pair, ok := FindRoleInSAML(roleName, samlResponse)
 		if !ok {
-			cmd.PrintErrf("you do not have access to the role %s on application %s\n", roleName, args[0])
-			return nil
+			return UnknownRoleError(roleName, args[0])
 		}
 
 		if ttl == 1 && config.TTL != 0 {
@@ -158,8 +155,7 @@ A role must be specified when using this command through the --role flag. You ma
 			})
 
 			if err != nil {
-				cmd.PrintErrf("failed to exchange credentials: %s", err)
-				return nil
+				return AWSError{InnerError: err, Message: "failed to exchange credentials"}
 			}
 
 			credentials = CloudCredentials{
