@@ -17,7 +17,7 @@ const (
 
 var (
 	ErrTokensExpiredOrAbsent = UsageError{
-		Code:         ExitCodeTokensExpiredOrAbsent,
+		ExitCode:     ExitCodeTokensExpiredOrAbsent,
 		DebugMessage: "tokens expired or absent",
 		Description:  "Your session has expired. Please login again.",
 	}
@@ -43,13 +43,17 @@ type codeError interface {
 
 // UsageError indicates that the user used the program incorrectly
 type UsageError struct {
-	Code         uint8
+	ExitCode     uint8
 	Description  string
 	DebugMessage string
 }
 
 func (u UsageError) Error() string {
 	return u.Description
+}
+
+func (u UsageError) Code() uint8 {
+	return u.ExitCode
 }
 
 func UnknownRoleError(role, applicationID string) error {

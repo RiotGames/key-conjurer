@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"os"
 	"strings"
 
@@ -25,9 +26,10 @@ func main() {
 	rootCmd.SetArgs(args)
 
 	err := rootCmd.Execute()
-	if e, ok := err.(codeError); ok {
-		rootCmd.PrintErrln(e.Error())
-		os.Exit(int(e.Code()))
+	var codeErr codeError
+	if errors.As(err, &codeErr) {
+		rootCmd.PrintErrln(codeErr.Error())
+		os.Exit(int(codeErr.Code()))
 	} else if err != nil {
 		rootCmd.PrintErrf("An unexpected error occurred: %s", err.Error())
 		os.Exit(ExitCodeUnknownError)
