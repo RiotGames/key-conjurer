@@ -28,10 +28,10 @@ func main() {
 	err := rootCmd.Execute()
 	var codeErr codeError
 	if errors.As(err, &codeErr) {
-		rootCmd.PrintErrln(codeErr.Error())
+		rootCmd.PrintErrf("keyconjurer: %s\n", codeErr.Error())
 		os.Exit(int(codeErr.Code()))
 	} else if err != nil {
-		rootCmd.PrintErrf("An unexpected error occurred: %s", err.Error())
+		rootCmd.PrintErrf("keyconjurer: %s\n", err.Error())
 		os.Exit(ExitCodeUnknownError)
 	}
 }

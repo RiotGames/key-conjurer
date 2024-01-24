@@ -101,4 +101,5 @@ To get started run the following commands:
 		defer file.Close()
 		return config.Write(file)
 	},
+	SilenceErrors: true,
 }
