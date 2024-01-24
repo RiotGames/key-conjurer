@@ -38,6 +38,7 @@ var accountsCmd = &cobra.Command{
 			config.DumpAccounts(stdOut, loud)
 
 			if loud {
+				// intentionally uses PrintErrf was a warning
 				cmd.PrintErrf("--%s was specified - these results may be out of date, and you may not have access to accounts in this list.\n", FlagNoRefresh)
 			}
 
@@ -47,14 +48,14 @@ var accountsCmd = &cobra.Command{
 		serverAddr, _ := cmd.Flags().GetString(FlagServerAddress)
 		serverAddrURI, err := url.Parse(serverAddr)
 		if err != nil {
-			cmd.PrintErrf("--%s had an invalid value: %s\n", FlagServerAddress, err)
-			return nil
+			return genericError{
+				ExitCode: ExitCodeValueError,
+				Message:  fmt.Sprintf("--%s had an invalid value: %s\n", FlagServerAddress, err),
+			}
 		}
 
 		if HasTokenExpired(config.Tokens) {
-			cmd.PrintErrln("Your session has expired. Please run login again.")
-			config.SaveOAuthToken(nil)
-			return nil
+			return ErrTokensExpiredOrAbsent
 		}
 
 		tok := oauth2.Token{
@@ -66,9 +67,7 @@ var accountsCmd = &cobra.Command{
 
 		accounts, err := refreshAccounts(cmd.Context(), serverAddrURI, &tok)
 		if err != nil {
-			cmd.PrintErrf("Error refreshing accounts: %s\n", err)
-			cmd.PrintErrln("If you don't need to refresh your accounts, consider adding the --no-refresh flag")
-			return nil
+			return fmt.Errorf("error refreshing accounts: %w", err)
 		}
 
 		config.UpdateAccounts(accounts)

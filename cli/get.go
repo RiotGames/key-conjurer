@@ -71,10 +71,8 @@ A role must be specified when using this command through the --role flag. You ma
 		config := ConfigFromCommand(cmd)
 		ctx := cmd.Context()
 		if HasTokenExpired(config.Tokens) {
-			cmd.PrintErrln("Your session has expired. Please login again.")
-			return nil
+			return ErrTokensExpiredOrAbsent
 		}
-		client := NewHTTPClient()
 
 		ttl, _ := cmd.Flags().GetUint(FlagTimeToLive)
 		timeRemaining, _ := cmd.Flags().GetUint(FlagTimeRemaining)
@@ -88,11 +86,11 @@ A role must be specified when using this command through the --role flag. You ma
 		tencentCliPath, _ := cmd.Flags().GetString(FlagTencentCLIPath)
 
 		if !isMemberOfSlice(permittedOutputTypes, outputType) {
-			return invalidValueError(outputType, permittedOutputTypes)
+			return ValueError{Value: outputType, ValidValues: permittedOutputTypes}
 		}
 
 		if !isMemberOfSlice(permittedShellTypes, shellType) {
-			return invalidValueError(shellType, permittedShellTypes)
+			return ValueError{Value: shellType, ValidValues: permittedShellTypes}
 		}
 
 		// make sure we enforce limit
@@ -113,8 +111,7 @@ A role must be specified when using this command through the --role flag. You ma
 		bypassCache, _ := cmd.Flags().GetBool(FlagBypassCache)
 		account, ok := resolveApplicationInfo(config, bypassCache, accountID)
 		if !ok {
-			cmd.PrintErrf("%q is not a known account name in your account cache. Your cache can be refreshed by entering executing `keyconjurer accounts`. If the value provided is an Okta application ID, you may provide %s as an option to this command and try again.", accountID, FlagBypassCache)
-			return nil
+			return UnknownAccountError(args[0], FlagBypassCache)
 		}
 
 		if roleName == "" {
@@ -140,35 +137,14 @@ A role must be specified when using this command through the --role flag. You ma
 			return echoCredentials(accountID, accountID, credentials, outputType, shellType, awsCliPath, tencentCliPath)
 		}
 
-		oauthCfg, err := DiscoverOAuth2Config(cmd.Context(), oidcDomain, clientID)
+		samlResponse, assertionStr, err := DiscoverConfigAndExchangeTokenForAssertion(cmd.Context(), NewHTTPClient(), config.Tokens, oidcDomain, clientID, account.ID)
 		if err != nil {
-			cmd.PrintErrf("could not discover oauth2  config: %s\n", err)
-			return nil
-		}
-
-		tok, err := ExchangeAccessTokenForWebSSOToken(cmd.Context(), client, oauthCfg, config.Tokens, account.ID)
-		if err != nil {
-			cmd.PrintErrf("error exchanging token: %s\n", err)
-			return nil
-		}
-
-		assertion, err := ExchangeWebSSOTokenForSAMLAssertion(cmd.Context(), client, oidcDomain, tok)
-		if err != nil {
-			cmd.PrintErrf("failed to fetch SAML assertion: %s\n", err)
-			return nil
-		}
-
-		assertionStr := string(assertion)
-		samlResponse, err := ParseBase64EncodedSAMLResponse(assertionStr)
-		if err != nil {
-			cmd.PrintErrf("could not parse assertion: %s\n", err)
-			return nil
+			return err
 		}
 
 		pair, ok := FindRoleInSAML(roleName, samlResponse)
 		if !ok {
-			cmd.PrintErrf("you do not have access to the role %s on application %s\n", roleName, accountID)
-			return nil
+			return UnknownRoleError(roleName, args[0])
 		}
 
 		if ttl == 1 && config.TTL != 0 {
@@ -188,8 +164,7 @@ A role must be specified when using this command through the --role flag. You ma
 			})
 
 			if err != nil {
-				cmd.PrintErrf("failed to exchange credentials: %s", err)
-				return nil
+				return AWSError{InnerError: err, Message: "failed to exchange credentials"}
 			}
 
 			credentials = CloudCredentials{

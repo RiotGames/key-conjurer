@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"os"
 	"strings"
 
@@ -24,9 +25,13 @@ func main() {
 	}
 	rootCmd.SetArgs(args)
 
-	if err := rootCmd.Execute(); err == nil {
-		return
+	err := rootCmd.Execute()
+	var codeErr codeError
+	if errors.As(err, &codeErr) {
+		rootCmd.PrintErrf("keyconjurer: %s\n", codeErr.Error())
+		os.Exit(int(codeErr.Code()))
+	} else if err != nil {
+		rootCmd.PrintErrf("keyconjurer: %s\n", err.Error())
+		os.Exit(ExitCodeUnknownError)
 	}
-
-	os.Exit(1)
 }
