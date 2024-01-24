@@ -12,7 +12,7 @@ var (
 
 const (
 	// DefaultTTL for requested credentials in hours
-	DefaultTTL uint = 1
+	DefaultTTL uint = 8
 	// DefaultTimeRemaining for new key requests in minutes
 	DefaultTimeRemaining  uint   = 5
 	LinuxAmd64BinaryName  string = "keyconjurer-linux-amd64"
