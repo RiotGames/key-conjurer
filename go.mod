@@ -4,6 +4,7 @@ require (
 	github.com/RobotsAndPencils/go-saml v0.0.0-20170520135329-fb13cb52a46b
 	github.com/aws/aws-lambda-go v1.19.1
 	github.com/aws/aws-sdk-go v1.34.19
+	github.com/aws/aws-sdk-go-v2/service/ec2 v1.148.2
 	github.com/coreos/go-oidc v2.2.1+incompatible
 	github.com/go-ini/ini v1.61.0
 	github.com/hashicorp/go-rootcerts v1.0.2
@@ -24,6 +25,7 @@ require (
 )
 
 require (
+	github.com/aws/smithy-go v1.20.1 // indirect
 	github.com/cenkalti/backoff/v4 v4.1.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
