@@ -5,6 +5,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/spf13/cobra"
 	"golang.org/x/exp/slog"
 )
 
@@ -28,10 +29,11 @@ func main() {
 	err := rootCmd.Execute()
 	var codeErr codeError
 	if errors.As(err, &codeErr) {
-		rootCmd.PrintErrf("keyconjurer: %s\n", codeErr.Error())
+		cobra.CheckErr(codeErr)
 		os.Exit(int(codeErr.Code()))
 	} else if err != nil {
-		rootCmd.PrintErrf("keyconjurer: %s\n", err.Error())
+		// Probably a cobra error.
+		cobra.CheckErr(err)
 		os.Exit(ExitCodeUnknownError)
 	}
 }

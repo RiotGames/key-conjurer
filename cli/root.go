@@ -102,4 +102,5 @@ To get started run the following commands:
 		return config.Write(file)
 	},
 	SilenceErrors: true,
+	SilenceUsage:  true,
 }
