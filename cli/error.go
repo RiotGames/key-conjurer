@@ -137,6 +137,11 @@ func (o TimeToLiveError) Code() int {
 }
 
 func (o TimeToLiveError) Error() string {
+	if o.MaxDuration == 0 && o.RequestedDuration == 0 {
+		// Duration is ambiguous/was not specified by AWS, so we return a generic message instead.
+		return "the TTL you requested exceeds the maximum TTL for this configuration"
+	}
+
 	// We cast to int to discard decimal places
 	return fmt.Sprintf("you requested a TTL of %d hours, but the maximum for this configuration is %d hours", int(o.RequestedDuration.Hours()), int(o.MaxDuration.Hours()))
 }
@@ -151,11 +156,14 @@ func tryParseTimeToLiveError(err error) (error, bool) {
 		var providedValue, maxValue time.Duration
 		// This is no more specific type than this, and yes, unfortunately the error message includes the count.
 		formatOne := "1 validation error detected: Value '%d' at 'durationSeconds' failed to satisfy constraint: Member must have value less than or equal to %d"
-		if n, parseErr := fmt.Sscanf(awsErr.Message(), formatOne, &providedValue, &maxValue); parseErr != nil || n != 2 {
-			return nil, false
+		if n, parseErr := fmt.Sscanf(awsErr.Message(), formatOne, &providedValue, &maxValue); parseErr == nil && n == 2 {
+			return TimeToLiveError{MaxDuration: maxValue * time.Second, RequestedDuration: providedValue * time.Second}, true
 		}
 
-		return TimeToLiveError{MaxDuration: maxValue * time.Second, RequestedDuration: providedValue * time.Second}, true
+		formatAmbiguousMaximum := "The requested DurationSeconds exceeds the MaxSessionDuration set for this role."
+		if strings.Compare(awsErr.Message(), formatAmbiguousMaximum) == 0 {
+			return TimeToLiveError{MaxDuration: 0, RequestedDuration: 0}, true
+		}
 	}
 
 	return nil, false
