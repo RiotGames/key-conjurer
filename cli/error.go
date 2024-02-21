@@ -1,18 +1,22 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"strings"
+	"time"
+
+	"github.com/aws/aws-sdk-go/aws/awserr"
 )
 
 const (
-	ExitCodeTokensExpiredOrAbsent uint8 = 0x1
-	ExitCodeUndisclosedOktaError        = 0x2
-	ExitCodeAuthenticationError         = 0x3
-	ExitCodeConnectivityError           = 0x4
-	ExitCodeValueError                  = 0x5
-	ExitCodeAWSError                    = 0x6
-	ExitCodeUnknownError                = 0x7D
+	ExitCodeTokensExpiredOrAbsent int = 0x1
+	ExitCodeUndisclosedOktaError  int = 0x2
+	ExitCodeAuthenticationError   int = 0x3
+	ExitCodeConnectivityError     int = 0x4
+	ExitCodeValueError            int = 0x5
+	ExitCodeAWSError              int = 0x6
+	ExitCodeUnknownError          int = 0x7D
 )
 
 var (
@@ -25,25 +29,25 @@ var (
 
 type genericError struct {
 	Message  string
-	ExitCode uint8
+	ExitCode int
 }
 
 func (e genericError) Error() string {
 	return e.Message
 }
 
-func (e genericError) Code() uint8 {
+func (e genericError) Code() int {
 	return e.ExitCode
 }
 
 type codeError interface {
 	Error() string
-	Code() uint8
+	Code() int
 }
 
 // UsageError indicates that the user used the program incorrectly
 type UsageError struct {
-	ExitCode     uint8
+	ExitCode     int
 	Description  string
 	DebugMessage string
 }
@@ -52,7 +56,7 @@ func (u UsageError) Error() string {
 	return u.Description
 }
 
-func (u UsageError) Code() uint8 {
+func (u UsageError) Code() int {
 	return u.ExitCode
 }
 
@@ -85,7 +89,7 @@ func (v ValueError) Error() string {
 	return fmt.Sprintf("provided value %s was not valid (accepted values: %s)", v.Value, acceptable)
 }
 
-func (v ValueError) Code() uint8 {
+func (v ValueError) Code() int {
 	return ExitCodeValueError
 }
 
@@ -102,7 +106,7 @@ func (o OktaError) Error() string {
 	return o.Message
 }
 
-func (o OktaError) Code() uint8 {
+func (o OktaError) Code() int {
 	return ExitCodeUndisclosedOktaError
 }
 
@@ -116,9 +120,43 @@ func (o AWSError) Unwrap() error {
 }
 
 func (o AWSError) Error() string {
-	return o.Message
+	return fmt.Sprintf("%s: %s", o.Message, o.InnerError)
 }
 
-func (o AWSError) Code() uint8 {
+func (o AWSError) Code() int {
 	return ExitCodeAWSError
+}
+
+type TimeToLiveError struct {
+	MaxDuration       time.Duration
+	RequestedDuration time.Duration
+}
+
+func (o TimeToLiveError) Code() int {
+	return ExitCodeValueError
+}
+
+func (o TimeToLiveError) Error() string {
+	// We cast to int to discard decimal places
+	return fmt.Sprintf("you requested a TTL of %d hours, but the maximum for this configuration is %d hours", int(o.RequestedDuration.Hours()), int(o.MaxDuration.Hours()))
+}
+
+// tryParseTimeToLiveError attempts to parse an error related to the DurationSeconds field in the STS request.
+//
+// If the given error does relate to the specified DurationSeconds being larger than MaxDurationSeconds, this function will return a more specific error than the one the AWS SDK provides, and returns true.
+// Returns nil and false in all other situations.
+func tryParseTimeToLiveError(err error) (error, bool) {
+	var awsErr awserr.Error
+	if errors.As(err, &awsErr) && awsErr.Code() == "ValidationError" {
+		var providedValue, maxValue time.Duration
+		// This is no more specific type than this, and yes, unfortunately the error message includes the count.
+		formatOne := "1 validation error detected: Value '%d' at 'durationSeconds' failed to satisfy constraint: Member must have value less than or equal to %d"
+		if n, parseErr := fmt.Sscanf(awsErr.Message(), formatOne, &providedValue, &maxValue); parseErr != nil || n != 2 {
+			return nil, false
+		}
+
+		return TimeToLiveError{MaxDuration: maxValue * time.Second, RequestedDuration: providedValue * time.Second}, true
+	}
+
+	return nil, false
 }

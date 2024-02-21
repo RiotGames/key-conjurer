@@ -107,11 +107,6 @@ A role must be specified when using this command through the --role flag. You ma
 			return ValueError{Value: shellType, ValidValues: permittedShellTypes}
 		}
 
-		// make sure we enforce limit
-		if ttl > 8 {
-			ttl = 8
-		}
-
 		var accountID string
 		if len(args) > 0 {
 			accountID = args[0]
@@ -177,8 +172,15 @@ A role must be specified when using this command through the --role flag. You ma
 				SAMLAssertion:   &assertionStr,
 			})
 
+			if err, ok := tryParseTimeToLiveError(err); ok {
+				return err
+			}
+
 			if err != nil {
-				return AWSError{InnerError: err, Message: "failed to exchange credentials"}
+				return AWSError{
+					InnerError: err,
+					Message:    "failed to exchange credentials",
+				}
 			}
 
 			credentials = CloudCredentials{
