@@ -7,6 +7,7 @@ USER heimerdinger
 COPY --chown=heimerdinger ./ ./
 RUN npm install
 RUN npm run-script build
+RUN mv dist/* /app/build/
 
 FROM nginx:alpine
 RUN adduser -D heimerdinger
