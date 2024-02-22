@@ -1,2 +1,0 @@
-terraform fmt **/*.tf
-cd frontend && npm run fmt && cd -
