@@ -4,7 +4,7 @@ RUN mkdir -p /app/build
 RUN chown -R heimerdinger /app /app/*
 WORKDIR /app
 USER heimerdinger
-COPY --chown=heimerdinger ./ ./
+COPY --chown=heimerdinger frontend/ .
 RUN npm install
 RUN npm run-script build
 RUN mv dist/* /app/build/
