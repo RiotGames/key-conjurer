@@ -30,11 +30,8 @@ frontend/node_modules:
 
 frontend/build/index.html: frontend/node_modules
 	mkdir -p build/frontend/
-	@test $${FRONTEND_URL?is not set}
-	@test $${API_URL?is not set}
 	cd frontend && \
-	REACT_APP_VERSION='$(shell git rev-parse --short HEAD)-$(RELEASE)' \
-	REACT_APP_API_URL=${API_URL} \
+	APP_VERSION='$(shell git rev-parse --short HEAD)-$(RELEASE)' \
 	npm run-script build
 
 ### CLI Build Targets

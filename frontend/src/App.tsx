@@ -1,17 +1,12 @@
-import * as marked from "marked";
 import React from "react";
 import { Card, Image, Menu, Tab, TabPane } from "semantic-ui-react";
 import keyConjurerLogo from "./images/KeyConjurer.png";
 import styles from "./App.module.css";
-import MacUsageDocument from "./articles/MacUsage.md";
-import LinuxUsageDocument from "./articles/LinuxUsage.md";
-import WindowsUsageDocument from "./articles/WindowsUsage.md";
-import WSLUsageDocument from "./articles/WSLUsage.md";
-
-const macUsageDocument = marked.parse(MacUsageDocument);
-const linuxUsageDocument = marked.parse(LinuxUsageDocument);
-const windowsUsageDocument = marked.parse(WindowsUsageDocument);
-const wslUsageDocument = marked.parse(WSLUsageDocument);
+// These documents are imported as HTML because when importing them as React components, vite-plugin-markdown escapes the quotation marks and apostrophes and we have no way of unescaping them.
+import { html as MacUsageDocument } from "./articles/MacUsage.md";
+import { html as LinuxUsageDocument } from "./articles/LinuxUsage.md";
+import { html as WindowsUsageDocument } from "./articles/WindowsUsage.md";
+import { html as WSLUsageDocument } from "./articles/WSLUsage.md";
 
 export const App = () => (
   <>
@@ -37,25 +32,25 @@ const Usage = () => {
     {
       menuItem: "Mac",
       render: () => (
-        <TabPane dangerouslySetInnerHTML={{ __html: macUsageDocument }} />
+        <TabPane dangerouslySetInnerHTML={{ __html: MacUsageDocument }} />
       ),
     },
     {
       menuItem: "Windows",
       render: () => (
-        <TabPane dangerouslySetInnerHTML={{ __html: windowsUsageDocument }} />
+        <TabPane dangerouslySetInnerHTML={{ __html: WindowsUsageDocument }} />
       ),
     },
     {
       menuItem: "WSL",
       render: () => (
-        <TabPane dangerouslySetInnerHTML={{ __html: wslUsageDocument }} />
+        <TabPane dangerouslySetInnerHTML={{ __html: WSLUsageDocument }} />
       ),
     },
     {
       menuItem: "Linux",
       render: () => (
-        <TabPane dangerouslySetInnerHTML={{ __html: linuxUsageDocument }} />
+        <TabPane dangerouslySetInnerHTML={{ __html: LinuxUsageDocument }} />
       ),
     },
   ];
@@ -79,7 +74,7 @@ const History = () => (
   </Card>
 );
 
-const appVersion = process.env.REACT_APP_VERSION;
+const appVersion = import.meta.env.APP_VERSION;
 const Header = () => (
   <Menu fluid color="grey">
     <Menu.Item header>Key Conjurer</Menu.Item>
