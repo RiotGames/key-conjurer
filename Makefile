@@ -11,12 +11,12 @@ all: build
 
 clean:
 	rm -rf cli/keyconjurer*
-	rm -r frontend/build
+	rm -r frontend/dist
 
 test: frontend_test go_test
 
 CLI_TARGETS = cli/keyconjurer-darwin cli/keyconjurer-darwin-amd64 cli/keyconjurer-darwin-arm64 cli/keyconjurer-linux cli/keyconjurer-linux-amd64 cli/keyconjurer-linux-arm64 cli/keyconjurer-windows.exe
-build: api_build frontend/build/index.html $(CLI_TARGETS)
+build: api_build frontend/dist/index.html $(CLI_TARGETS)
 
 go_test:
 	go test ./...
@@ -28,14 +28,8 @@ frontend_test:
 frontend/node_modules:
 	cd frontend && npm install
 
-frontend/build/index.html: frontend/node_modules
-	mkdir -p build/frontend/
-	@test $${FRONTEND_URL?is not set}
-	@test $${API_URL?is not set}
-	cd frontend && \
-	REACT_APP_VERSION='$(shell git rev-parse --short HEAD)-$(RELEASE)' \
-	REACT_APP_API_URL=${API_URL} \
-	npm run-script build
+frontend/dist/index.html: frontend/node_modules
+	VITE_APP_VERSION='$(shell git rev-parse --short HEAD)-$(RELEASE)' cd frontend && npm run-script build
 
 ### CLI Build Targets
 cli/keyconjurer-linux-arm64 cli/keyconjurer-linux:
@@ -92,10 +86,10 @@ cli_upload: $(CLI_TARGETS)
 	cd cli/ && \
 	aws s3 cp . s3://$(S3_FRONTEND_BUCKET_NAME)-$(RELEASE) --exclude "*" --include "keyconjurer*" --recursive
 
-frontend_upload: frontend/build/index.html
+frontend_upload: frontend/dist/index.html
 	@test $${S3_FRONTEND_BUCKET_NAME?is not set}
 	@test $${RELEASE?is not set}
-	cd frontend/build && \
+	cd frontend/dist && \
 	aws s3 cp . s3://$(S3_FRONTEND_BUCKET_NAME)-$(RELEASE) --include "*" --recursive
 
 api_upload: build/list_applications.zip

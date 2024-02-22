@@ -17,7 +17,7 @@ Open a terminal and execute the following commands.
 
 Next, add `~/.bin` to your `$PATH`. With Bash, this can be accomplished in the Terminal with:
 
-    $ echo 'export PATH="$PATH:$HOME/.bin"' >> ~/.bashrc
+    $ echo "export PATH="$PATH:$HOME/.bin"' >> ~/.bashrc
 
 Restart your shell.
 
