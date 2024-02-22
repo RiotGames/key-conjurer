@@ -31,7 +31,7 @@ frontend/node_modules:
 frontend/build/index.html: frontend/node_modules
 	mkdir -p build/frontend/
 	cd frontend && \
-	APP_VERSION='$(shell git rev-parse --short HEAD)-$(RELEASE)' \
+	VITE_APP_VERSION='$(shell git rev-parse --short HEAD)-$(RELEASE)' \
 	npm run-script build
 
 ### CLI Build Targets

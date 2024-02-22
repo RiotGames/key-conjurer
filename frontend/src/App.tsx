@@ -74,7 +74,7 @@ const History = () => (
   </Card>
 );
 
-const appVersion = import.meta.env.APP_VERSION;
+const appVersion = import.meta.env.VITE_APP_VERSION;
 const Header = () => (
   <Menu fluid color="grey">
     <Menu.Item header>Key Conjurer</Menu.Item>
