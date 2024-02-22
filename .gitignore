@@ -5,7 +5,7 @@ dev.env
 prod.env
 shared.env
 build/
-frontend/build/**
+frontend/dist/**
 **/builds/**
 api/lambdas/get_aws_creds/get_aws_creds
 api/lambdas/get_user_data/get_user_data
