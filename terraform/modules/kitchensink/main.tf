@@ -5,7 +5,7 @@ module "frontend" {
   source          = "../frontend"
   create_waf_acl  = var.create_waf_acl
   waf_acl_id      = var.waf_acl_id
-  bucket_name     = var.s3_tf_bucket
+  bucket_name     = var.frontend_bucket_name
   certificate_arn = var.frontend_cert
   domain          = var.frontend_domain
   account_number  = var.account_number
