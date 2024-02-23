@@ -23,9 +23,13 @@ const (
 func getShellType() ShellType {
 	pid := os.Getppid()
 	parentProc, _ := ps.FindProcess(pid)
-	normalizedName := strings.ToLower(parentProc.Executable())
+	name := strings.ToLower(parentProc.Executable())
 
-	if strings.Contains(normalizedName, "powershell") || strings.Contains(normalizedName, "pwsh") {
+	if strings.Contains(name, "bash") || strings.Contains(name, "zsh") || strings.Contains(name, "ash") {
+		return shellTypeBash
+	}
+
+	if strings.Contains(name, "powershell") || strings.Contains(name, "pwsh") {
 		return shellTypePowershell
 	}
 
