@@ -39,11 +39,13 @@ func init() {
 	getCmd.Flags().String(FlagRoleSessionName, "KeyConjurer-AssumeRole", "the name of the role session name that will show up in CloudTrail logs")
 	getCmd.Flags().StringP(FlagOutputType, "o", outputTypeEnvironmentVariable, "Format to save new credentials in. Supported outputs: env, awscli,tencentcli")
 	getCmd.Flags().String(FlagShellType, shellTypeInfer, "If output type is env, determines which format to output credentials in - by default, the format is inferred based on the execution environment. WSL users may wish to overwrite this to `bash`")
-	getCmd.Flags().String(FlagAWSCLIPath, "~/.aws/", "Path for directory used by the aws-cli tool. Default is \"~/.aws\".")
 	getCmd.Flags().String(FlagTencentCLIPath, "~/.tencent/", "Path for directory used by the tencent-cli tool. Default is \"~/.tencent\".")
 	getCmd.Flags().String(FlagCloudType, "aws", "Choose a cloud vendor. Default is aws. Can choose aws or tencent")
 	getCmd.Flags().Bool(FlagBypassCache, false, "Do not check the cache for accounts and send the application ID as-is to Okta. This is useful if you have an ID you know is an Okta application ID and it is not stored in your local account cache.")
 	getCmd.Flags().Bool(FlagLogin, false, "Login to Okta before running the command")
+	getCmd.Flags().String(FlagAWSCLIPath, "~/.aws/", "Path for directory used by the aws CLI")
+	getCmd.Flags().BoolP(FlagURLOnly, "u", false, "Print only the URL to visit rather than a user-friendly message")
+	getCmd.Flags().BoolP(FlagNoBrowser, "b", false, "Do not open a browser window, printing the URL instead")
 }
 
 func isMemberOfSlice(slice []string, val string) bool {
@@ -74,16 +76,22 @@ A role must be specified when using this command through the --role flag. You ma
 		ctx := cmd.Context()
 		oidcDomain, _ := cmd.Flags().GetString(FlagOIDCDomain)
 		clientID, _ := cmd.Flags().GetString(FlagClientID)
+
 		if HasTokenExpired(config.Tokens) {
 			if ok, _ := cmd.Flags().GetBool(FlagLogin); ok {
-				token, err := Login(ctx, oidcDomain, clientID, LoginOutputModeBrowser{})
-				if err != nil {
-					return err
-				}
-				if err := config.SaveOAuthToken(token); err != nil {
-					return err
+				urlOnly, _ := cmd.Flags().GetBool(FlagURLOnly)
+				noBrowser, _ := cmd.Flags().GetBool(FlagNoBrowser)
+				login := LoginCommand{
+					Config:        config,
+					OIDCDomain:    oidcDomain,
+					ClientID:      clientID,
+					MachineOutput: ShouldUseMachineOutput(cmd.Flags()) || urlOnly,
+					NoBrowser:     noBrowser,
 				}
 
+				if err := login.Execute(cmd.Context()); err != nil {
+					return err
+				}
 			} else {
 				return ErrTokensExpiredOrAbsent
 			}

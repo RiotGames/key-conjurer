@@ -9,8 +9,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 
 	"github.com/RobotsAndPencils/go-saml"
@@ -63,18 +65,8 @@ type OAuth2CallbackInfo struct {
 }
 
 type OAuth2Listener struct {
-	Addr       string
-	errCh      chan error
+	Socket     net.Listener
 	callbackCh chan OAuth2CallbackInfo
-}
-
-func NewOAuth2Listener() OAuth2Listener {
-	return OAuth2Listener{
-		// 5RIOT on a phone pad
-		Addr:       ":57468",
-		errCh:      make(chan error),
-		callbackCh: make(chan OAuth2CallbackInfo),
-	}
 }
 
 func ParseCallbackRequest(r *http.Request) (OAuth2CallbackInfo, error) {
@@ -88,6 +80,23 @@ func ParseCallbackRequest(r *http.Request) (OAuth2CallbackInfo, error) {
 	return info, nil
 }
 
+func NewOAuth2Listener(socket net.Listener) OAuth2Listener {
+	return OAuth2Listener{
+		Socket:     socket,
+		callbackCh: make(chan OAuth2CallbackInfo),
+	}
+}
+
+func (o OAuth2Listener) Close() error {
+	if o.callbackCh != nil {
+		close(o.callbackCh)
+	}
+	if o.Socket != nil {
+		return o.Socket.Close()
+	}
+	return nil
+}
+
 func (o OAuth2Listener) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	info, err := ParseCallbackRequest(r)
 	if err == nil {
@@ -99,19 +108,13 @@ func (o OAuth2Listener) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintln(w, "You may close this window now.")
 }
 
-func (o OAuth2Listener) Listen(ctx context.Context) {
-	server := http.Server{Addr: o.Addr, Handler: o}
-	go func() {
-		<-ctx.Done()
-		server.Close()
-	}()
-
-	if err := server.ListenAndServe(); err != http.ErrServerClosed {
-		o.errCh <- err
+func (o OAuth2Listener) Listen() error {
+	err := http.Serve(o.Socket, o)
+	if errors.Is(err, http.ErrServerClosed) {
+		return nil
 	}
 
-	close(o.callbackCh)
-	close(o.errCh)
+	return err
 }
 
 func (o OAuth2Listener) WaitForAuthorizationCode(ctx context.Context, state string) (string, error) {
@@ -126,8 +129,6 @@ func (o OAuth2Listener) WaitForAuthorizationCode(ctx context.Context, state stri
 		}
 
 		return info.Code, nil
-	case err := <-o.errCh:
-		return "", err
 	case <-ctx.Done():
 		return "", ctx.Err()
 	}
@@ -142,31 +143,70 @@ func (e OAuth2Error) Error() string {
 	return fmt.Sprintf("oauth2 error: %s (%s)", e.Description, e.Reason)
 }
 
-func GenerateCodeVerifierAndChallenge() (string, string, error) {
+func GeneratePkceChallenge() PkceChallenge {
 	codeVerifierBuf := make([]byte, stateBufSize)
 	rand.Read(codeVerifierBuf)
 	codeVerifier := base64.RawURLEncoding.EncodeToString(codeVerifierBuf)
 	codeChallengeHash := sha256.Sum256([]byte(codeVerifier))
 	codeChallenge := base64.RawURLEncoding.EncodeToString(codeChallengeHash[:])
-	return codeVerifier, codeChallenge, nil
+	return PkceChallenge{Verifier: codeVerifier, Challenge: codeChallenge}
 }
 
-func GenerateState() (string, error) {
+func GenerateState() string {
 	stateBuf := make([]byte, stateBufSize)
 	rand.Read(stateBuf)
-	return base64.URLEncoding.EncodeToString([]byte(stateBuf)), nil
+	return base64.URLEncoding.EncodeToString(stateBuf)
 }
 
-func RedirectionFlow(ctx context.Context, oauthCfg *oauth2.Config, state, codeChallenge, codeVerifier string, outputMode LoginOutputMode) (*oauth2.Token, error) {
-	listener := NewOAuth2Listener()
-	go listener.Listen(ctx)
-	oauthCfg.RedirectURL = "http://localhost:57468"
-	url := oauthCfg.AuthCodeURL(state,
+type PkceChallenge struct {
+	Challenge string
+	Verifier  string
+}
+
+func printURLToConsole(url string) error {
+	fmt.Fprintln(os.Stdout, url)
+	return nil
+}
+
+type RedirectionFlowHandler struct {
+	Config       *oauth2.Config
+	OnDisplayURL func(url string) error
+
+	// Listen is a function that can be provided to override how the redirection flow handler opens a network socket.
+	// If this is not specified, the handler will attempt to create a connection that listens to 0.0.0.0:57468 on IPv4.
+	Listen func() (net.Listener, error)
+}
+
+func (r RedirectionFlowHandler) HandlePendingSession(ctx context.Context, challenge PkceChallenge, state string) (*oauth2.Token, error) {
+	if r.OnDisplayURL == nil {
+		r.OnDisplayURL = printURLToConsole
+	}
+
+	if r.Listen == nil {
+		r.Listen = func() (net.Listener, error) {
+			var lc net.ListenConfig
+			sock, err := lc.Listen(ctx, "tcp4", net.JoinHostPort("0.0.0.0", "57468"))
+			return sock, err
+		}
+	}
+
+	sock, err := r.Listen()
+	if err != nil {
+		return nil, err
+	}
+
+	r.Config.RedirectURL = "http://localhost:57468"
+	url := r.Config.AuthCodeURL(state,
 		oauth2.SetAuthURLParam("code_challenge_method", "S256"),
-		oauth2.SetAuthURLParam("code_challenge", codeChallenge),
+		oauth2.SetAuthURLParam("code_challenge", challenge.Challenge),
 	)
 
-	if err := outputMode.PrintURL(url); err != nil {
+	listener := NewOAuth2Listener(sock)
+	defer listener.Close()
+	// This error can be ignored.
+	go listener.Listen()
+
+	if err := r.OnDisplayURL(url); err != nil {
 		// This is unlikely to ever happen
 		return nil, fmt.Errorf("failed to display link: %w", err)
 	}
@@ -176,7 +216,7 @@ func RedirectionFlow(ctx context.Context, oauthCfg *oauth2.Config, state, codeCh
 		return nil, fmt.Errorf("failed to get authorization code: %w", err)
 	}
 
-	return oauthCfg.Exchange(ctx, code, oauth2.SetAuthURLParam("code_verifier", codeVerifier))
+	return r.Config.Exchange(ctx, code, oauth2.SetAuthURLParam("code_verifier", challenge.Verifier))
 }
 
 func ExchangeAccessTokenForWebSSOToken(ctx context.Context, client *http.Client, oauthCfg *oauth2.Config, token *TokenSet, applicationID string) (*oauth2.Token, error) {

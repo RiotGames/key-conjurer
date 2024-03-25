@@ -9,7 +9,6 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"golang.org/x/exp/slog"
-	"golang.org/x/oauth2"
 )
 
 var (
@@ -45,65 +44,62 @@ var loginCmd = &cobra.Command{
 		oidcDomain, _ := cmd.Flags().GetString(FlagOIDCDomain)
 		clientID, _ := cmd.Flags().GetString(FlagClientID)
 		urlOnly, _ := cmd.Flags().GetBool(FlagURLOnly)
-
-		var outputMode LoginOutputMode = LoginOutputModeBrowser{}
-		if noBrowser, _ := cmd.Flags().GetBool(FlagNoBrowser); noBrowser {
-			if ShouldUseMachineOutput(cmd.Flags()) || urlOnly {
-				outputMode = LoginOutputModeURLOnly{}
-			} else {
-				outputMode = LoginOutputModeHumanFriendlyMessage{}
-			}
+		noBrowser, _ := cmd.Flags().GetBool(FlagNoBrowser)
+		command := LoginCommand{
+			Config:        config,
+			OIDCDomain:    oidcDomain,
+			ClientID:      clientID,
+			MachineOutput: ShouldUseMachineOutput(cmd.Flags()) || urlOnly,
+			NoBrowser:     noBrowser,
 		}
 
-		token, err := Login(cmd.Context(), oidcDomain, clientID, outputMode)
-		if err != nil {
-			return err
-		}
-
-		return config.SaveOAuthToken(token)
+		return command.Execute(cmd.Context())
 	},
 }
 
-func Login(ctx context.Context, domain, clientID string, outputMode LoginOutputMode) (*oauth2.Token, error) {
-	oauthCfg, err := DiscoverOAuth2Config(ctx, domain, clientID)
+type LoginCommand struct {
+	Config        *Config
+	OIDCDomain    string
+	ClientID      string
+	MachineOutput bool
+	NoBrowser     bool
+}
+
+func (c LoginCommand) Execute(ctx context.Context) error {
+	oauthCfg, err := DiscoverOAuth2Config(ctx, c.OIDCDomain, c.ClientID)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	state, err := GenerateState()
-	if err != nil {
-		return nil, err
+	handler := RedirectionFlowHandler{
+		Config:       oauthCfg,
+		OnDisplayURL: openBrowserToURL,
 	}
 
-	codeVerifier, codeChallenge, err := GenerateCodeVerifierAndChallenge()
-	if err != nil {
-		return nil, err
+	if c.NoBrowser {
+		if c.MachineOutput {
+			handler.OnDisplayURL = printURLToConsole
+		} else {
+			handler.OnDisplayURL = friendlyPrintURLToConsole
+		}
 	}
 
-	return RedirectionFlow(ctx, oauthCfg, state, codeChallenge, codeVerifier, outputMode)
+	state := GenerateState()
+	challenge := GeneratePkceChallenge()
+	token, err := handler.HandlePendingSession(ctx, challenge, state)
+	if err != nil {
+		return err
+	}
+
+	return c.Config.SaveOAuthToken(token)
 }
 
-type LoginOutputMode interface {
-	PrintURL(url string) error
-}
-
-type LoginOutputModeBrowser struct{}
-
-func (LoginOutputModeBrowser) PrintURL(url string) error {
-	slog.Debug("trying to open browser window", slog.String("url", url))
-	return browser.OpenURL(url)
-}
-
-type LoginOutputModeURLOnly struct{}
-
-func (LoginOutputModeURLOnly) PrintURL(url string) error {
-	fmt.Fprintln(os.Stdout, url)
-	return nil
-}
-
-type LoginOutputModeHumanFriendlyMessage struct{}
-
-func (LoginOutputModeHumanFriendlyMessage) PrintURL(url string) error {
+func friendlyPrintURLToConsole(url string) error {
 	fmt.Printf("Visit the following link in your terminal: %s\n", url)
 	return nil
+}
+
+func openBrowserToURL(url string) error {
+	slog.Debug("trying to open browser window", slog.String("url", url))
+	return browser.OpenURL(url)
 }
