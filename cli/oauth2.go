@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"sync"
 
 	"github.com/RobotsAndPencils/go-saml"
 	"github.com/coreos/go-oidc"
@@ -63,11 +64,6 @@ type OAuth2CallbackInfo struct {
 	ErrorDescription string
 }
 
-type OAuth2Listener struct {
-	Socket     net.Listener
-	callbackCh chan OAuth2CallbackInfo
-}
-
 func ParseCallbackRequest(r *http.Request) (OAuth2CallbackInfo, error) {
 	info := OAuth2CallbackInfo{
 		Error:            r.FormValue("error"),
@@ -79,44 +75,35 @@ func ParseCallbackRequest(r *http.Request) (OAuth2CallbackInfo, error) {
 	return info, nil
 }
 
-func NewOAuth2Listener(socket net.Listener) OAuth2Listener {
+// OAuth2Listener will listen for a single callback request from a web server and return the code if it matched, or an error otherwise.
+type OAuth2Listener struct {
+	once       sync.Once
+	callbackCh chan OAuth2CallbackInfo
+}
+
+func NewOAuth2Listener() OAuth2Listener {
 	return OAuth2Listener{
-		Socket:     socket,
-		callbackCh: make(chan OAuth2CallbackInfo),
+		callbackCh: make(chan OAuth2CallbackInfo, 1),
 	}
 }
 
-func (o OAuth2Listener) Close() error {
-	if o.callbackCh != nil {
+func (o *OAuth2Listener) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	// This can sometimes be called multiple times, depending on the browser.
+	// We will simply ignore any other requests and only serve the first.
+	o.once.Do(func() {
+		info, err := ParseCallbackRequest(r)
+		if err == nil {
+			// The only errors that might occur would be incorrectly formatted requests, which we will silently drop.
+			o.callbackCh <- info
+		}
 		close(o.callbackCh)
-	}
-	if o.Socket != nil {
-		return o.Socket.Close()
-	}
-	return nil
-}
+	})
 
-func (o OAuth2Listener) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	info, err := ParseCallbackRequest(r)
-	if err == nil {
-		// The only errors that might occur would be incorrectly formatted requests, which we will silently drop.
-		o.callbackCh <- info
-	}
-
-	// This is displayed to the end user in their browser.
+	// We still want to provide feedback to the end-user.
 	fmt.Fprintln(w, "You may close this window now.")
 }
 
-func (o OAuth2Listener) Listen() error {
-	err := http.Serve(o.Socket, o)
-	if errors.Is(err, http.ErrServerClosed) {
-		return nil
-	}
-
-	return err
-}
-
-func (o OAuth2Listener) WaitForAuthorizationCode(ctx context.Context, state string) (string, error) {
+func (o *OAuth2Listener) WaitForAuthorizationCode(ctx context.Context, state string) (string, error) {
 	select {
 	case info := <-o.callbackCh:
 		if info.Error != "" {
@@ -218,6 +205,7 @@ func (r RedirectionFlowHandler) HandlePendingSession(ctx context.Context, challe
 	if err != nil {
 		return nil, err
 	}
+	defer sock.Close()
 
 	_, port, err := net.SplitHostPort(sock.Addr().String())
 	if err != nil {
@@ -231,10 +219,9 @@ func (r RedirectionFlowHandler) HandlePendingSession(ctx context.Context, challe
 		oauth2.SetAuthURLParam("code_challenge", challenge.Challenge),
 	)
 
-	listener := NewOAuth2Listener(sock)
-	defer listener.Close()
-	// This error can be ignored.
-	go listener.Listen()
+	listener := NewOAuth2Listener()
+	// TODO: This error probably should not be ignored if it is not http.ErrServerClosed
+	go http.Serve(sock, &listener)
 
 	if err := r.OnDisplayURL(url); err != nil {
 		// This is unlikely to ever happen
