@@ -99,7 +99,7 @@ func (o OAuth2Listener) Close() error {
 func (o OAuth2Listener) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	info, err := ParseCallbackRequest(r)
 	if err == nil {
-		// The only errors that might occur would be incorreclty formatted requests, which we will silently drop.
+		// The only errors that might occur would be incorrectly formatted requests, which we will silently drop.
 		o.callbackCh <- info
 	}
 
