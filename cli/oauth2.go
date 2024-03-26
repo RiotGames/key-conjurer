@@ -190,6 +190,12 @@ func ListenAnyPort(broadcastAddr string, ports []string) func(ctx context.Contex
 	}
 }
 
+func listenFixedPort(ctx context.Context) (net.Listener, error) {
+	var lc net.ListenConfig
+	sock, err := lc.Listen(ctx, "tcp4", net.JoinHostPort("0.0.0.0", "57468"))
+	return sock, err
+}
+
 type RedirectionFlowHandler struct {
 	Config       *oauth2.Config
 	OnDisplayURL func(url string) error
@@ -205,11 +211,7 @@ func (r RedirectionFlowHandler) HandlePendingSession(ctx context.Context, challe
 	}
 
 	if r.Listen == nil {
-		r.Listen = func(ctx context.Context) (net.Listener, error) {
-			var lc net.ListenConfig
-			sock, err := lc.Listen(ctx, "tcp4", net.JoinHostPort("0.0.0.0", "57468"))
-			return sock, err
-		}
+		r.Listen = listenFixedPort
 	}
 
 	sock, err := r.Listen(ctx)
