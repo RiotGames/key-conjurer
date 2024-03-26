@@ -57,67 +57,73 @@ func DiscoverOAuth2Config(ctx context.Context, domain, clientID string) (*oauth2
 	return &cfg, nil
 }
 
-type OAuth2CallbackInfo struct {
-	Code             string
-	State            string
-	Error            string
-	ErrorDescription string
+// OAuth2CallbackState encapsulates all of the information from an oauth2 callback.
+//
+// To retrieve the Code from the struct, you must use the Verify(string) function.
+type OAuth2CallbackState struct {
+	code             string
+	state            string
+	errorMessage     string
+	errorDescription string
 }
 
-func ParseCallbackRequest(r *http.Request) (OAuth2CallbackInfo, error) {
-	info := OAuth2CallbackInfo{
-		Error:            r.FormValue("error"),
-		ErrorDescription: r.FormValue("error_description"),
-		State:            r.FormValue("state"),
-		Code:             r.FormValue("code"),
+// FromRequest parses the given http.Request and populates the OAuth2CallbackState with those values.
+func (o *OAuth2CallbackState) FromRequest(r *http.Request) {
+	o.errorMessage = r.FormValue("error")
+	o.errorDescription = r.FormValue("error_description")
+	o.state = r.FormValue("state")
+	o.code = r.FormValue("code")
+}
+
+// Verify safely compares the given state with the state from the OAuth2 callback.
+//
+// If they match, the code is returned, with a nil value. Otherwise, an empty string and an error is returned.
+func (o OAuth2CallbackState) Verify(expectedState string) (string, error) {
+	if o.errorMessage != "" {
+		return "", OAuth2Error{Reason: o.errorMessage, Description: o.errorDescription}
 	}
 
-	return info, nil
-}
-
-// OAuth2Listener will listen for a single callback request from a web server and return the code if it matched, or an error otherwise.
-type OAuth2Listener struct {
-	once       sync.Once
-	callbackCh chan OAuth2CallbackInfo
-}
-
-func NewOAuth2Listener() OAuth2Listener {
-	return OAuth2Listener{
-		callbackCh: make(chan OAuth2CallbackInfo, 1),
+	if strings.Compare(o.state, expectedState) != 0 {
+		return "", OAuth2Error{Reason: "invalid_state", Description: "state mismatch"}
 	}
+
+	return o.code, nil
 }
 
-func (o *OAuth2Listener) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	// This can sometimes be called multiple times, depending on the browser.
-	// We will simply ignore any other requests and only serve the first.
-	o.once.Do(func() {
-		info, err := ParseCallbackRequest(r)
-		if err == nil {
-			// The only errors that might occur would be incorrectly formatted requests, which we will silently drop.
-			o.callbackCh <- info
-		}
-		close(o.callbackCh)
-	})
+// OAuth2CallbackHandler returns a http.Handler, channel and function triple.
+//
+// The http handler will accept exactly one request, which it will assume is an OAuth2 callback, parse it into an OAuth2CallbackState and then provide it to the given channel. Subsequent requests will be silently ignored.
+//
+// The function may be called to ensure that the channel is closed. The channel is closed when a request is received. In general, it is a good idea to ensure this function is called in a defer() block.
+func OAuth2CallbackHandler() (http.Handler, <-chan OAuth2CallbackState, func()) {
+	// TODO: It is possible for the caller to close a panic() if they execute the function in the triplet while the handler has not yet received a request.
+	// That caller is us, so I don't care that much, but that probably indicates that this design is smelly.
+	//
+	// We should look at the Go SDK to see how they handle similar cases - channels that are not bound by a timer, or similar.
 
-	// We still want to provide feedback to the end-user.
-	fmt.Fprintln(w, "You may close this window now.")
-}
-
-func (o *OAuth2Listener) WaitForAuthorizationCode(ctx context.Context, state string) (string, error) {
-	select {
-	case info := <-o.callbackCh:
-		if info.Error != "" {
-			return "", OAuth2Error{Reason: info.Error, Description: info.ErrorDescription}
-		}
-
-		if strings.Compare(info.State, state) != 0 {
-			return "", OAuth2Error{Reason: "invalid_state", Description: "state mismatch"}
-		}
-
-		return info.Code, nil
-	case <-ctx.Done():
-		return "", ctx.Err()
+	ch := make(chan OAuth2CallbackState, 1)
+	var reqHandle, closeHandle sync.Once
+	closeFn := func() {
+		closeHandle.Do(func() {
+			close(ch)
+		})
 	}
+
+	fn := func(w http.ResponseWriter, r *http.Request) {
+		// This can sometimes be called multiple times, depending on the browser.
+		// We will simply ignore any other requests and only serve the first.
+		reqHandle.Do(func() {
+			var state OAuth2CallbackState
+			state.FromRequest(r)
+			ch <- state
+			closeFn()
+		})
+
+		// We still want to provide feedback to the end-user.
+		fmt.Fprintln(w, "You may close this window now.")
+	}
+
+	return http.HandlerFunc(fn), ch, closeFn
 }
 
 type OAuth2Error struct {
@@ -219,21 +225,26 @@ func (r RedirectionFlowHandler) HandlePendingSession(ctx context.Context, challe
 		oauth2.SetAuthURLParam("code_challenge", challenge.Challenge),
 	)
 
-	listener := NewOAuth2Listener()
+	callbackHandler, ch, cancel := OAuth2CallbackHandler()
 	// TODO: This error probably should not be ignored if it is not http.ErrServerClosed
-	go http.Serve(sock, &listener)
+	go http.Serve(sock, callbackHandler)
+	defer cancel()
 
 	if err := r.OnDisplayURL(url); err != nil {
 		// This is unlikely to ever happen
 		return nil, fmt.Errorf("failed to display link: %w", err)
 	}
 
-	code, err := listener.WaitForAuthorizationCode(ctx, state)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get authorization code: %w", err)
+	select {
+	case info := <-ch:
+		code, err := info.Verify(state)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get authorization code: %w", err)
+		}
+		return r.Config.Exchange(ctx, code, oauth2.SetAuthURLParam("code_verifier", challenge.Verifier))
+	case <-ctx.Done():
+		return nil, ctx.Err()
 	}
-
-	return r.Config.Exchange(ctx, code, oauth2.SetAuthURLParam("code_verifier", challenge.Verifier))
 }
 
 func ExchangeAccessTokenForWebSSOToken(ctx context.Context, client *http.Client, oauthCfg *oauth2.Config, token *TokenSet, applicationID string) (*oauth2.Token, error) {
