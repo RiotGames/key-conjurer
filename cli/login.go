@@ -73,6 +73,7 @@ func (c LoginCommand) Execute(ctx context.Context) error {
 
 	handler := RedirectionFlowHandler{
 		Config:       oauthCfg,
+		Listen:       ListenAnyPort("127.0.0.1", CallbackPorts),
 		OnDisplayURL: openBrowserToURL,
 	}
 
@@ -92,6 +93,11 @@ func (c LoginCommand) Execute(ctx context.Context) error {
 	}
 
 	return c.Config.SaveOAuthToken(token)
+}
+
+func printURLToConsole(url string) error {
+	fmt.Fprintln(os.Stdout, url)
+	return nil
 }
 
 func friendlyPrintURLToConsole(url string) error {

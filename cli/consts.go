@@ -8,6 +8,7 @@ var (
 	Version        = "TBD"
 	BuildTimestamp = "BuildTimestamp is not set"
 	DownloadURL    = "URL not set yet"
+	CallbackPorts  = []string{"57468", "58888", "59999", "60000"}
 )
 
 const (

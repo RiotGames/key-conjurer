@@ -12,7 +12,6 @@ import (
 	"net"
 	"net/http"
 	"net/url"
-	"os"
 	"strings"
 
 	"github.com/RobotsAndPencils/go-saml"
@@ -163,9 +162,32 @@ type PkceChallenge struct {
 	Verifier  string
 }
 
-func printURLToConsole(url string) error {
-	fmt.Fprintln(os.Stdout, url)
-	return nil
+var ErrNoPortsAvailable = errors.New("no ports available")
+
+// findFirstFreePort will attempt to open a network listener for each port in turn, and return the first one that succeeded.
+//
+// If none succeed, ErrNoPortsAvailable is returned.
+//
+// This is useful for supporting OIDC servers that do not allow for ephemeral ports to be used in the loopback address, like Okta.
+func findFirstFreePort(ctx context.Context, broadcastAddr string, ports []string) (net.Listener, error) {
+	var lc net.ListenConfig
+	for _, port := range ports {
+		sock, err := lc.Listen(ctx, "tcp4", net.JoinHostPort(broadcastAddr, port))
+		if err == nil {
+			return sock, nil
+		}
+	}
+
+	return nil, ErrNoPortsAvailable
+}
+
+// ListenAnyPort is a function that can be passed to RedirectionFlowHandler that will attempt to listen to exactly one of the ports in the supplied array.
+//
+// This function does not guarantee it will try ports in the order they are supplied, but it will return either a listener bound to exactly one of the ports, or the error ErrNoPortsAvailable.
+func ListenAnyPort(broadcastAddr string, ports []string) func(ctx context.Context) (net.Listener, error) {
+	return func(ctx context.Context) (net.Listener, error) {
+		return findFirstFreePort(ctx, broadcastAddr, ports)
+	}
 }
 
 type RedirectionFlowHandler struct {
@@ -174,7 +196,7 @@ type RedirectionFlowHandler struct {
 
 	// Listen is a function that can be provided to override how the redirection flow handler opens a network socket.
 	// If this is not specified, the handler will attempt to create a connection that listens to 0.0.0.0:57468 on IPv4.
-	Listen func() (net.Listener, error)
+	Listen func(ctx context.Context) (net.Listener, error)
 }
 
 func (r RedirectionFlowHandler) HandlePendingSession(ctx context.Context, challenge PkceChallenge, state string) (*oauth2.Token, error) {
@@ -183,19 +205,25 @@ func (r RedirectionFlowHandler) HandlePendingSession(ctx context.Context, challe
 	}
 
 	if r.Listen == nil {
-		r.Listen = func() (net.Listener, error) {
+		r.Listen = func(ctx context.Context) (net.Listener, error) {
 			var lc net.ListenConfig
 			sock, err := lc.Listen(ctx, "tcp4", net.JoinHostPort("0.0.0.0", "57468"))
 			return sock, err
 		}
 	}
 
-	sock, err := r.Listen()
+	sock, err := r.Listen(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	r.Config.RedirectURL = "http://localhost:57468"
+	_, port, err := net.SplitHostPort(sock.Addr().String())
+	if err != nil {
+		// Failed to split the host and port. We need the port to continue, so bail
+		return nil, err
+	}
+
+	r.Config.RedirectURL = fmt.Sprintf("http://%s", net.JoinHostPort("localhost", port))
 	url := r.Config.AuthCodeURL(state,
 		oauth2.SetAuthURLParam("code_challenge_method", "S256"),
 		oauth2.SetAuthURLParam("code_challenge", challenge.Challenge),
