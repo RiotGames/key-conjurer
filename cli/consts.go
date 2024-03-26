@@ -8,7 +8,11 @@ var (
 	Version        = "TBD"
 	BuildTimestamp = "BuildTimestamp is not set"
 	DownloadURL    = "URL not set yet"
-	CallbackPorts  = []string{"57468", "58888", "59999", "60000"}
+	// CallbackPorts is a list of ports that will be attempted in no particular order for hosting an Oauth2 callback web server.
+	// This cannot be set using -ldflags='-X ..' because -X requires that this be a string literal or uninitialized.
+	//
+	// These ports are chosen somewhat arbitrarily
+	CallbackPorts = []string{"57468", "47512", "57123", "61232", "48231", "49757", "59834", "54293"}
 )
 
 const (
