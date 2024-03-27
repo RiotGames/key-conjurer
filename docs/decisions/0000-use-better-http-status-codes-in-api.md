@@ -6,7 +6,7 @@
 
 ## Context and Problem Statement
 
-The KeyConjurer APIs return 200 whether an error occured or not. It may return 5xx if a fatal error occured during Lambda execution.
+The KeyConjurer APIs return 200 whether an error occurred or not. It may return 5xx if a fatal error occurred during Lambda execution.
 Instead, the API should return proper HTTP status codes:
 * 2xx in case of success
 * 4xx in case of user's mistake
@@ -29,11 +29,11 @@ and it is easier to cover with unit tests.
 
 * Good, because it keeps Terraform configs simpler.
 * Good, because it is easier to cover with unit tests.
-* Bad, becuase it makes the Lambda handlers a bit more complex.
+* Bad, because it makes the Lambda handlers a bit more complex.
 
 ### Option 2
 
 * Good, because it keeps the Lambda handler's code simpler.
 * Bad, because it makes Terraform configs more complex.
 * Bad, because it introduces Velocity Template Language to the project.
-* Bad, becuse it is difficult to test automatically in CI/CD.
+* Bad, because it is difficult to test automatically in CI/CD.
