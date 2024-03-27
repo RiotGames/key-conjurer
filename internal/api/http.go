@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"strings"
 
-	"golang.org/x/exp/slog"
+	"log/slog"
 )
 
 // RequestAttrs returns attributes to be used with slog for the given request.

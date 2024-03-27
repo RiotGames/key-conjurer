@@ -5,10 +5,11 @@ import (
 	"fmt"
 	"os"
 
+	"log/slog"
+
 	"github.com/pkg/browser"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
-	"golang.org/x/exp/slog"
 )
 
 var (

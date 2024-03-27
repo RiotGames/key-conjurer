@@ -6,8 +6,9 @@ import (
 	"net/http"
 	"strings"
 
+	"log/slog"
+
 	"github.com/okta/okta-sdk-golang/v2/okta"
-	"golang.org/x/exp/slog"
 )
 
 type Application struct {

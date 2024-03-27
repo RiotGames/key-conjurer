@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net"
 	"net/http"
 	"net/url"
@@ -165,9 +166,14 @@ var ErrNoPortsAvailable = errors.New("no ports available")
 func findFirstFreePort(ctx context.Context, broadcastAddr string, ports []string) (net.Listener, error) {
 	var lc net.ListenConfig
 	for _, port := range ports {
-		sock, err := lc.Listen(ctx, "tcp4", net.JoinHostPort(broadcastAddr, port))
+		addr := net.JoinHostPort(broadcastAddr, port)
+		slog.Debug("opening connection", slog.String("addr", addr))
+		sock, err := lc.Listen(ctx, "tcp4", addr)
 		if err == nil {
+			slog.Debug("listening", slog.String("addr", addr))
 			return sock, nil
+		} else {
+			slog.Debug("could not listen, trying a different addr", slog.String("addr", addr), slog.String("error", err.Error()))
 		}
 	}
 

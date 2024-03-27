@@ -3,7 +3,7 @@ package main
 import (
 	"net/http"
 
-	"golang.org/x/exp/slog"
+	"log/slog"
 )
 
 type LogRoundTripper struct {

@@ -5,10 +5,11 @@ import (
 	"net/url"
 	"os"
 
+	"log/slog"
+
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/riotgames/key-conjurer/internal"
 	"github.com/riotgames/key-conjurer/internal/api"
-	"golang.org/x/exp/slog"
 )
 
 func main() {

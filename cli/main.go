@@ -7,8 +7,9 @@ import (
 	"strings"
 	"syscall"
 
+	"log/slog"
+
 	"github.com/spf13/cobra"
-	"golang.org/x/exp/slog"
 )
 
 const (

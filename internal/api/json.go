@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"golang.org/x/exp/slog"
+	"log/slog"
 )
 
 func ServeJSON[T any](w http.ResponseWriter, data T) {
