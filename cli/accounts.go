@@ -58,14 +58,7 @@ var accountsCmd = &cobra.Command{
 			return ErrTokensExpiredOrAbsent
 		}
 
-		tok := oauth2.Token{
-			AccessToken:  config.Tokens.AccessToken,
-			RefreshToken: config.Tokens.RefreshToken,
-			Expiry:       config.Tokens.Expiry,
-			TokenType:    config.Tokens.TokenType,
-		}
-
-		accounts, err := refreshAccounts(cmd.Context(), serverAddrURI, &tok)
+		accounts, err := refreshAccounts(cmd.Context(), serverAddrURI, config.Tokens)
 		if err != nil {
 			return fmt.Errorf("error refreshing accounts: %w", err)
 		}
@@ -76,12 +69,11 @@ var accountsCmd = &cobra.Command{
 	},
 }
 
-func refreshAccounts(ctx context.Context, serverAddr *url.URL, tok *oauth2.Token) ([]Account, error) {
+func refreshAccounts(ctx context.Context, serverAddr *url.URL, ts oauth2.TokenSource) ([]Account, error) {
+	client := oauth2.NewClient(ctx, ts)
 	uri := serverAddr.ResolveReference(&url.URL{Path: "/v2/applications"})
-	httpClient := NewHTTPClient()
 	req, _ := http.NewRequestWithContext(ctx, "POST", uri.String(), nil)
-	tok.SetAuthHeader(req)
-	resp, err := httpClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to issue request: %s", err)
 	}

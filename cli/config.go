@@ -23,6 +23,16 @@ type TokenSet struct {
 	TokenType    string    `json:"token_type"`
 }
 
+// Token implements oauth2.TokenSource.
+func (t TokenSet) Token() (*oauth2.Token, error) {
+	return &oauth2.Token{
+		AccessToken:  t.AccessToken,
+		RefreshToken: t.RefreshToken,
+		Expiry:       t.Expiry,
+		TokenType:    t.TokenType,
+	}, nil
+}
+
 type Account struct {
 	ID             string `json:"id"`
 	Name           string `json:"name"`

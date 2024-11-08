@@ -23,7 +23,7 @@ var rolesCmd = cobra.Command{
 			applicationID = account.ID
 		}
 
-		samlResponse, _, err := DiscoverConfigAndExchangeTokenForAssertion(cmd.Context(), NewHTTPClient(), config.Tokens, oidcDomain, clientID, applicationID)
+		samlResponse, _, err := DiscoverConfigAndExchangeTokenForAssertion(cmd.Context(), config.Tokens, oidcDomain, clientID, applicationID)
 		if err != nil {
 			return err
 		}

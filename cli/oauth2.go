@@ -300,9 +300,7 @@ func ExchangeWebSSOTokenForSAMLAssertion(ctx context.Context, issuer string, tok
 	return []byte(saml), nil
 }
 
-func DiscoverConfigAndExchangeTokenForAssertion(ctx context.Context, client *http.Client, toks *TokenSet, oidcDomain, clientID, applicationID string) (*saml.Response, string, error) {
-	ctx = context.WithValue(ctx, oauth2.HTTPClient, client)
-
+func DiscoverConfigAndExchangeTokenForAssertion(ctx context.Context, toks *TokenSet, oidcDomain, clientID, applicationID string) (*saml.Response, string, error) {
 	oauthCfg, err := DiscoverOAuth2Config(ctx, oidcDomain, clientID)
 	if err != nil {
 		return nil, "", OktaError{Message: "could not discover oauth2  config", InnerError: err}

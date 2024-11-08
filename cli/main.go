@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -10,6 +11,7 @@ import (
 	"log/slog"
 
 	"github.com/spf13/cobra"
+	"golang.org/x/oauth2"
 )
 
 const (
@@ -42,7 +44,8 @@ func main() {
 	}
 	rootCmd.SetArgs(args)
 
-	err := rootCmd.Execute()
+	ctx := context.WithValue(context.Background(), oauth2.HTTPClient, NewHTTPClient())
+	err := rootCmd.ExecuteContext(ctx)
 	if IsWindowsPortAccessError(err) {
 		fmt.Fprintf(os.Stderr, "Encountered an issue when opening the port for KeyConjurer: %s\n", err)
 		fmt.Fprintln(os.Stderr, "Consider running `net stop hns` and then `net start hns`")
