@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"net"
 	"os"
 
 	"log/slog"
@@ -72,9 +73,20 @@ func (c LoginCommand) Execute(ctx context.Context) error {
 		return err
 	}
 
+	sock, err := findFirstFreePort(ctx, "127.0.0.1", CallbackPorts)
+	if err != nil {
+		return err
+	}
+	defer sock.Close()
+	_, port, err := net.SplitHostPort(sock.Addr().String())
+	if err != nil {
+		// Failed to split the host and port. We need the port to continue, so bail
+		return err
+	}
+	oauthCfg.RedirectURL = fmt.Sprintf("http://%s", net.JoinHostPort("localhost", port))
+
 	handler := RedirectionFlowHandler{
 		Config:       oauthCfg,
-		Listen:       ListenAnyPort("127.0.0.1", CallbackPorts),
 		OnDisplayURL: openBrowserToURL,
 	}
 
@@ -86,9 +98,7 @@ func (c LoginCommand) Execute(ctx context.Context) error {
 		}
 	}
 
-	state := GenerateState()
-	challenge := GeneratePkceChallenge()
-	accessToken, err := handler.HandlePendingSession(ctx, challenge, state)
+	accessToken, err := handler.HandlePendingSession(ctx, sock, GeneratePkceChallenge(), GenerateState())
 	if err != nil {
 		return err
 	}

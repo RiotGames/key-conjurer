@@ -197,34 +197,13 @@ func listenFixedPort(ctx context.Context) (net.Listener, error) {
 type RedirectionFlowHandler struct {
 	Config       *oauth2.Config
 	OnDisplayURL func(url string) error
-
-	// Listen is a function that can be provided to override how the redirection flow handler opens a network socket.
-	// If this is not specified, the handler will attempt to create a connection that listens to 0.0.0.0:57468 on IPv4.
-	Listen func(ctx context.Context) (net.Listener, error)
 }
 
-func (r RedirectionFlowHandler) HandlePendingSession(ctx context.Context, challenge PkceChallenge, state string) (*oauth2.Token, error) {
+func (r RedirectionFlowHandler) HandlePendingSession(ctx context.Context, listener net.Listener, challenge PkceChallenge, state string) (*oauth2.Token, error) {
 	if r.OnDisplayURL == nil {
 		r.OnDisplayURL = printURLToConsole
 	}
 
-	if r.Listen == nil {
-		r.Listen = listenFixedPort
-	}
-
-	sock, err := r.Listen(ctx)
-	if err != nil {
-		return nil, err
-	}
-	defer sock.Close()
-
-	_, port, err := net.SplitHostPort(sock.Addr().String())
-	if err != nil {
-		// Failed to split the host and port. We need the port to continue, so bail
-		return nil, err
-	}
-
-	r.Config.RedirectURL = fmt.Sprintf("http://%s", net.JoinHostPort("localhost", port))
 	url := r.Config.AuthCodeURL(state,
 		oauth2.SetAuthURLParam("code_challenge_method", "S256"),
 		oauth2.SetAuthURLParam("code_challenge", challenge.Challenge),
@@ -232,7 +211,7 @@ func (r RedirectionFlowHandler) HandlePendingSession(ctx context.Context, challe
 
 	callbackHandler, ch, cancel := OAuth2CallbackHandler()
 	// TODO: This error probably should not be ignored if it is not http.ErrServerClosed
-	go http.Serve(sock, callbackHandler)
+	go http.Serve(listener, callbackHandler)
 	defer cancel()
 
 	if err := r.OnDisplayURL(url); err != nil {
