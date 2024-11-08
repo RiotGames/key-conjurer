@@ -8,7 +8,6 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"log/slog"
 	"net"
 	"net/http"
 	"net/url"
@@ -153,45 +152,6 @@ func GenerateState() string {
 type PkceChallenge struct {
 	Challenge string
 	Verifier  string
-}
-
-var ErrNoPortsAvailable = errors.New("no ports available")
-
-// findFirstFreePort will attempt to open a network listener for each port in turn, and return the first one that succeeded.
-//
-// If none succeed, ErrNoPortsAvailable is returned.
-//
-// This is useful for supporting OIDC servers that do not allow for ephemeral ports to be used in the loopback address, like Okta.
-func findFirstFreePort(ctx context.Context, broadcastAddr string, ports []string) (net.Listener, error) {
-	var lc net.ListenConfig
-	for _, port := range ports {
-		addr := net.JoinHostPort(broadcastAddr, port)
-		slog.Debug("opening connection", slog.String("addr", addr))
-		sock, err := lc.Listen(ctx, "tcp4", addr)
-		if err == nil {
-			slog.Debug("listening", slog.String("addr", addr))
-			return sock, nil
-		} else {
-			slog.Debug("could not listen, trying a different addr", slog.String("addr", addr), slog.String("error", err.Error()))
-		}
-	}
-
-	return nil, ErrNoPortsAvailable
-}
-
-// ListenAnyPort is a function that can be passed to RedirectionFlowHandler that will attempt to listen to exactly one of the ports in the supplied array.
-//
-// This function does not guarantee it will try ports in the order they are supplied, but it will return either a listener bound to exactly one of the ports, or the error ErrNoPortsAvailable.
-func ListenAnyPort(broadcastAddr string, ports []string) func(ctx context.Context) (net.Listener, error) {
-	return func(ctx context.Context) (net.Listener, error) {
-		return findFirstFreePort(ctx, broadcastAddr, ports)
-	}
-}
-
-func listenFixedPort(ctx context.Context) (net.Listener, error) {
-	var lc net.ListenConfig
-	sock, err := lc.Listen(ctx, "tcp4", net.JoinHostPort("0.0.0.0", "57468"))
-	return sock, err
 }
 
 type RedirectionFlowHandler struct {

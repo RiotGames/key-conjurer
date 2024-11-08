@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"os"
@@ -110,6 +111,29 @@ func (c LoginCommand) Execute(ctx context.Context) error {
 	}
 
 	return c.Config.SaveOAuthToken(accessToken, idToken)
+}
+
+var ErrNoPortsAvailable = errors.New("no ports available")
+
+// findFirstFreePort will attempt to open a network listener for each port in turn, and return the first one that succeeded.
+//
+// If none succeed, ErrNoPortsAvailable is returned.
+//
+// This is useful for supporting OIDC servers that do not allow for ephemeral ports to be used in the loopback address, like Okta.
+func findFirstFreePort(ctx context.Context, broadcastAddr string, ports []string) (net.Listener, error) {
+	var lc net.ListenConfig
+	for _, port := range ports {
+		addr := net.JoinHostPort(broadcastAddr, port)
+		slog.Debug("opening connection", slog.String("addr", addr))
+		sock, err := lc.Listen(ctx, "tcp4", addr)
+		if err == nil {
+			slog.Debug("listening", slog.String("addr", addr))
+			return sock, nil
+		}
+		slog.Debug("could not listen, trying a different addr", slog.String("addr", addr), slog.String("error", err.Error()))
+	}
+
+	return nil, ErrNoPortsAvailable
 }
 
 func printURLToConsole(url string) error {

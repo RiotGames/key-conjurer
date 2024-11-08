@@ -1,15 +1,12 @@
 package main
 
 import (
-	"context"
-	"net"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func sendOAuth2CallbackRequest(handler http.Handler, values url.Values) {
@@ -94,56 +91,4 @@ func Test_OAuth2Listener_MultipleRequestsDoesNotCausePanic(t *testing.T) {
 		"code":  []string{"not the expected code and should be discarded"},
 		"state": []string{"not the expected state and should be discarded"},
 	})
-}
-
-// Test_ListenAnyPort_WorksCorrectly is going to be flaky because processes may open ports outside of our control.
-func Test_ListenAnyPort_WorksCorrectly(t *testing.T) {
-	ports := []string{"58080", "58081", "58082", "58083"}
-	socket, err := net.Listen("tcp4", net.JoinHostPort("127.0.0.1", ports[0]))
-	t.Cleanup(func() {
-		socket.Close()
-	})
-	require.NoError(t, err, "Could not open socket on port: %s", ports[0])
-
-	listenFunc := ListenAnyPort("127.0.0.1", ports)
-	openedSocket, err := listenFunc(context.Background())
-
-	assert.NoError(t, err)
-	_, port, err := net.SplitHostPort(openedSocket.Addr().String())
-	assert.NoError(t, err)
-	// There is no guarantee on which port FindFirstFreePort will choose, but it must pick one from the given list.
-	assert.Contains(t, ports, port)
-	openedSocket.Close()
-}
-
-func Test_ListenAnyPort_RejectsIfNoPortsAvailable(t *testing.T) {
-	var ports []string
-	listenFunc := ListenAnyPort("127.0.0.1", ports)
-	_, err := listenFunc(context.Background())
-	assert.ErrorIs(t, ErrNoPortsAvailable, err)
-}
-
-func Test_ListenAnyPort_RejectsIfAllProvidedPortsExhausted(t *testing.T) {
-	ports := []string{"58080", "58081", "58082", "58083"}
-	var sockets []net.Listener
-	var activePorts []string
-	// This exhausts all sockets in 'ports' and dumps them into 'activePorts'.
-	for _, port := range ports {
-		socket, err := net.Listen("tcp4", net.JoinHostPort("127.0.0.1", port))
-		if err == nil {
-			sockets = append(sockets, socket)
-			activePorts = append(activePorts, port)
-		}
-	}
-
-	require.NotEmpty(t, activePorts, "could not open any sockets")
-
-	t.Cleanup(func() {
-		for _, socket := range sockets {
-			socket.Close()
-		}
-	})
-
-	_, err := ListenAnyPort("127.0.0.1", activePorts)(context.Background())
-	assert.ErrorIs(t, err, ErrNoPortsAvailable)
 }
