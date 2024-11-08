@@ -230,13 +230,12 @@ func HasTokenExpired(tok *TokenSet) bool {
 	return time.Now().After(tok.Expiry)
 }
 
-func (c *Config) SaveOAuthToken(tok *oauth2.Token) error {
+func (c *Config) SaveOAuthToken(tok *oauth2.Token, idToken string) error {
 	if tok == nil {
 		c.Tokens = nil
 		return nil
 	}
 
-	idToken, _ := tok.Extra("id_token").(string)
 	tok2 := TokenSet{
 		AccessToken:  tok.AccessToken,
 		RefreshToken: tok.RefreshToken,

@@ -88,12 +88,18 @@ func (c LoginCommand) Execute(ctx context.Context) error {
 
 	state := GenerateState()
 	challenge := GeneratePkceChallenge()
-	token, err := handler.HandlePendingSession(ctx, challenge, state)
+	accessToken, err := handler.HandlePendingSession(ctx, challenge, state)
 	if err != nil {
 		return err
 	}
 
-	return c.Config.SaveOAuthToken(token)
+	// https://openid.net/specs/openid-connect-core-1_0.html#TokenResponse
+	idToken, ok := accessToken.Extra("id_token").(string)
+	if !ok {
+		return fmt.Errorf("id_token not found in token response")
+	}
+
+	return c.Config.SaveOAuthToken(accessToken, idToken)
 }
 
 func printURLToConsole(url string) error {
