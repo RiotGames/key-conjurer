@@ -10,8 +10,8 @@ import (
 
 	"log/slog"
 
+	"github.com/coreos/go-oidc"
 	"github.com/spf13/cobra"
-	"golang.org/x/oauth2"
 )
 
 const (
@@ -44,7 +44,7 @@ func main() {
 	}
 	rootCmd.SetArgs(args)
 
-	ctx := context.WithValue(context.Background(), oauth2.HTTPClient, NewHTTPClient())
+	ctx := oidc.ClientContext(context.Background(), NewHTTPClient())
 	err := rootCmd.ExecuteContext(ctx)
 	if IsWindowsPortAccessError(err) {
 		fmt.Fprintf(os.Stderr, "Encountered an issue when opening the port for KeyConjurer: %s\n", err)
