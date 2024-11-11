@@ -2,10 +2,12 @@ package api
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 
-	"github.com/riotgames/vault-go-client"
+	"github.com/hashicorp/vault/api"
+	"github.com/hashicorp/vault/api/auth/aws"
 )
 
 // Settings is used to hold keyconjurer settings
@@ -66,31 +68,34 @@ type VaultRetriever struct {
 	SecretPath      string
 }
 
-func (v VaultRetriever) FetchSettings(_ context.Context) (*Settings, error) {
-	var settings Settings
-	client, err := vault.NewClient(vault.DefaultConfig())
+func (v VaultRetriever) FetchSettings(ctx context.Context) (*Settings, error) {
+	client, err := api.NewClient(api.DefaultConfig())
 	if err != nil {
 		return nil, fmt.Errorf("unable to get Vault client: %w", err)
 	}
 
-	opts := vault.IAMLoginOptions{
-		Role:      v.RoleName,
-		MountPath: v.AWSAuthPath,
+	auth, err := aws.NewAWSAuth(aws.WithIAMAuth(), aws.WithMountPath(v.AWSAuthPath), aws.WithRole(v.RoleName))
+	if err != nil {
+		return nil, err
 	}
 
-	if _, err := client.Auth.IAM.Login(opts); err != nil {
+	_, err = client.Auth().Login(ctx, auth)
+	if err != nil {
 		return nil, fmt.Errorf("unable to login to Vault: %w", err)
 	}
 
-	kvOpts := vault.KV2GetOptions{
-		MountPath:     v.SecretMountPath,
-		SecretPath:    v.SecretPath,
-		UnmarshalInto: &settings,
+	kv, err := client.KVv2(v.SecretMountPath).Get(ctx, v.SecretPath)
+	if err != nil {
+		return nil, err
 	}
 
-	if _, err := client.KV2.Get(kvOpts); err != nil {
-		return nil, fmt.Errorf("unable to get vault settings from %s/%s: %w", v.SecretMountPath, v.SecretPath, err)
+	var settings Settings
+
+	jsonBlob, ok := kv.Data["data"].(string)
+	if !ok {
+		return nil, fmt.Errorf("settings stored in Vault path %s are not a JSON string", fmt.Sprintf("%s/%s", v.SecretMountPath, v.SecretPath))
 	}
 
-	return &settings, nil
+	err = json.Unmarshal([]byte(jsonBlob), &settings)
+	return &settings, err
 }
