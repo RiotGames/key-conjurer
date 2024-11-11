@@ -3,6 +3,7 @@ package command
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -106,7 +107,7 @@ To get started run the following commands:
 }
 
 func Execute(ctx context.Context, args []string) error {
-	client := NewHTTPClient()
+	client := &http.Client{Transport: LogRoundTripper{http.DefaultTransport}}
 	ctx = oidc.ClientContext(ctx, client)
 	rootCmd.SetArgs(args)
 	return rootCmd.ExecuteContext(ctx)

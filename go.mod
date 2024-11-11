@@ -4,10 +4,8 @@ require (
 	github.com/RobotsAndPencils/go-saml v0.0.0-20170520135329-fb13cb52a46b
 	github.com/aws/aws-lambda-go v1.19.1
 	github.com/aws/aws-sdk-go v1.34.19
-	github.com/aws/aws-sdk-go-v2/service/ec2 v1.148.2
 	github.com/coreos/go-oidc v2.2.1+incompatible
 	github.com/go-ini/ini v1.61.0
-	github.com/hashicorp/go-rootcerts v1.0.2
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/mitchellh/go-ps v1.0.0
 	github.com/okta/okta-sdk-golang/v2 v2.2.1
@@ -19,13 +17,11 @@ require (
 	github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/cam v1.0.392
 	github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/common v1.0.479
 	github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/sts v1.0.479
-	golang.org/x/exp v0.0.0-20230817173708-d852ddb80c63
 	golang.org/x/net v0.8.0
 	golang.org/x/oauth2 v0.6.0
 )
 
 require (
-	github.com/aws/smithy-go v1.20.1 // indirect
 	github.com/cenkalti/backoff/v4 v4.1.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
@@ -34,6 +30,7 @@ require (
 	github.com/hashicorp/go-cleanhttp v0.5.1 // indirect
 	github.com/hashicorp/go-multierror v1.1.0 // indirect
 	github.com/hashicorp/go-retryablehttp v0.6.7 // indirect
+	github.com/hashicorp/go-rootcerts v1.0.2 // indirect
 	github.com/hashicorp/go-sockaddr v1.0.2 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/hashicorp/vault/api v1.0.4 // indirect

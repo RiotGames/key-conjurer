@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/rand"
 	"crypto/sha256"
-	"crypto/tls"
 	"encoding/base64"
 	"errors"
 	"fmt"
@@ -16,7 +15,6 @@ import (
 
 	"github.com/RobotsAndPencils/go-saml"
 	"github.com/coreos/go-oidc"
-	rootcerts "github.com/hashicorp/go-rootcerts"
 	"golang.org/x/net/html"
 	"golang.org/x/oauth2"
 )
@@ -26,20 +24,6 @@ var ErrNoSAMLAssertion = errors.New("no saml assertion")
 // stateBufSize is the size of the buffer used to generate the state parameter.
 // 43 is a magic number - It generates states that are not too short or long for Okta's validation.
 const stateBufSize = 43
-
-func NewHTTPClient() *http.Client {
-	// Some Darwin systems require certs to be loaded from the system certificate store or attempts to verify SSL certs on internal websites may fail.
-	tr := http.DefaultTransport
-	if certs, err := rootcerts.LoadSystemCAs(); err == nil {
-		tr = &http.Transport{
-			TLSClientConfig: &tls.Config{
-				RootCAs: certs,
-			},
-		}
-	}
-
-	return &http.Client{Transport: LogRoundTripper{tr}}
-}
 
 func DiscoverOAuth2Config(ctx context.Context, domain, clientID string) (*oauth2.Config, error) {
 	provider, err := oidc.NewProvider(ctx, domain)
