@@ -11,6 +11,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/sts"
+	"github.com/riotgames/key-conjurer/oauth2"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
@@ -185,12 +186,12 @@ func (g GetCommand) Execute(ctx context.Context) error {
 }
 
 func (g GetCommand) fetchNewCredentials(ctx context.Context, account Account) (*CloudCredentials, error) {
-	samlResponse, assertionStr, err := DiscoverConfigAndExchangeTokenForAssertion(ctx, g.Config.Tokens, g.OIDCDomain, g.ClientID, account.ID)
+	samlResponse, assertionStr, err := oauth2.DiscoverConfigAndExchangeTokenForAssertion(ctx, g.Config.Tokens.AccessToken, g.Config.Tokens.IDToken, g.OIDCDomain, g.ClientID, account.ID)
 	if err != nil {
 		return nil, err
 	}
 
-	pair, ok := FindRoleInSAML(g.RoleName, samlResponse)
+	pair, ok := findRoleInSAML(g.RoleName, samlResponse)
 	if !ok {
 		return nil, UnknownRoleError(g.RoleName, g.Args[0])
 	}

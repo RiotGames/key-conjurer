@@ -10,6 +10,7 @@ import (
 	"log/slog"
 
 	"github.com/pkg/browser"
+	"github.com/riotgames/key-conjurer/oauth2"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
@@ -69,7 +70,7 @@ type LoginCommand struct {
 }
 
 func (c LoginCommand) Execute(ctx context.Context) error {
-	oauthCfg, err := DiscoverOAuth2Config(ctx, c.OIDCDomain, c.ClientID)
+	oauthCfg, err := oauth2.DiscoverConfig(ctx, c.OIDCDomain, c.ClientID)
 	if err != nil {
 		return err
 	}
@@ -86,7 +87,7 @@ func (c LoginCommand) Execute(ctx context.Context) error {
 	}
 	oauthCfg.RedirectURL = fmt.Sprintf("http://%s", net.JoinHostPort("localhost", port))
 
-	handler := RedirectionFlowHandler{
+	handler := oauth2.RedirectionFlowHandler{
 		Config:       oauthCfg,
 		OnDisplayURL: openBrowserToURL,
 	}
@@ -99,7 +100,7 @@ func (c LoginCommand) Execute(ctx context.Context) error {
 		}
 	}
 
-	accessToken, err := handler.HandlePendingSession(ctx, sock, GeneratePkceChallenge(), GenerateState())
+	accessToken, err := handler.HandlePendingSession(ctx, sock, oauth2.GeneratePkceChallenge(), oauth2.GenerateState())
 	if err != nil {
 		return err
 	}

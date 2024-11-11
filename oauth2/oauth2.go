@@ -1,4 +1,4 @@
-package command
+package oauth2
 
 import (
 	"context"
@@ -9,13 +9,11 @@ import (
 	"fmt"
 	"net"
 	"net/http"
-	"net/url"
 	"strings"
 	"sync"
 
 	"github.com/RobotsAndPencils/go-saml"
 	"github.com/coreos/go-oidc"
-	"golang.org/x/net/html"
 	"golang.org/x/oauth2"
 )
 
@@ -25,7 +23,7 @@ var ErrNoSAMLAssertion = errors.New("no saml assertion")
 // 43 is a magic number - It generates states that are not too short or long for Okta's validation.
 const stateBufSize = 43
 
-func DiscoverOAuth2Config(ctx context.Context, domain, clientID string) (*oauth2.Config, error) {
+func DiscoverConfig(ctx context.Context, domain, clientID string) (*oauth2.Config, error) {
 	provider, err := oidc.NewProvider(ctx, domain)
 	if err != nil {
 		return nil, fmt.Errorf("couldn't discover OIDC configuration for %s: %w", domain, err)
@@ -145,7 +143,7 @@ type RedirectionFlowHandler struct {
 
 func (r RedirectionFlowHandler) HandlePendingSession(ctx context.Context, listener net.Listener, challenge PkceChallenge, state string) (*oauth2.Token, error) {
 	if r.OnDisplayURL == nil {
-		r.OnDisplayURL = printURLToConsole
+		panic("OnDisplayURL must be set")
 	}
 
 	url := r.Config.AuthCodeURL(state,
@@ -175,74 +173,39 @@ func (r RedirectionFlowHandler) HandlePendingSession(ctx context.Context, listen
 	}
 }
 
-func ExchangeAccessTokenForWebSSOToken(ctx context.Context, oauthCfg *oauth2.Config, token *TokenSet, applicationID string) (*oauth2.Token, error) {
-	return oauthCfg.Exchange(ctx, "",
-		oauth2.SetAuthURLParam("grant_type", "urn:ietf:params:oauth:grant-type:token-exchange"),
-		oauth2.SetAuthURLParam("actor_token", token.AccessToken),
-		oauth2.SetAuthURLParam("actor_token_type", "urn:ietf:params:oauth:token-type:access_token"),
-		oauth2.SetAuthURLParam("subject_token", token.IDToken),
-		oauth2.SetAuthURLParam("subject_token_type", "urn:ietf:params:oauth:token-type:id_token"),
-		// https://www.linkedin.com/pulse/oktas-aws-cli-app-mysterious-case-powerful-okta-apis-chaim-sanders/
-		oauth2.SetAuthURLParam("requested_token_type", "urn:okta:oauth:token-type:web_sso_token"),
-		oauth2.SetAuthURLParam("audience", fmt.Sprintf("urn:okta:apps:%s", applicationID)),
-	)
-}
-
-// TODO: This is actually an Okta-specific API
-func ExchangeWebSSOTokenForSAMLAssertion(ctx context.Context, issuer string, token *oauth2.Token) ([]byte, error) {
-	data := url.Values{"token": {token.AccessToken}}
-	uri := fmt.Sprintf("%s/login/token/sso?%s", issuer, data.Encode())
-	req, _ := http.NewRequestWithContext(ctx, "GET", uri, nil)
-	req.Header.Add("Accept", "text/html")
-
-	client := http.DefaultClient
-	if val, ok := ctx.Value(oauth2.HTTPClient).(*http.Client); ok {
-		client = val
-	}
-
-	resp, err := client.Do(req)
+func DiscoverConfigAndExchangeTokenForAssertion(ctx context.Context, accessToken, idToken, oidcDomain, clientID, applicationID string) (*saml.Response, string, error) {
+	oauthCfg, err := DiscoverConfig(ctx, oidcDomain, clientID)
 	if err != nil {
-		return nil, err
+		return nil, "", Error{Message: "could not discover oauth2  config", InnerError: err}
 	}
 
-	if resp.StatusCode == http.StatusInternalServerError {
-		return nil, errors.New("internal okta error occurred")
-	}
-
-	doc, _ := html.Parse(resp.Body)
-	form, ok := FindFirstForm(doc)
-	if !ok {
-		return nil, ErrNoSAMLAssertion
-	}
-
-	saml, ok := form.Inputs["SAMLResponse"]
-	if !ok {
-		return nil, ErrNoSAMLAssertion
-	}
-
-	return []byte(saml), nil
-}
-
-func DiscoverConfigAndExchangeTokenForAssertion(ctx context.Context, toks *TokenSet, oidcDomain, clientID, applicationID string) (*saml.Response, string, error) {
-	oauthCfg, err := DiscoverOAuth2Config(ctx, oidcDomain, clientID)
+	tok, err := exchangeAccessTokenForWebSSOToken(ctx, oauthCfg, accessToken, idToken, applicationID)
 	if err != nil {
-		return nil, "", OktaError{Message: "could not discover oauth2  config", InnerError: err}
+		return nil, "", Error{Message: "error exchanging token", InnerError: err}
 	}
 
-	tok, err := ExchangeAccessTokenForWebSSOToken(ctx, oauthCfg, toks, applicationID)
+	assertionBytes, err := exchangeWebSSOTokenForSAMLAssertion(ctx, oidcDomain, tok)
 	if err != nil {
-		return nil, "", OktaError{Message: "error exchanging token", InnerError: err}
+		return nil, "", Error{Message: "failed to fetch SAML assertion", InnerError: err}
 	}
 
-	assertionBytes, err := ExchangeWebSSOTokenForSAMLAssertion(ctx, oidcDomain, tok)
+	response, err := saml.ParseEncodedResponse(string(assertionBytes))
 	if err != nil {
-		return nil, "", OktaError{Message: "failed to fetch SAML assertion", InnerError: err}
-	}
-
-	response, err := ParseBase64EncodedSAMLResponse(string(assertionBytes))
-	if err != nil {
-		return nil, "", OktaError{Message: "failed to parse SAML response", InnerError: err}
+		return nil, "", Error{Message: "failed to parse SAML response", InnerError: err}
 	}
 
 	return response, string(assertionBytes), nil
+}
+
+type Error struct {
+	InnerError error
+	Message    string
+}
+
+func (o Error) Unwrap() error {
+	return o.InnerError
+}
+
+func (o Error) Error() string {
+	return o.Message
 }

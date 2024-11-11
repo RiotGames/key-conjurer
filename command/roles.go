@@ -1,7 +1,16 @@
 package command
 
 import (
+	"strings"
+
+	"github.com/RobotsAndPencils/go-saml"
+	"github.com/riotgames/key-conjurer/oauth2"
 	"github.com/spf13/cobra"
+)
+
+const (
+	awsFlag     = 0
+	tencentFlag = 1
 )
 
 var rolesCmd = cobra.Command{
@@ -23,15 +32,101 @@ var rolesCmd = cobra.Command{
 			applicationID = account.ID
 		}
 
-		samlResponse, _, err := DiscoverConfigAndExchangeTokenForAssertion(cmd.Context(), config.Tokens, oidcDomain, clientID, applicationID)
+		samlResponse, _, err := oauth2.DiscoverConfigAndExchangeTokenForAssertion(cmd.Context(), config.Tokens.AccessToken, config.Tokens.IDToken, oidcDomain, clientID, applicationID)
 		if err != nil {
 			return err
 		}
 
-		for _, name := range ListSAMLRoles(samlResponse) {
+		for _, name := range listRoles(samlResponse) {
 			cmd.Println(name)
 		}
 
 		return nil
 	},
+}
+
+type roleProviderPair struct {
+	RoleARN     string
+	ProviderARN string
+}
+
+func getARN(value string) roleProviderPair {
+	var p roleProviderPair
+	roles := strings.Split(value, ",")
+	if len(roles) >= 2 {
+		if strings.Contains(roles[0], "saml-provider/") {
+			p.ProviderARN = roles[0]
+			p.RoleARN = roles[1]
+		} else {
+			p.ProviderARN = roles[1]
+			p.RoleARN = roles[0]
+		}
+	}
+	return p
+}
+
+func findRoleInSAML(roleName string, response *saml.Response) (roleProviderPair, bool) {
+	if response == nil {
+		return roleProviderPair{}, false
+	}
+
+	roleURL := "https://aws.amazon.com/SAML/Attributes/Role"
+	roleSubstr := "role/"
+	attrs := response.GetAttributeValues(roleURL)
+	if len(attrs) == 0 {
+		attrs = response.GetAttributeValues("https://cloud.tencent.com/SAML/Attributes/Role")
+		roleSubstr = "roleName/"
+	}
+
+	if len(attrs) == 0 {
+		// The SAML assertoin contains no known roles for AWS or Tencent.
+		return roleProviderPair{}, false
+	}
+
+	var pairs []roleProviderPair
+	for _, v := range response.GetAttributeValues(roleURL) {
+		pairs = append(pairs, getARN(v))
+	}
+
+	if len(pairs) == 0 {
+		return roleProviderPair{}, false
+	}
+
+	var pair roleProviderPair
+	for _, p := range pairs {
+		idx := strings.Index(p.RoleARN, roleSubstr)
+		parts := strings.Split(p.RoleARN[idx:], "/")
+		if strings.EqualFold(parts[1], roleName) {
+			pair = p
+		}
+	}
+
+	if pair.RoleARN == "" {
+		return roleProviderPair{}, false
+	}
+
+	return pair, true
+}
+
+func listRoles(response *saml.Response) []string {
+	if response == nil {
+		return nil
+	}
+
+	roleURL := "https://aws.amazon.com/SAML/Attributes/Role"
+	roleSubstr := "role/"
+	if response.GetAttribute(roleURL) == "" {
+		roleURL = "https://cloud.tencent.com/SAML/Attributes/Role"
+		roleSubstr = "roleName/"
+	}
+
+	var names []string
+	for _, v := range response.GetAttributeValues(roleURL) {
+		p := getARN(v)
+		idx := strings.Index(p.RoleARN, roleSubstr)
+		parts := strings.Split(p.RoleARN[idx:], "/")
+		names = append(names, parts[1])
+	}
+
+	return names
 }
