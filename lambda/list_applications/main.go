@@ -33,5 +33,5 @@ func main() {
 	}
 
 	slog.Info("running list_applications_v2 Lambda")
-	lambda.StartHandler(internal.Lambdaify(api.ServeUserApplications(service, idp)))
+	lambda.Start(internal.Lambdaify(api.ServeUserApplications(service, idp)))
 }
