@@ -8,10 +8,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/arn"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/sts"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/aws/arn"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/spf13/cobra"
 )
 
@@ -81,13 +81,13 @@ This command will fail if you do not have active Cloud credentials.
 
 func getAWSCredentials(accountID, roleSessionName string) (creds CloudCredentials, err error) {
 	ctx := context.Background()
-	sess, err := session.NewSession(aws.NewConfig())
+	cfg, err := config.LoadDefaultConfig(ctx)
 	if err != nil {
 		return
 	}
 
-	c := sts.New(sess)
-	response, err := c.GetCallerIdentityWithContext(ctx, &sts.GetCallerIdentityInput{})
+	c := sts.NewFromConfig(cfg)
+	response, err := c.GetCallerIdentity(ctx, &sts.GetCallerIdentityInput{})
 	if err != nil {
 		return
 	}
@@ -107,10 +107,9 @@ func getAWSCredentials(accountID, roleSessionName string) (creds CloudCredential
 		Region:    id.Region,
 	}
 
-	roleARN := arn.String()
-	resp, err := c.AssumeRoleWithContext(ctx, &sts.AssumeRoleInput{
-		RoleArn:         &roleARN,
-		RoleSessionName: &roleSessionName,
+	resp, err := c.AssumeRole(ctx, &sts.AssumeRoleInput{
+		RoleArn:         aws.String(arn.String()),
+		RoleSessionName: aws.String(roleSessionName),
 	})
 
 	if err != nil {

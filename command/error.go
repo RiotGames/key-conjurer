@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws/awserr"
+	"github.com/aws/smithy-go"
 )
 
 const (
@@ -151,17 +151,17 @@ func (o TimeToLiveError) Error() string {
 // If the given error does relate to the specified DurationSeconds being larger than MaxDurationSeconds, this function will return a more specific error than the one the AWS SDK provides, and returns true.
 // Returns nil and false in all other situations.
 func tryParseTimeToLiveError(err error) (error, bool) {
-	var awsErr awserr.Error
-	if errors.As(err, &awsErr) && awsErr.Code() == "ValidationError" {
+	var awsErr *smithy.GenericAPIError
+	if errors.As(err, &awsErr) && awsErr.Code == "ValidationError" {
 		var providedValue, maxValue time.Duration
 		// This is no more specific type than this, and yes, unfortunately the error message includes the count.
 		formatOne := "1 validation error detected: Value '%d' at 'durationSeconds' failed to satisfy constraint: Member must have value less than or equal to %d"
-		if n, parseErr := fmt.Sscanf(awsErr.Message(), formatOne, &providedValue, &maxValue); parseErr == nil && n == 2 {
+		if n, parseErr := fmt.Sscanf(awsErr.Message, formatOne, &providedValue, &maxValue); parseErr == nil && n == 2 {
 			return TimeToLiveError{MaxDuration: maxValue * time.Second, RequestedDuration: providedValue * time.Second}, true
 		}
 
 		formatAmbiguousMaximum := "The requested DurationSeconds exceeds the MaxSessionDuration set for this role."
-		if strings.Compare(awsErr.Message(), formatAmbiguousMaximum) == 0 {
+		if strings.Compare(awsErr.Message, formatAmbiguousMaximum) == 0 {
 			return TimeToLiveError{MaxDuration: 0, RequestedDuration: 0}, true
 		}
 	}

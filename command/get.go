@@ -7,9 +7,9 @@ import (
 	"slices"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/sts"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/riotgames/key-conjurer/oauth2"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -187,14 +187,18 @@ func (g GetCommand) fetchNewCredentials(ctx context.Context, account Account) (*
 		g.TimeToLive = g.Config.TTL
 	}
 
-	session, _ := session.NewSession(&aws.Config{Region: aws.String(g.Region)})
-	stsClient := sts.New(session)
-	timeoutInSeconds := int64(3600 * g.TimeToLive)
-	resp, err := stsClient.AssumeRoleWithSAMLWithContext(ctx, &sts.AssumeRoleWithSAMLInput{
-		DurationSeconds: &timeoutInSeconds,
-		PrincipalArn:    &pair.ProviderARN,
-		RoleArn:         &pair.RoleARN,
-		SAMLAssertion:   &assertionStr,
+	awsCfg, err := config.LoadDefaultConfig(ctx, config.WithRegion(g.Region))
+	if err != nil {
+		return nil, err
+	}
+
+	stsClient := sts.NewFromConfig(awsCfg)
+	timeoutInSeconds := int32(3600 * g.TimeToLive)
+	resp, err := stsClient.AssumeRoleWithSAML(ctx, &sts.AssumeRoleWithSAMLInput{
+		DurationSeconds: aws.Int32(timeoutInSeconds),
+		PrincipalArn:    aws.String(pair.ProviderARN),
+		RoleArn:         aws.String(pair.RoleARN),
+		SAMLAssertion:   aws.String(assertionStr),
 	})
 
 	if err, ok := tryParseTimeToLiveError(err); ok {
