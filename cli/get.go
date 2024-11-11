@@ -1,6 +1,8 @@
 package main
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"os"
 	"slices"
@@ -10,6 +12,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/sts"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 )
 
 var (
@@ -56,6 +59,183 @@ func resolveApplicationInfo(cfg *Config, bypassCache bool, nameOrID string) (*Ac
 	return cfg.FindAccount(nameOrID)
 }
 
+type GetCommand struct {
+	Config *Config
+
+	Args                                                                                                 []string
+	TimeToLive                                                                                           uint
+	TimeRemaining                                                                                        uint
+	OutputType, ShellType, CloudType, RoleName, AWSCLIPath, TencentCLIPath, OIDCDomain, ClientID, Region string
+	Login, URLOnly, NoBrowser, BypassCache                                                               bool
+
+	UsageFunc  func() error
+	PrintErrln func(...any)
+
+	Flags   *pflag.FlagSet
+	Command *cobra.Command
+}
+
+func (g *GetCommand) Parse(cmd *cobra.Command, args []string) error {
+	flags := cmd.Flags()
+	g.OIDCDomain, _ = flags.GetString(FlagOIDCDomain)
+	g.ClientID, _ = flags.GetString(FlagClientID)
+	g.TimeToLive, _ = flags.GetUint(FlagTimeToLive)
+	g.TimeRemaining, _ = flags.GetUint(FlagTimeRemaining)
+	g.OutputType, _ = flags.GetString(FlagOutputType)
+	g.ShellType, _ = flags.GetString(FlagShellType)
+	g.RoleName, _ = flags.GetString(FlagRoleName)
+	g.CloudType, _ = flags.GetString(FlagCloudType)
+	g.AWSCLIPath, _ = flags.GetString(FlagAWSCLIPath)
+	g.TencentCLIPath, _ = flags.GetString(FlagTencentCLIPath)
+	g.Login, _ = flags.GetBool(FlagLogin)
+	g.URLOnly, _ = flags.GetBool(FlagURLOnly)
+	g.NoBrowser, _ = flags.GetBool(FlagNoBrowser)
+	g.BypassCache, _ = flags.GetBool(FlagBypassCache)
+	g.Region, _ = flags.GetString(FlagRegion)
+	g.Flags = flags
+	g.Args = args
+	g.UsageFunc = cmd.Usage
+	g.PrintErrln = cmd.PrintErrln
+	return nil
+}
+
+func (g GetCommand) Validate() error {
+	if !slices.Contains(permittedOutputTypes, g.OutputType) {
+		return ValueError{Value: g.OutputType, ValidValues: permittedOutputTypes}
+	}
+
+	if !slices.Contains(permittedShellTypes, g.ShellType) {
+		return ValueError{Value: g.ShellType, ValidValues: permittedShellTypes}
+	}
+	return nil
+}
+
+func (g GetCommand) printUsage() error {
+	return g.UsageFunc()
+}
+
+func (g GetCommand) Execute(ctx context.Context) error {
+	if HasTokenExpired(g.Config.Tokens) {
+		if g.Login {
+			login := LoginCommand{
+				Config:        g.Config,
+				OIDCDomain:    g.OIDCDomain,
+				ClientID:      g.ClientID,
+				MachineOutput: ShouldUseMachineOutput(g.Flags) || g.URLOnly,
+				NoBrowser:     g.NoBrowser,
+			}
+
+			if err := login.Execute(ctx); err != nil {
+				return err
+			}
+		} else {
+			return ErrTokensExpiredOrAbsent
+		}
+		return nil
+	}
+
+	var accountID string
+	if len(g.Args) > 0 {
+		accountID = g.Args[0]
+	} else if g.Config.LastUsedAccount != nil {
+		// No account specified. Can we use the most recent one?
+		accountID = *g.Config.LastUsedAccount
+	} else {
+		return g.printUsage()
+	}
+
+	account, ok := resolveApplicationInfo(g.Config, g.BypassCache, accountID)
+	if !ok {
+		return UnknownAccountError(g.Args[0], FlagBypassCache)
+	}
+
+	if g.RoleName == "" {
+		if account.MostRecentRole == "" {
+			g.PrintErrln("You must specify the --role flag with this command")
+			return nil
+		}
+		g.RoleName = account.MostRecentRole
+	}
+
+	if g.Config.TimeRemaining != 0 && g.TimeRemaining == DefaultTimeRemaining {
+		g.TimeRemaining = g.Config.TimeRemaining
+	}
+
+	var credentials CloudCredentials
+	if g.CloudType == cloudAws {
+		credentials = LoadAWSCredentialsFromEnvironment()
+	} else if g.CloudType == cloudTencent {
+		credentials = LoadTencentCredentialsFromEnvironment()
+	}
+
+	if !credentials.ValidUntil(account, time.Duration(g.TimeRemaining)*time.Minute) {
+		newCredentials, err := g.fetchNewCredentials(ctx, *account)
+		if err != nil {
+			return err
+		}
+		credentials = *newCredentials
+	}
+
+	if account != nil {
+		account.MostRecentRole = g.RoleName
+	}
+
+	g.Config.LastUsedAccount = &accountID
+	return echoCredentials(accountID, accountID, credentials, g.OutputType, g.ShellType, g.AWSCLIPath, g.TencentCLIPath)
+}
+
+func (g GetCommand) fetchNewCredentials(ctx context.Context, account Account) (*CloudCredentials, error) {
+	samlResponse, assertionStr, err := DiscoverConfigAndExchangeTokenForAssertion(ctx, g.Config.Tokens, g.OIDCDomain, g.ClientID, account.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	pair, ok := FindRoleInSAML(g.RoleName, samlResponse)
+	if !ok {
+		return nil, UnknownRoleError(g.RoleName, g.Args[0])
+	}
+
+	if g.TimeToLive == 1 && g.Config.TTL != 0 {
+		g.TimeToLive = g.Config.TTL
+	}
+
+	switch g.CloudType {
+	case cloudAws:
+		session, _ := session.NewSession(&aws.Config{Region: aws.String(g.Region)})
+		stsClient := sts.New(session)
+		timeoutInSeconds := int64(3600 * g.TimeToLive)
+		resp, err := stsClient.AssumeRoleWithSAMLWithContext(ctx, &sts.AssumeRoleWithSAMLInput{
+			DurationSeconds: &timeoutInSeconds,
+			PrincipalArn:    &pair.ProviderARN,
+			RoleArn:         &pair.RoleARN,
+			SAMLAssertion:   &assertionStr,
+		})
+
+		if err, ok := tryParseTimeToLiveError(err); ok {
+			return nil, err
+		}
+
+		if err != nil {
+			return nil, AWSError{
+				InnerError: err,
+				Message:    "failed to exchange credentials",
+			}
+		}
+
+		return &CloudCredentials{
+			AccessKeyID:     *resp.Credentials.AccessKeyId,
+			Expiration:      resp.Credentials.Expiration.Format(time.RFC3339),
+			SecretAccessKey: *resp.Credentials.SecretAccessKey,
+			SessionToken:    *resp.Credentials.SessionToken,
+			credentialsType: g.CloudType,
+		}, nil
+	case cloudTencent:
+		fallthrough
+	default:
+		return nil, errors.New("not yet implemented")
+	}
+}
+
 var getCmd = &cobra.Command{
 	Use:   "get <accountName/alias>",
 	Short: "Retrieves temporary cloud API credentials.",
@@ -63,143 +243,14 @@ var getCmd = &cobra.Command{
 
 A role must be specified when using this command through the --role flag. You may list the roles you can assume through the roles command.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		config := ConfigFromCommand(cmd)
-		ctx := cmd.Context()
-		oidcDomain, _ := cmd.Flags().GetString(FlagOIDCDomain)
-		clientID, _ := cmd.Flags().GetString(FlagClientID)
-
-		if HasTokenExpired(config.Tokens) {
-			if ok, _ := cmd.Flags().GetBool(FlagLogin); ok {
-				urlOnly, _ := cmd.Flags().GetBool(FlagURLOnly)
-				noBrowser, _ := cmd.Flags().GetBool(FlagNoBrowser)
-				login := LoginCommand{
-					Config:        config,
-					OIDCDomain:    oidcDomain,
-					ClientID:      clientID,
-					MachineOutput: ShouldUseMachineOutput(cmd.Flags()) || urlOnly,
-					NoBrowser:     noBrowser,
-				}
-
-				if err := login.Execute(cmd.Context()); err != nil {
-					return err
-				}
-			} else {
-				return ErrTokensExpiredOrAbsent
-			}
-			return nil
-		}
-
-		ttl, _ := cmd.Flags().GetUint(FlagTimeToLive)
-		timeRemaining, _ := cmd.Flags().GetUint(FlagTimeRemaining)
-		outputType, _ := cmd.Flags().GetString(FlagOutputType)
-		shellType, _ := cmd.Flags().GetString(FlagShellType)
-		roleName, _ := cmd.Flags().GetString(FlagRoleName)
-		cloudType, _ := cmd.Flags().GetString(FlagCloudType)
-		awsCliPath, _ := cmd.Flags().GetString(FlagAWSCLIPath)
-		tencentCliPath, _ := cmd.Flags().GetString(FlagTencentCLIPath)
-
-		if !slices.Contains(permittedOutputTypes, outputType) {
-			return ValueError{Value: outputType, ValidValues: permittedOutputTypes}
-		}
-
-		if !slices.Contains(permittedShellTypes, shellType) {
-			return ValueError{Value: shellType, ValidValues: permittedShellTypes}
-		}
-
-		var accountID string
-		if len(args) > 0 {
-			accountID = args[0]
-		} else if config.LastUsedAccount != nil {
-			// No account specified. Can we use the most recent one?
-			accountID = *config.LastUsedAccount
-		} else {
-			return cmd.Usage()
-		}
-
-		bypassCache, _ := cmd.Flags().GetBool(FlagBypassCache)
-		account, ok := resolveApplicationInfo(config, bypassCache, accountID)
-		if !ok {
-			return UnknownAccountError(args[0], FlagBypassCache)
-		}
-
-		if roleName == "" {
-			if account.MostRecentRole == "" {
-				cmd.PrintErrln("You must specify the --role flag with this command")
-				return nil
-			}
-			roleName = account.MostRecentRole
-		}
-
-		if config.TimeRemaining != 0 && timeRemaining == DefaultTimeRemaining {
-			timeRemaining = config.TimeRemaining
-		}
-
-		var credentials CloudCredentials
-		if cloudType == cloudAws {
-			credentials = LoadAWSCredentialsFromEnvironment()
-		} else if cloudType == cloudTencent {
-			credentials = LoadTencentCredentialsFromEnvironment()
-		}
-
-		if credentials.ValidUntil(account, time.Duration(timeRemaining)*time.Minute) {
-			return echoCredentials(accountID, accountID, credentials, outputType, shellType, awsCliPath, tencentCliPath)
-		}
-
-		samlResponse, assertionStr, err := DiscoverConfigAndExchangeTokenForAssertion(cmd.Context(), config.Tokens, oidcDomain, clientID, account.ID)
-		if err != nil {
+		var getCmd GetCommand
+		if err := getCmd.Parse(cmd, args); err != nil {
 			return err
 		}
 
-		pair, ok := FindRoleInSAML(roleName, samlResponse)
-		if !ok {
-			return UnknownRoleError(roleName, args[0])
-		}
-
-		if ttl == 1 && config.TTL != 0 {
-			ttl = config.TTL
-		}
-
-		if cloudType == cloudAws {
-			region, _ := cmd.Flags().GetString(FlagRegion)
-			session, _ := session.NewSession(&aws.Config{Region: aws.String(region)})
-			stsClient := sts.New(session)
-			timeoutInSeconds := int64(3600 * ttl)
-			resp, err := stsClient.AssumeRoleWithSAMLWithContext(ctx, &sts.AssumeRoleWithSAMLInput{
-				DurationSeconds: &timeoutInSeconds,
-				PrincipalArn:    &pair.ProviderARN,
-				RoleArn:         &pair.RoleARN,
-				SAMLAssertion:   &assertionStr,
-			})
-
-			if err, ok := tryParseTimeToLiveError(err); ok {
-				return err
-			}
-
-			if err != nil {
-				return AWSError{
-					InnerError: err,
-					Message:    "failed to exchange credentials",
-				}
-			}
-
-			credentials = CloudCredentials{
-				AccessKeyID:     *resp.Credentials.AccessKeyId,
-				Expiration:      resp.Credentials.Expiration.Format(time.RFC3339),
-				SecretAccessKey: *resp.Credentials.SecretAccessKey,
-				SessionToken:    *resp.Credentials.SessionToken,
-				credentialsType: cloudType,
-			}
-		} else {
-			panic("not yet implemented")
-		}
-
-		if account != nil {
-			account.MostRecentRole = roleName
-		}
-		config.LastUsedAccount = &accountID
-
-		return echoCredentials(accountID, accountID, credentials, outputType, shellType, awsCliPath, tencentCliPath)
-	}}
+		return getCmd.Execute(cmd.Context())
+	},
+}
 
 func echoCredentials(id, name string, credentials CloudCredentials, outputType, shellType, awsCliPath, tencentCliPath string) error {
 	switch outputType {
