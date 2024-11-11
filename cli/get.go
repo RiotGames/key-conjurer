@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"slices"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -46,16 +47,6 @@ func init() {
 	getCmd.Flags().String(FlagAWSCLIPath, "~/.aws/", "Path for directory used by the aws CLI")
 	getCmd.Flags().BoolP(FlagURLOnly, "u", false, "Print only the URL to visit rather than a user-friendly message")
 	getCmd.Flags().BoolP(FlagNoBrowser, "b", false, "Do not open a browser window, printing the URL instead")
-}
-
-func isMemberOfSlice(slice []string, val string) bool {
-	for _, member := range slice {
-		if member == val {
-			return true
-		}
-	}
-
-	return false
 }
 
 func resolveApplicationInfo(cfg *Config, bypassCache bool, nameOrID string) (*Account, bool) {
@@ -107,11 +98,11 @@ A role must be specified when using this command through the --role flag. You ma
 		awsCliPath, _ := cmd.Flags().GetString(FlagAWSCLIPath)
 		tencentCliPath, _ := cmd.Flags().GetString(FlagTencentCLIPath)
 
-		if !isMemberOfSlice(permittedOutputTypes, outputType) {
+		if !slices.Contains(permittedOutputTypes, outputType) {
 			return ValueError{Value: outputType, ValidValues: permittedOutputTypes}
 		}
 
-		if !isMemberOfSlice(permittedShellTypes, shellType) {
+		if !slices.Contains(permittedShellTypes, shellType) {
 			return ValueError{Value: shellType, ValidValues: permittedShellTypes}
 		}
 

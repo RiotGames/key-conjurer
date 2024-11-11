@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"slices"
 	"strings"
 	"time"
 
@@ -50,11 +51,11 @@ This command will fail if you do not have active Cloud credentials.
 		shellType, _ := cmd.Flags().GetString(FlagShellType)
 		cloudType, _ := cmd.Flags().GetString(FlagCloudType)
 		awsCliPath, _ := cmd.Flags().GetString(FlagAWSCLIPath)
-		if !isMemberOfSlice(permittedOutputTypes, outputType) {
+		if !slices.Contains(permittedOutputTypes, outputType) {
 			return ValueError{Value: outputType, ValidValues: permittedOutputTypes}
 		}
 
-		if !isMemberOfSlice(permittedShellTypes, shellType) {
+		if !slices.Contains(permittedShellTypes, shellType) {
 			return ValueError{Value: shellType, ValidValues: permittedShellTypes}
 		}
 
