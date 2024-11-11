@@ -20,8 +20,8 @@ var SettingsProviders = map[string]SettingsProvider{}
 func init() {
 	SettingsProviders["env"] = SettingsProviderFunc(RetrieveSettingsFromEnv)
 	SettingsProviders["vault"] = VaultRetriever{
-		SecretMountPath: os.Getenv("VAULT_SECRET_MOUNT_PATH"),
-		SecretPath:      os.Getenv("VAULT_SECRET_PATH"),
+		SecretMountPath: os.Getenv("KC_SECRET_MOUNT_PATH"),
+		SecretPath:      os.Getenv("KC_SECRET_PATH"),
 	}
 }
 

@@ -64,8 +64,8 @@ To use Vault, the following environment variables must be configured:
 
 | Variable          | Purpose                                                           |
 | ----------------- | ----------------------------------------------------------------- |
-| VAULT_SECRET_MOUNT_PATH | The mount path of your Vault secrets mount                  |
-| VAULT_SECRET_PATH | The path to the Vault secret containing your secrets              |
+| KC_SECRET_MOUNT_PATH | The mount path of your Vault secrets mount                  |
+| KC_SECRET_PATH | The path to the Vault secret containing your secrets              |
 
 The Vault secret should contain the following set of key-values - the values are examples and should be replaced as contextually appropriate:
 
