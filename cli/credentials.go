@@ -151,29 +151,60 @@ export TENCENTKEY_ACCOUNT=%v
 `
 )
 
+type bashWriter struct{}
+
+func (bashWriter) ExportEnvironmentVariable(w io.Writer, key, value string) (int, error) {
+	return fmt.Fprintf(w, "export %s=%q\n", key, value)
+}
+
+type powershellWriter struct{}
+
+func (powershellWriter) ExportEnvironmentVariable(w io.Writer, key, value string) (int, error) {
+	return fmt.Fprintf(w, "$Env:%s = %s\n", key, value)
+}
+
+type basicWriter struct{}
+
+func (basicWriter) ExportEnvironmentVariable(w io.Writer, key, value string) (int, error) {
+	return fmt.Fprintf(w, "SET %s=%q\n", key, value)
+}
+
+type environmentVariableWriter interface {
+	ExportEnvironmentVariable(w io.Writer, key, value string) (int, error)
+}
+
 func (c CloudCredentials) WriteFormat(w io.Writer, format ShellType) (int, error) {
-	var str string
+	var writer environmentVariableWriter
 	if format == shellTypeInfer {
 		format = getShellType()
 	}
 
 	switch format {
 	case shellTypePowershell:
-		str = awsShellTypePowershell
-		if c.credentialsType == cloudTencent {
-			str = tencentShellTypePowershell
-		}
+		writer = powershellWriter{}
 	case shellTypeBasic:
-		str = awsShellTypeBasic
-		if c.credentialsType == cloudTencent {
-			str = tencentShellTypeBasic
-		}
+		writer = basicWriter{}
 	case shellTypeBash:
-		str = awsShellTypeBash
-		if c.credentialsType == cloudTencent {
-			str = tencentShellTypeBash
-		}
+		writer = bashWriter{}
 	}
 
-	return fmt.Fprintf(w, str, c.AccessKeyID, c.SecretAccessKey, c.SessionToken, c.SessionToken, c.Expiration, c.AccountID)
+	writer.ExportEnvironmentVariable(w, "TF_VAR_access_key", c.AccessKeyID)
+	writer.ExportEnvironmentVariable(w, "TF_VAR_secret_key", c.SecretAccessKey)
+	writer.ExportEnvironmentVariable(w, "TF_VAR_token", c.SessionToken)
+	writer.ExportEnvironmentVariable(w, "AWSKEY_EXPIRATION", c.Expiration)
+	writer.ExportEnvironmentVariable(w, "AWSKEY_ACCOUNT", c.AccountID)
+	switch c.credentialsType {
+	case cloudAws:
+		writer.ExportEnvironmentVariable(w, "AWS_ACCESS_KEY_ID", c.AccessKeyID)
+		writer.ExportEnvironmentVariable(w, "AWS_SECRET_ACCESS_KEY", c.SecretAccessKey)
+		writer.ExportEnvironmentVariable(w, "AWS_SESSION_TOKEN", c.SessionToken)
+		writer.ExportEnvironmentVariable(w, "AWS_SECURITY_TOKEN", c.SessionToken)
+	case cloudTencent:
+		writer.ExportEnvironmentVariable(w, "TENCENTCLOUD_SECRET_ID", c.AccessKeyID)
+		writer.ExportEnvironmentVariable(w, "TENCENTCLOUD_SECRET_KEY", c.SecretAccessKey)
+		writer.ExportEnvironmentVariable(w, "TENCENT_SECURITY_TOKEN", c.SessionToken)
+		writer.ExportEnvironmentVariable(w, "TENCENT_SECURITY_TOKEN", c.SessionToken)
+	}
+
+	return 0, nil
 }
