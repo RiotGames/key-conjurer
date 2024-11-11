@@ -14,9 +14,6 @@ require (
 	github.com/spf13/cobra v1.7.0
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.8.1
-	github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/cam v1.0.392
-	github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/common v1.0.479
-	github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/sts v1.0.479
 	golang.org/x/net v0.8.0
 	golang.org/x/oauth2 v0.6.0
 )

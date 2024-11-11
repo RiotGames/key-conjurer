@@ -10,7 +10,7 @@ KeyConjurer is made of three parts:
 - [cli](./cli/) - The CLI interface.
 - [frontend](./frontend/) - A static webpage which informs users on how to download and use KeyConjurer.
 
-KeyConjurer is designed to work with Okta as an IdP, supports AWS and Tencent Cloud applications, and is inspired in part by [okta-aws-cli](https://github.com/okta/okta-aws-cli). The main difference from okta-aws-cli is that KeyConjurer does not require all users to have access to the Okta administration API - Instead, we use a Lambda function to access the protected resources required.
+KeyConjurer is designed to work with Okta as an IdP, supports AWS applications, and is inspired in part by [okta-aws-cli](https://github.com/okta/okta-aws-cli). The main difference from okta-aws-cli is that KeyConjurer does not require all users to have access to the Okta administration API - Instead, we use a Lambda function to access the protected resources required.
 
 We use KeyConjurer a lot at Riot, but we can't guarantee any external support for this project. It's use at your own risk. If you encounter a bug or have a feature request, please feel free to raise a pull request or an issue against this repository. You're also welcome to fork the code and modify it as you see fit.
 
@@ -48,7 +48,7 @@ In order to use KeyConjurer, an Okta administrator must configure their tenant a
   * Authorization Types: Hybrid Flow, Authorization Code, Token Exchange
   * Redirection URI: http://localhost:57468
   * We recommend you enable Federated Mode on this native application so that users don't need to be explicitly assigned to it.
-* All AWS and tencent applications must have their Allowed Web SSO Client set to the _Client ID_ of the native OIDC application that was created. This can be configured by going to the Sign On tab for each individual Okta application or managing the application configuration in an IAC provider, like Terraform.
+* All AWS applications must have their Allowed Web SSO Client set to the _Client ID_ of the native OIDC application that was created. This can be configured by going to the Sign On tab for each individual Okta application or managing the application configuration in an IAC provider, like Terraform.
 
 Okta configuration should be configured _out of band_ and is not provided in this repository.
 

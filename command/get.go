@@ -2,7 +2,6 @@ package command
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"os"
 	"slices"
@@ -30,10 +29,8 @@ var (
 	outputTypeEnvironmentVariable = "env"
 	// outputTypeAWSCredentialsFile indicates that keyconjurer will dump the credentials into the ~/.aws/credentials file.
 	outputTypeAWSCredentialsFile = "awscli"
-	// outputTypeTencentCredentialsFile indicates that keyconjurer will dump the credentials into the ~/.tencent/credentials file.
-	outputTypeTencentCredentialsFile = "tencentcli"
-	permittedOutputTypes             = []string{outputTypeAWSCredentialsFile, outputTypeEnvironmentVariable, outputTypeTencentCredentialsFile}
-	permittedShellTypes              = []string{shellTypePowershell, shellTypeBash, shellTypeBasic, shellTypeInfer}
+	permittedOutputTypes         = []string{outputTypeAWSCredentialsFile, outputTypeEnvironmentVariable}
+	permittedShellTypes          = []string{shellTypePowershell, shellTypeBash, shellTypeBasic, shellTypeInfer}
 )
 
 func init() {
@@ -42,10 +39,8 @@ func init() {
 	getCmd.Flags().UintP(FlagTimeRemaining, "t", DefaultTimeRemaining, "Request new keys if there are no keys in the environment or the current keys expire within <time-remaining> minutes. Defaults to 60.")
 	getCmd.Flags().StringP(FlagRoleName, "r", "", "The name of the role to assume.")
 	getCmd.Flags().String(FlagRoleSessionName, "KeyConjurer-AssumeRole", "the name of the role session name that will show up in CloudTrail logs")
-	getCmd.Flags().StringP(FlagOutputType, "o", outputTypeEnvironmentVariable, "Format to save new credentials in. Supported outputs: env, awscli,tencentcli")
+	getCmd.Flags().StringP(FlagOutputType, "o", outputTypeEnvironmentVariable, "Format to save new credentials in. Supported outputs: env, awscli")
 	getCmd.Flags().String(FlagShellType, shellTypeInfer, "If output type is env, determines which format to output credentials in - by default, the format is inferred based on the execution environment. WSL users may wish to overwrite this to `bash`")
-	getCmd.Flags().String(FlagTencentCLIPath, "~/.tencent/", "Path for directory used by the tencent-cli tool. Default is \"~/.tencent\".")
-	getCmd.Flags().String(FlagCloudType, "aws", "Choose a cloud vendor. Default is aws. Can choose aws or tencent")
 	getCmd.Flags().Bool(FlagBypassCache, false, "Do not check the cache for accounts and send the application ID as-is to Okta. This is useful if you have an ID you know is an Okta application ID and it is not stored in your local account cache.")
 	getCmd.Flags().Bool(FlagLogin, false, "Login to Okta before running the command")
 	getCmd.Flags().String(FlagAWSCLIPath, "~/.aws/", "Path for directory used by the aws CLI")
@@ -63,11 +58,11 @@ func resolveApplicationInfo(cfg *Config, bypassCache bool, nameOrID string) (*Ac
 type GetCommand struct {
 	Config *Config
 
-	Args                                                                                                 []string
-	TimeToLive                                                                                           uint
-	TimeRemaining                                                                                        uint
-	OutputType, ShellType, CloudType, RoleName, AWSCLIPath, TencentCLIPath, OIDCDomain, ClientID, Region string
-	Login, URLOnly, NoBrowser, BypassCache                                                               bool
+	Args                                                                      []string
+	TimeToLive                                                                uint
+	TimeRemaining                                                             uint
+	OutputType, ShellType, RoleName, AWSCLIPath, OIDCDomain, ClientID, Region string
+	Login, URLOnly, NoBrowser, BypassCache                                    bool
 
 	UsageFunc  func() error
 	PrintErrln func(...any)
@@ -85,9 +80,7 @@ func (g *GetCommand) Parse(cmd *cobra.Command, args []string) error {
 	g.OutputType, _ = flags.GetString(FlagOutputType)
 	g.ShellType, _ = flags.GetString(FlagShellType)
 	g.RoleName, _ = flags.GetString(FlagRoleName)
-	g.CloudType, _ = flags.GetString(FlagCloudType)
 	g.AWSCLIPath, _ = flags.GetString(FlagAWSCLIPath)
-	g.TencentCLIPath, _ = flags.GetString(FlagTencentCLIPath)
 	g.Login, _ = flags.GetBool(FlagLogin)
 	g.URLOnly, _ = flags.GetBool(FlagURLOnly)
 	g.NoBrowser, _ = flags.GetBool(FlagNoBrowser)
@@ -162,13 +155,7 @@ func (g GetCommand) Execute(ctx context.Context) error {
 		g.TimeRemaining = g.Config.TimeRemaining
 	}
 
-	var credentials CloudCredentials
-	if g.CloudType == cloudAws {
-		credentials = LoadAWSCredentialsFromEnvironment()
-	} else if g.CloudType == cloudTencent {
-		credentials = LoadTencentCredentialsFromEnvironment()
-	}
-
+	credentials := LoadAWSCredentialsFromEnvironment()
 	if !credentials.ValidUntil(account, time.Duration(g.TimeRemaining)*time.Minute) {
 		newCredentials, err := g.fetchNewCredentials(ctx, *account)
 		if err != nil {
@@ -182,7 +169,7 @@ func (g GetCommand) Execute(ctx context.Context) error {
 	}
 
 	g.Config.LastUsedAccount = &accountID
-	return echoCredentials(accountID, accountID, credentials, g.OutputType, g.ShellType, g.AWSCLIPath, g.TencentCLIPath)
+	return echoCredentials(accountID, accountID, credentials, g.OutputType, g.ShellType, g.AWSCLIPath)
 }
 
 func (g GetCommand) fetchNewCredentials(ctx context.Context, account Account) (*CloudCredentials, error) {
@@ -200,41 +187,33 @@ func (g GetCommand) fetchNewCredentials(ctx context.Context, account Account) (*
 		g.TimeToLive = g.Config.TTL
 	}
 
-	switch g.CloudType {
-	case cloudAws:
-		session, _ := session.NewSession(&aws.Config{Region: aws.String(g.Region)})
-		stsClient := sts.New(session)
-		timeoutInSeconds := int64(3600 * g.TimeToLive)
-		resp, err := stsClient.AssumeRoleWithSAMLWithContext(ctx, &sts.AssumeRoleWithSAMLInput{
-			DurationSeconds: &timeoutInSeconds,
-			PrincipalArn:    &pair.ProviderARN,
-			RoleArn:         &pair.RoleARN,
-			SAMLAssertion:   &assertionStr,
-		})
+	session, _ := session.NewSession(&aws.Config{Region: aws.String(g.Region)})
+	stsClient := sts.New(session)
+	timeoutInSeconds := int64(3600 * g.TimeToLive)
+	resp, err := stsClient.AssumeRoleWithSAMLWithContext(ctx, &sts.AssumeRoleWithSAMLInput{
+		DurationSeconds: &timeoutInSeconds,
+		PrincipalArn:    &pair.ProviderARN,
+		RoleArn:         &pair.RoleARN,
+		SAMLAssertion:   &assertionStr,
+	})
 
-		if err, ok := tryParseTimeToLiveError(err); ok {
-			return nil, err
-		}
-
-		if err != nil {
-			return nil, AWSError{
-				InnerError: err,
-				Message:    "failed to exchange credentials",
-			}
-		}
-
-		return &CloudCredentials{
-			AccessKeyID:     *resp.Credentials.AccessKeyId,
-			Expiration:      resp.Credentials.Expiration.Format(time.RFC3339),
-			SecretAccessKey: *resp.Credentials.SecretAccessKey,
-			SessionToken:    *resp.Credentials.SessionToken,
-			credentialsType: g.CloudType,
-		}, nil
-	case cloudTencent:
-		fallthrough
-	default:
-		return nil, errors.New("not yet implemented")
+	if err, ok := tryParseTimeToLiveError(err); ok {
+		return nil, err
 	}
+
+	if err != nil {
+		return nil, AWSError{
+			InnerError: err,
+			Message:    "failed to exchange credentials",
+		}
+	}
+
+	return &CloudCredentials{
+		AccessKeyID:     *resp.Credentials.AccessKeyId,
+		Expiration:      resp.Credentials.Expiration.Format(time.RFC3339),
+		SecretAccessKey: *resp.Credentials.SecretAccessKey,
+		SessionToken:    *resp.Credentials.SessionToken,
+	}, nil
 }
 
 var getCmd = &cobra.Command{
@@ -253,18 +232,14 @@ A role must be specified when using this command through the --role flag. You ma
 	},
 }
 
-func echoCredentials(id, name string, credentials CloudCredentials, outputType, shellType, awsCliPath, tencentCliPath string) error {
+func echoCredentials(id, name string, credentials CloudCredentials, outputType, shellType, cliPath string) error {
 	switch outputType {
 	case outputTypeEnvironmentVariable:
 		credentials.WriteFormat(os.Stdout, shellType)
 		return nil
-	case outputTypeAWSCredentialsFile, outputTypeTencentCredentialsFile:
+	case outputTypeAWSCredentialsFile:
 		acc := Account{ID: id, Name: name}
 		newCliEntry := NewCloudCliEntry(credentials, &acc)
-		cliPath := awsCliPath
-		if outputType == outputTypeTencentCredentialsFile {
-			cliPath = tencentCliPath
-		}
 		return SaveCloudCredentialInCLI(cliPath, newCliEntry)
 	default:
 		return fmt.Errorf("%s is an invalid output type", outputType)

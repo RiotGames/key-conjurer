@@ -20,7 +20,7 @@ func TestAddAWSCliEntry(t *testing.T) {
 		token:       "notatoken",
 	}
 
-	require.NoError(t, saveCredentialEntry(file, entry, cloudAws))
+	require.NoError(t, saveCredentialEntry(file, entry))
 
 	sec := file.Section("test-profile")
 	require.NotNil(t, sec, "section should have been added above")

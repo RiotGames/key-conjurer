@@ -12,7 +12,6 @@ import (
 	"github.com/aws/aws-sdk-go/aws/arn"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/sts"
-	"github.com/riotgames/key-conjurer/internal/tencent"
 	"github.com/spf13/cobra"
 )
 
@@ -21,23 +20,19 @@ var (
 	FlagOutputType      = "out"
 	FlagShellType       = "shell"
 	FlagAWSCLIPath      = "awscli"
-	FlagTencentCLIPath  = "tencentcli"
-	FlagCloudType       = "cloud"
 )
 
 func init() {
 	switchCmd.Flags().String(FlagRoleSessionName, "KeyConjurer-AssumeRole", "the name of the role session name that will show up in CloudTrail logs")
-	switchCmd.Flags().StringP(FlagOutputType, "o", outputTypeEnvironmentVariable, "Format to save new credentials in. Supported outputs: env, awscli,tencentcli")
+	switchCmd.Flags().StringP(FlagOutputType, "o", outputTypeEnvironmentVariable, "Format to save new credentials in. Supported outputs: env, awscli")
 	switchCmd.Flags().String(FlagShellType, shellTypeInfer, "If output type is env, determines which format to output credentials in - by default, the format is inferred based on the execution environment. WSL users may wish to overwrite this to `bash`")
 	switchCmd.Flags().String(FlagAWSCLIPath, "~/.aws/", "Path for directory used by the aws-cli tool. Default is \"~/.aws\".")
-	switchCmd.Flags().String(FlagTencentCLIPath, "~/.tencent/", "Path for directory used by the tencent-cli tool. Default is \"~/.tencent\".")
-	switchCmd.Flags().String(FlagCloudType, "aws", "Choose a cloud vendor. Default is aws. Can choose aws or tencent")
 }
 
 var switchCmd = cobra.Command{
 	Use:   "switch <account-id>",
-	Short: "Switch from the current Cloud (AWS or Tencent) account into the one with the given Account ID.",
-	Long: `Attempt to AssumeRole into the given Cloud (AWS or Tencent) with the current credentials. You only need to use this if you are a power user or network engineer with access to many accounts.
+	Short: "Switch from the current AWS account into the one with the given Account ID.",
+	Long: `Attempt to AssumeRole into the given AWS with the current credentials. You only need to use this if you are a power user or network engineer with access to many accounts.
 
 This is used when a "bastion" account exists which users initially authenticate into and then pivot from that account into other accounts.
 
@@ -49,7 +44,6 @@ This command will fail if you do not have active Cloud credentials.
 	RunE: func(cmd *cobra.Command, args []string) error {
 		outputType, _ := cmd.Flags().GetString(FlagOutputType)
 		shellType, _ := cmd.Flags().GetString(FlagShellType)
-		cloudType, _ := cmd.Flags().GetString(FlagCloudType)
 		awsCliPath, _ := cmd.Flags().GetString(FlagAWSCLIPath)
 		if !slices.Contains(permittedOutputTypes, outputType) {
 			return ValueError{Value: outputType, ValidValues: permittedOutputTypes}
@@ -63,13 +57,8 @@ This command will fail if you do not have active Cloud credentials.
 		var err error
 		var creds CloudCredentials
 		sessionName, _ := cmd.Flags().GetString(FlagRoleSessionName)
-		switch strings.ToLower(cloudType) {
-		case cloudAws:
-			creds, err = getAWSCredentials(args[0], sessionName)
-		case cloudTencent:
-			creds, err = getTencentCredentials(args[0], sessionName)
-		}
 
+		creds, err = getAWSCredentials(args[0], sessionName)
 		if err != nil {
 			// If this failed, either there was a network error or the user is not authorized to assume into this role
 			// This can happen if the user is not authenticated using the Bastion instance.
@@ -88,56 +77,6 @@ This command will fail if you do not have active Cloud credentials.
 			return fmt.Errorf("%s is an invalid output type", outputType)
 		}
 	},
-}
-
-func getTencentCredentials(accountID, roleSessionName string) (creds CloudCredentials, err error) {
-	region := os.Getenv("TENCENT_REGION")
-	stsClient, err := tencent.NewSTSClient(region)
-	if err != nil {
-		return
-	}
-
-	response, err := stsClient.GetCallerIdentity()
-	if err != nil {
-		return
-	}
-
-	arn := response.Response.Arn
-	roleID := ""
-	if (*arn) != "" {
-		arns := strings.Split(*arn, ":")
-		if len(arns) >= 5 && len(strings.Split(arns[4], "/")) >= 2 {
-			roleID = strings.Split(arns[4], "/")[1]
-		}
-	}
-	if roleID == "" {
-		err = fmt.Errorf("roleID is null")
-		return
-	}
-
-	camClient, err := tencent.NewCAMClient(region)
-	if err != nil {
-		return
-	}
-	roleName, err := camClient.GetRoleName(roleID)
-	if err != nil {
-		return
-	}
-	resp, err := stsClient.AssumeRole(fmt.Sprintf("qcs::cam::uin/%s:roleName/%s", accountID, roleName), roleSessionName)
-	if err != nil {
-		return
-	}
-
-	creds = CloudCredentials{
-		AccountID:       accountID,
-		AccessKeyID:     *resp.Response.Credentials.TmpSecretId,
-		SecretAccessKey: *resp.Response.Credentials.TmpSecretKey,
-		SessionToken:    *resp.Response.Credentials.Token,
-		Expiration:      *resp.Response.Expiration,
-		credentialsType: cloudTencent,
-	}
-
-	return creds, nil
 }
 
 func getAWSCredentials(accountID, roleSessionName string) (creds CloudCredentials, err error) {
@@ -184,7 +123,6 @@ func getAWSCredentials(accountID, roleSessionName string) (creds CloudCredential
 		SecretAccessKey: *resp.Credentials.SecretAccessKey,
 		SessionToken:    *resp.Credentials.SessionToken,
 		Expiration:      resp.Credentials.Expiration.Format(time.RFC3339),
-		credentialsType: cloudAws,
 	}
 
 	return creds, nil

@@ -8,11 +8,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-const (
-	awsFlag     = 0
-	tencentFlag = 1
-)
-
 var rolesCmd = cobra.Command{
 	Use:   "roles <accountName/alias>",
 	Short: "Returns the roles that you have access to in the given account.",
@@ -73,13 +68,8 @@ func findRoleInSAML(roleName string, response *saml.Response) (roleProviderPair,
 	roleURL := "https://aws.amazon.com/SAML/Attributes/Role"
 	roleSubstr := "role/"
 	attrs := response.GetAttributeValues(roleURL)
-	if len(attrs) == 0 {
-		attrs = response.GetAttributeValues("https://cloud.tencent.com/SAML/Attributes/Role")
-		roleSubstr = "roleName/"
-	}
 
 	if len(attrs) == 0 {
-		// The SAML assertoin contains no known roles for AWS or Tencent.
 		return roleProviderPair{}, false
 	}
 
@@ -115,10 +105,6 @@ func listRoles(response *saml.Response) []string {
 
 	roleURL := "https://aws.amazon.com/SAML/Attributes/Role"
 	roleSubstr := "role/"
-	if response.GetAttribute(roleURL) == "" {
-		roleURL = "https://cloud.tencent.com/SAML/Attributes/Role"
-		roleSubstr = "roleName/"
-	}
 
 	var names []string
 	for _, v := range response.GetAttributeValues(roleURL) {

@@ -20,8 +20,6 @@ var (
 	FlagConfigPath = "config"
 	FlagQuiet      = "quiet"
 	FlagTimeout    = "timeout"
-	cloudAws       = "aws"
-	cloudTencent   = "tencent"
 )
 
 func init() {
