@@ -7,7 +7,6 @@ import (
 	"os"
 
 	"github.com/hashicorp/vault/api"
-	"github.com/hashicorp/vault/api/auth/aws"
 )
 
 // Settings is used to hold keyconjurer settings
@@ -21,10 +20,8 @@ var SettingsProviders = map[string]SettingsProvider{}
 func init() {
 	SettingsProviders["env"] = SettingsProviderFunc(RetrieveSettingsFromEnv)
 	SettingsProviders["vault"] = VaultRetriever{
-		RoleName:        os.Getenv("VAULT_ROLE_NAME"),
 		SecretMountPath: os.Getenv("VAULT_SECRET_MOUNT_PATH"),
 		SecretPath:      os.Getenv("VAULT_SECRET_PATH"),
-		AWSAuthPath:     os.Getenv("VAULT_AWS_AUTH_PATH"),
 	}
 }
 
@@ -62,8 +59,6 @@ func RetrieveSettingsFromEnv(_ context.Context) (*Settings, error) {
 }
 
 type VaultRetriever struct {
-	RoleName        string
-	AWSAuthPath     string
 	SecretMountPath string
 	SecretPath      string
 }
@@ -74,23 +69,12 @@ func (v VaultRetriever) FetchSettings(ctx context.Context) (*Settings, error) {
 		return nil, fmt.Errorf("unable to get Vault client: %w", err)
 	}
 
-	auth, err := aws.NewAWSAuth(aws.WithIAMAuth(), aws.WithMountPath(v.AWSAuthPath), aws.WithRole(v.RoleName))
-	if err != nil {
-		return nil, err
-	}
-
-	_, err = client.Auth().Login(ctx, auth)
-	if err != nil {
-		return nil, fmt.Errorf("unable to login to Vault: %w", err)
-	}
-
 	kv, err := client.KVv2(v.SecretMountPath).Get(ctx, v.SecretPath)
 	if err != nil {
 		return nil, err
 	}
 
 	var settings Settings
-
 	jsonBlob, ok := kv.Data["data"].(string)
 	if !ok {
 		return nil, fmt.Errorf("settings stored in Vault path %s are not a JSON string", fmt.Sprintf("%s/%s", v.SecretMountPath, v.SecretPath))

@@ -64,10 +64,8 @@ To use Vault, the following environment variables must be configured:
 
 | Variable          | Purpose                                                           |
 | ----------------- | ----------------------------------------------------------------- |
-| VAULT_ROLE_NAME   | The name of the Vault role to use to acquire credentials          |
 | VAULT_SECRET_MOUNT_PATH | The mount path of your Vault secrets mount                  |
 | VAULT_SECRET_PATH | The path to the Vault secret containing your secrets              |
-| VAULT_AWS_AUTH_PATH | The path to the mount on your Vault instance that handles IAM authentication |
 
 The Vault secret should contain the following set of key-values - the values are examples and should be replaced as contextually appropriate:
 
@@ -77,6 +75,8 @@ okta_token={API TOKEN}
 ```
 
 `{API_TOKEN}` must be replaced with an API token for Okta that has the `okta.apps.read` scope.
+
+**The Lambda function does not handle authentication with Vault**. It is expected that you deploy the Lambda function with the [Hashicorp Vault Lambda Extension](https://developer.hashicorp.com/vault/docs/platform/aws/lambda-extension). How this Lambda extension is added depends on how you deploy your Lambda function and you should follow the instructions in the given link.
 
 #### Environment Variables
 
