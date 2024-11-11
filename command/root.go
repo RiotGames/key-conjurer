@@ -1,4 +1,4 @@
-package main
+package command
 
 import (
 	"context"
@@ -8,6 +8,7 @@ import (
 	"runtime"
 	"time"
 
+	"github.com/coreos/go-oidc"
 	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
 )
@@ -102,4 +103,11 @@ To get started run the following commands:
 	},
 	SilenceErrors: true,
 	SilenceUsage:  true,
+}
+
+func Execute(ctx context.Context, args []string) error {
+	client := NewHTTPClient()
+	ctx = oidc.ClientContext(ctx, client)
+	rootCmd.SetArgs(args)
+	return rootCmd.ExecuteContext(ctx)
 }

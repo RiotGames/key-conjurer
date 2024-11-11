@@ -1,4 +1,4 @@
-package main
+package command
 
 import (
 	"errors"
@@ -167,4 +167,12 @@ func tryParseTimeToLiveError(err error) (error, bool) {
 	}
 
 	return nil, false
+}
+
+func GetExitCode(err error) (int, bool) {
+	var codeError codeError
+	if errors.As(err, &codeError) {
+		return codeError.Code(), true
+	}
+	return 0, false
 }

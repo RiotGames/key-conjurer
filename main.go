@@ -10,7 +10,7 @@ import (
 
 	"log/slog"
 
-	"github.com/coreos/go-oidc"
+	"github.com/riotgames/key-conjurer/command"
 	"github.com/spf13/cobra"
 )
 
@@ -42,23 +42,21 @@ func main() {
 	if flag, ok := os.LookupEnv("KEYCONJURERFLAGS"); ok {
 		args = append(args, strings.Split(flag, " ")...)
 	}
-	rootCmd.SetArgs(args)
 
-	ctx := oidc.ClientContext(context.Background(), NewHTTPClient())
-	err := rootCmd.ExecuteContext(ctx)
+	err := command.Execute(context.Background(), args)
 	if IsWindowsPortAccessError(err) {
 		fmt.Fprintf(os.Stderr, "Encountered an issue when opening the port for KeyConjurer: %s\n", err)
 		fmt.Fprintln(os.Stderr, "Consider running `net stop hns` and then `net start hns`")
-		os.Exit(ExitCodeConnectivityError)
+		os.Exit(command.ExitCodeConnectivityError)
 	}
 
-	var codeErr codeError
-	if errors.As(err, &codeErr) {
-		cobra.CheckErr(codeErr)
-		os.Exit(int(codeErr.Code()))
-	} else if err != nil {
-		// Probably a cobra error.
+	if err != nil {
 		cobra.CheckErr(err)
-		os.Exit(ExitCodeUnknownError)
+
+		errorCode, ok := command.GetExitCode(err)
+		if !ok {
+			errorCode = command.ExitCodeUnknownError
+		}
+		os.Exit(errorCode)
 	}
 }
