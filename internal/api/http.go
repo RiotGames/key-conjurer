@@ -5,6 +5,8 @@ import (
 	"strings"
 
 	"log/slog"
+
+	"golang.org/x/oauth2"
 )
 
 // RequestAttrs returns attributes to be used with slog for the given request.
@@ -28,16 +30,16 @@ func RequestAttrs(r *http.Request) []any {
 	return attrs
 }
 
-func GetBearerToken(r *http.Request) (string, bool) {
+func requestTokenSource(r *http.Request) (oauth2.TokenSource, bool) {
 	headerValue := r.Header.Get("authorization")
-	if headerValue == "" {
-		return "", false
-	}
-
 	parts := strings.Split(headerValue, " ")
 	if len(parts) != 2 {
-		return "", false
+		return nil, false
+	}
+	if parts[0] != "Bearer" {
+		return nil, false
 	}
 
-	return parts[1], parts[0] == "Bearer"
+	token := oauth2.Token{AccessToken: parts[1]}
+	return oauth2.StaticTokenSource(&token), true
 }

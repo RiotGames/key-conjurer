@@ -2,10 +2,7 @@ package api
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
-	"fmt"
-	"io"
 	"net/http"
 	"net/url"
 
@@ -47,7 +44,7 @@ func (o Okta) ListApplicationsForUser(ctx context.Context, user string) ([]*okta
 	return links, nil
 }
 
-type OktaUserInfo struct {
+type Claims struct {
 	Sub               string `json:"sub"`
 	GivenName         string `json:"given_name"`
 	FamilyName        string `json:"family_name"`
@@ -61,37 +58,3 @@ var (
 	ErrBadRequest   = errors.New("bad request")
 	ErrUnauthorized = errors.New("unauthorized")
 )
-
-// GetUserInfo returns user information about the given token
-func (o Okta) GetUserInfo(ctx context.Context, token string) (info OktaUserInfo, err error) {
-	if o.client == nil {
-		o.client = http.DefaultClient
-	}
-
-	req, err := http.NewRequestWithContext(ctx, "GET", o.Domain.ResolveReference(&url.URL{Path: "/oauth2/v1/userinfo"}).String(), nil)
-	if err != nil {
-		return
-	}
-
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
-	resp, err := o.client.Do(req)
-	if err != nil {
-		return
-	}
-	defer resp.Body.Close()
-
-	switch resp.StatusCode {
-	case http.StatusOK:
-		buf, _ := io.ReadAll(resp.Body)
-		err = json.Unmarshal(buf, &info)
-		return
-	case http.StatusUnauthorized:
-		err = ErrUnauthorized
-		return
-	case http.StatusBadRequest:
-		err = ErrBadRequest
-		return
-	}
-
-	return
-}

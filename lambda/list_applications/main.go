@@ -8,6 +8,7 @@ import (
 	"log/slog"
 
 	"github.com/aws/aws-lambda-go/lambda"
+	"github.com/coreos/go-oidc"
 	"github.com/riotgames/key-conjurer/internal"
 	"github.com/riotgames/key-conjurer/internal/api"
 )
@@ -15,7 +16,7 @@ import (
 func main() {
 	settings, err := api.NewSettings(context.Background())
 	if err != nil {
-		slog.Error("could not fetch configuration: %s", err)
+		slog.Error("could not fetch configuration: %s", "error", err)
 		os.Exit(1)
 	}
 
@@ -24,7 +25,13 @@ func main() {
 		Host:   settings.OktaHost,
 	}
 
-	slog.Info("running list_applications_v2 Lambda")
 	service := api.NewOktaService(&oktaDomain, settings.OktaToken)
-	lambda.StartHandler(internal.Lambdaify(api.ServeUserApplications(service)))
+	idp, err := oidc.NewProvider(context.Background(), oktaDomain.String())
+	if err != nil {
+		slog.Error("could not create OIDC provider", "error", err)
+		os.Exit(1)
+	}
+
+	slog.Info("running list_applications_v2 Lambda")
+	lambda.StartHandler(internal.Lambdaify(api.ServeUserApplications(service, idp)))
 }
