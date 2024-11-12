@@ -2,7 +2,6 @@ package api
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"os"
 
@@ -74,12 +73,10 @@ func (v VaultRetriever) FetchSettings(ctx context.Context) (*Settings, error) {
 		return nil, err
 	}
 
-	var settings Settings
-	jsonBlob, ok := kv.Data["data"].(string)
-	if !ok {
-		return nil, fmt.Errorf("settings stored in Vault path %s are not a JSON string", fmt.Sprintf("%s/%s", v.SecretMountPath, v.SecretPath))
+	settings := Settings{
+		OktaHost:  kv.Data["oktaHost"].(string),
+		OktaToken: kv.Data["oktaToken"].(string),
 	}
 
-	err = json.Unmarshal([]byte(jsonBlob), &settings)
-	return &settings, err
+	return &settings, nil
 }
