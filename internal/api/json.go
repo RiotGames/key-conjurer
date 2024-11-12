@@ -20,12 +20,11 @@ func ServeJSON[T any](w *events.ALBTargetGroupResponse, data T) {
 	w.Body = string(buf)
 }
 
-func ServeJSONError(w *events.ALBTargetGroupResponse, statusCode int, msg string) {
-	var jsonError struct {
-		Message string `json:"error"`
-	}
+type JSONError struct {
+	Message string `json:"error"`
+}
 
-	jsonError.Message = msg
+func ServeJSONError(w *events.ALBTargetGroupResponse, statusCode int, msg string) {
 	w.StatusCode = statusCode
-	ServeJSON(w, jsonError)
+	ServeJSON(w, JSONError{Message: msg})
 }

@@ -25,6 +25,20 @@ func init() {
 	loginCmd.Flags().BoolP(FlagNoBrowser, "b", false, "Do not open a browser window, printing the URL instead")
 }
 
+var loginCmd = &cobra.Command{
+	Use:   "login",
+	Short: "Authenticate with KeyConjurer.",
+	Long:  "Login to KeyConjurer using OAuth2. You will be required to open the URL printed to the console or scan a QR code.",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		var loginCmd LoginCommand
+		if err := loginCmd.Parse(cmd.Flags(), args); err != nil {
+			return err
+		}
+
+		return loginCmd.Execute(cmd.Context(), ConfigFromCommand(cmd))
+	},
+}
+
 // ShouldUseMachineOutput indicates whether or not we should write to standard output as if the user is a machine.
 //
 // What this means is implementation specific, but this usually indicates the user is trying to use this program in a script and we should avoid user-friendly output messages associated with values a user might find useful.
@@ -35,41 +49,27 @@ func ShouldUseMachineOutput(flags *pflag.FlagSet) bool {
 	return isPiped || quiet
 }
 
-var loginCmd = &cobra.Command{
-	Use:   "login",
-	Short: "Authenticate with KeyConjurer.",
-	Long:  "Login to KeyConjurer using OAuth2. You will be required to open the URL printed to the console or scan a QR code.",
-	RunE: func(cmd *cobra.Command, args []string) error {
-		config := ConfigFromCommand(cmd)
-		if !HasTokenExpired(config.Tokens) {
-			return nil
-		}
-
-		oidcDomain, _ := cmd.Flags().GetString(FlagOIDCDomain)
-		clientID, _ := cmd.Flags().GetString(FlagClientID)
-		urlOnly, _ := cmd.Flags().GetBool(FlagURLOnly)
-		noBrowser, _ := cmd.Flags().GetBool(FlagNoBrowser)
-		command := LoginCommand{
-			Config:        config,
-			OIDCDomain:    oidcDomain,
-			ClientID:      clientID,
-			MachineOutput: ShouldUseMachineOutput(cmd.Flags()) || urlOnly,
-			NoBrowser:     noBrowser,
-		}
-
-		return command.Execute(cmd.Context())
-	},
-}
-
 type LoginCommand struct {
-	Config        *Config
 	OIDCDomain    string
 	ClientID      string
 	MachineOutput bool
 	NoBrowser     bool
 }
 
-func (c LoginCommand) Execute(ctx context.Context) error {
+func (c *LoginCommand) Parse(flags *pflag.FlagSet, args []string) error {
+	c.OIDCDomain, _ = flags.GetString(FlagOIDCDomain)
+	c.ClientID, _ = flags.GetString(FlagClientID)
+	c.NoBrowser, _ = flags.GetBool(FlagNoBrowser)
+	urlOnly, _ := flags.GetBool(FlagURLOnly)
+	c.MachineOutput = ShouldUseMachineOutput(flags) || urlOnly
+	return nil
+}
+
+func (c LoginCommand) Execute(ctx context.Context, config *Config) error {
+	if !HasTokenExpired(config.Tokens) {
+		return nil
+	}
+
 	oauthCfg, err := oauth2.DiscoverConfig(ctx, c.OIDCDomain, c.ClientID)
 	if err != nil {
 		return err
@@ -111,7 +111,7 @@ func (c LoginCommand) Execute(ctx context.Context) error {
 		return fmt.Errorf("id_token not found in token response")
 	}
 
-	return c.Config.SaveOAuthToken(accessToken, idToken)
+	return config.SaveOAuthToken(accessToken, idToken)
 }
 
 var ErrNoPortsAvailable = errors.New("no ports available")

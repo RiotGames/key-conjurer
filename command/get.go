@@ -56,8 +56,6 @@ func resolveApplicationInfo(cfg *Config, bypassCache bool, nameOrID string) (*Ac
 }
 
 type GetCommand struct {
-	Config *Config
-
 	Args                                                                      []string
 	TimeToLive                                                                uint
 	TimeRemaining                                                             uint
@@ -108,37 +106,35 @@ func (g GetCommand) printUsage() error {
 	return g.UsageFunc()
 }
 
-func (g GetCommand) Execute(ctx context.Context) error {
-	if HasTokenExpired(g.Config.Tokens) {
-		if g.Login {
-			login := LoginCommand{
-				Config:        g.Config,
-				OIDCDomain:    g.OIDCDomain,
-				ClientID:      g.ClientID,
-				MachineOutput: ShouldUseMachineOutput(g.Flags) || g.URLOnly,
-				NoBrowser:     g.NoBrowser,
-			}
-
-			if err := login.Execute(ctx); err != nil {
-				return err
-			}
-		} else {
+func (g GetCommand) Execute(ctx context.Context, config *Config) error {
+	if HasTokenExpired(config.Tokens) {
+		if !g.Login {
 			return ErrTokensExpiredOrAbsent
 		}
-		return nil
+
+		loginCommand := LoginCommand{
+			OIDCDomain:    g.OIDCDomain,
+			ClientID:      g.ClientID,
+			MachineOutput: ShouldUseMachineOutput(g.Flags) || g.URLOnly,
+			NoBrowser:     g.NoBrowser,
+		}
+
+		if err := loginCommand.Execute(ctx, config); err != nil {
+			return err
+		}
 	}
 
 	var accountID string
 	if len(g.Args) > 0 {
 		accountID = g.Args[0]
-	} else if g.Config.LastUsedAccount != nil {
+	} else if config.LastUsedAccount != nil {
 		// No account specified. Can we use the most recent one?
-		accountID = *g.Config.LastUsedAccount
+		accountID = *config.LastUsedAccount
 	} else {
 		return g.printUsage()
 	}
 
-	account, ok := resolveApplicationInfo(g.Config, g.BypassCache, accountID)
+	account, ok := resolveApplicationInfo(config, g.BypassCache, accountID)
 	if !ok {
 		return UnknownAccountError(g.Args[0], FlagBypassCache)
 	}
@@ -151,13 +147,13 @@ func (g GetCommand) Execute(ctx context.Context) error {
 		g.RoleName = account.MostRecentRole
 	}
 
-	if g.Config.TimeRemaining != 0 && g.TimeRemaining == DefaultTimeRemaining {
-		g.TimeRemaining = g.Config.TimeRemaining
+	if config.TimeRemaining != 0 && g.TimeRemaining == DefaultTimeRemaining {
+		g.TimeRemaining = config.TimeRemaining
 	}
 
 	credentials := LoadAWSCredentialsFromEnvironment()
 	if !credentials.ValidUntil(account, time.Duration(g.TimeRemaining)*time.Minute) {
-		newCredentials, err := g.fetchNewCredentials(ctx, *account)
+		newCredentials, err := g.fetchNewCredentials(ctx, *account, config)
 		if err != nil {
 			return err
 		}
@@ -168,12 +164,12 @@ func (g GetCommand) Execute(ctx context.Context) error {
 		account.MostRecentRole = g.RoleName
 	}
 
-	g.Config.LastUsedAccount = &accountID
+	config.LastUsedAccount = &accountID
 	return echoCredentials(accountID, accountID, credentials, g.OutputType, g.ShellType, g.AWSCLIPath)
 }
 
-func (g GetCommand) fetchNewCredentials(ctx context.Context, account Account) (*CloudCredentials, error) {
-	samlResponse, assertionStr, err := oauth2.DiscoverConfigAndExchangeTokenForAssertion(ctx, g.Config.Tokens.AccessToken, g.Config.Tokens.IDToken, g.OIDCDomain, g.ClientID, account.ID)
+func (g GetCommand) fetchNewCredentials(ctx context.Context, account Account, cfg *Config) (*CloudCredentials, error) {
+	samlResponse, assertionStr, err := oauth2.DiscoverConfigAndExchangeTokenForAssertion(ctx, cfg.Tokens.AccessToken, cfg.Tokens.IDToken, g.OIDCDomain, g.ClientID, account.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -183,8 +179,8 @@ func (g GetCommand) fetchNewCredentials(ctx context.Context, account Account) (*
 		return nil, UnknownRoleError(g.RoleName, g.Args[0])
 	}
 
-	if g.TimeToLive == 1 && g.Config.TTL != 0 {
-		g.TimeToLive = g.Config.TTL
+	if g.TimeToLive == 1 && cfg.TTL != 0 {
+		g.TimeToLive = cfg.TTL
 	}
 
 	awsCfg, err := config.LoadDefaultConfig(ctx, config.WithRegion(g.Region))
@@ -232,7 +228,11 @@ A role must be specified when using this command through the --role flag. You ma
 			return err
 		}
 
-		return getCmd.Execute(cmd.Context())
+		if err := getCmd.Validate(); err != nil {
+			return err
+		}
+
+		return getCmd.Execute(cmd.Context(), ConfigFromCommand(cmd))
 	},
 }
 
