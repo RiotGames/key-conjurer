@@ -26,6 +26,10 @@ func init() {
 	accountsCmd.Flags().String(FlagServerAddress, ServerAddress, "The address of the account server. This does not usually need to be changed or specified.")
 }
 
+type AccountsCommand struct {
+	ServerAddress string `help:"The address of the account server. This does not usually need to be changed or specified." hidden:"" env:"KEYCONJURER_SERVER_ADDRESS" default:"${server_address}"`
+}
+
 var accountsCmd = &cobra.Command{
 	Use:   "accounts",
 	Short: "Prints and optionally refreshes the list of accounts you have access to.",
