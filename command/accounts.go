@@ -14,11 +14,7 @@ import (
 	"golang.org/x/oauth2"
 )
 
-var (
-	FlagNoRefresh     = "no-refresh"
-	FlagServerAddress = "server-address"
-	ErrSessionExpired = errors.New("session expired")
-)
+var ErrSessionExpired = errors.New("session expired")
 
 type AccountsCommand struct {
 	Refresh       bool   `help:"Refresh the list of accounts." default:"true" negatable:""`
@@ -46,7 +42,7 @@ func (a AccountsCommand) RunContext(ctx context.Context, globals *Globals, confi
 	if err != nil {
 		return genericError{
 			ExitCode: ExitCodeValueError,
-			Message:  fmt.Sprintf("--%s had an invalid value: %s\n", FlagServerAddress, err),
+			Message:  fmt.Sprintf("server-address had an invalid value: %s\n", err),
 		}
 	}
 

@@ -4,31 +4,12 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"slices"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/riotgames/key-conjurer/oauth2"
-)
-
-var (
-	FlagRegion        = "region"
-	FlagRoleName      = "role"
-	FlagTimeRemaining = "time-remaining"
-	FlagTimeToLive    = "ttl"
-	FlagBypassCache   = "bypass-cache"
-	FlagLogin         = "login"
-)
-
-var (
-	// outputTypeEnvironmentVariable indicates that keyconjurer will dump the credentials to stdout in Bash environment variable format
-	outputTypeEnvironmentVariable = "env"
-	// outputTypeAWSCredentialsFile indicates that keyconjurer will dump the credentials into the ~/.aws/credentials file.
-	outputTypeAWSCredentialsFile = "awscli"
-	permittedOutputTypes         = []string{outputTypeAWSCredentialsFile, outputTypeEnvironmentVariable}
-	permittedShellTypes          = []string{shellTypePowershell, shellTypeBash, shellTypeBasic, shellTypeInfer}
 )
 
 func resolveApplicationInfo(cfg *Config, bypassCache bool, nameOrID string) (*Account, bool) {
@@ -51,7 +32,7 @@ type GetCommand struct {
 	RoleName        string `help:"The name of the role to assume." short:"r" name:"role"`
 	SessionName     string `help:"The name of the role session name that will show up in CloudTrail logs." default:"KeyConjurer-AssumeRole"`
 	Region          string `help:"The AWS region to use." env:"AWS_REGION" default:"us-west-2"`
-	BypassCache     bool   `help:"Do not check the cache for accounts and send the application ID as-is to Okta. This is useful if you have an ID you know is an Okta application ID and it is not stored in your local account cache." hidden:""`
+	Cache           bool   `help:"Check the cache for accounts and send the application ID as-is to Okta. This is useful if you have an ID you know is an Okta application ID and it is not stored in your local account cache." default:"true" negatable:"" hidden:""`
 
 	UsageFunc  func() error `kong:"-"`
 	PrintErrln func(...any) `kong:"-"`
@@ -61,17 +42,6 @@ func (g GetCommand) Help() string {
 	return `Retrieves temporary cloud API credentials for the specified account.
 
 A role must be specified when using this command through the --role flag. You may list the roles you can assume through the roles command, and the accounts through the accounts command.`
-}
-
-func (g GetCommand) Validate() error {
-	if !slices.Contains(permittedOutputTypes, g.OutputType) {
-		return ValueError{Value: g.OutputType, ValidValues: permittedOutputTypes}
-	}
-
-	if !slices.Contains(permittedShellTypes, g.ShellType) {
-		return ValueError{Value: g.ShellType, ValidValues: permittedShellTypes}
-	}
-	return nil
 }
 
 func (g GetCommand) printUsage() error {
@@ -100,9 +70,9 @@ func (g GetCommand) RunContext(ctx context.Context, globals *Globals, cfg *Confi
 		return g.printUsage()
 	}
 
-	account, ok := resolveApplicationInfo(cfg, g.BypassCache, accountID)
+	account, ok := resolveApplicationInfo(cfg, !g.Cache, accountID)
 	if !ok {
-		return UnknownAccountError(g.AccountNameOrID, FlagBypassCache)
+		return UnknownAccountError(g.AccountNameOrID, "--no-cache")
 	}
 
 	if g.RoleName == "" {
@@ -188,10 +158,10 @@ func (g GetCommand) fetchNewCredentials(ctx context.Context, account Account, gl
 
 func echoCredentials(id, name string, credentials CloudCredentials, outputType, shellType, cliPath string) error {
 	switch outputType {
-	case outputTypeEnvironmentVariable:
+	case "env":
 		credentials.WriteFormat(os.Stdout, shellType)
 		return nil
-	case outputTypeAWSCredentialsFile:
+	case "aws":
 		acc := Account{ID: id, Name: name}
 		newCliEntry := NewCloudCliEntry(credentials, &acc)
 		return SaveCloudCredentialInCLI(cliPath, newCliEntry)

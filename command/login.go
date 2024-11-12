@@ -15,16 +15,6 @@ import (
 	"github.com/riotgames/key-conjurer/oauth2"
 )
 
-var (
-	FlagURLOnly   = "url-only"
-	FlagNoBrowser = "no-browser"
-)
-
-func isPiped() bool {
-	fi, _ := os.Stdout.Stat()
-	return fi.Mode()&os.ModeCharDevice == 0
-}
-
 type LoginCommand struct {
 	URLOnly bool `help:"Print only the URL to visit rather than a user-friendly message." short:"u"`
 	Browser bool `help:"Open the browser to the Okta URL. If false, a URL will be printed to the command line instead." default:"true" negatable:"" short:"b"`
@@ -118,4 +108,9 @@ func friendlyPrintURLToConsole(url string) error {
 func openBrowserToURL(url string) error {
 	slog.Debug("trying to open browser window", slog.String("url", url))
 	return browser.OpenURL(url)
+}
+
+func isPiped() bool {
+	fi, _ := os.Stdout.Stat()
+	return fi.Mode()&os.ModeCharDevice == 0
 }

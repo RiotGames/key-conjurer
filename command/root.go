@@ -10,12 +10,6 @@ import (
 	"github.com/mitchellh/go-homedir"
 )
 
-var (
-	FlagOIDCDomain = "oidc-domain"
-	FlagClientID   = "client-id"
-	FlagConfigPath = "config"
-)
-
 type Globals struct {
 	OIDCDomain string `help:"The domain name of your OIDC server." hidden:"" env:"KEYCONJURER_OIDC_DOMAIN" default:"${oidc_domain}"`
 	ClientID   string `help:"The client ID of your OIDC server." hidden:"" env:"KEYCONJURER_CLIENT_ID" default:"${client_id}"`
@@ -29,7 +23,7 @@ type CLI struct {
 	Login    LoginCommand    `cmd:"" help:"Authenticate with KeyConjurer."`
 	Accounts AccountsCommand `cmd:"" help:"Display accounts."`
 	Get      GetCommand      `cmd:"" help:"Retrieve temporary cloud credentials."`
-	// Switch SwitchCommand `cmd:"" help:"Switch between accounts."`
+	Switch   SwitchCommand   `cmd:"" help:"Switch between accounts."`
 
 	Config  Config           `kong:"-"`
 	Version kong.VersionFlag `help:"Show version information." short:"v" flag:""`
