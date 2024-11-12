@@ -55,7 +55,7 @@ func resolveApplicationInfo(cfg *Config, bypassCache bool, nameOrID string) (*Ac
 }
 
 type GetCommand struct {
-	AccountIDOrName                                                           string
+	AccountNameOrID                                                           string `arg:""`
 	TimeToLive                                                                uint
 	TimeRemaining                                                             uint
 	OutputType, ShellType, RoleName, AWSCLIPath, OIDCDomain, ClientID, Region string
@@ -86,7 +86,7 @@ func (g *GetCommand) Parse(cmd *cobra.Command, args []string) error {
 	if len(args) == 0 {
 		return fmt.Errorf("account name or alias is required")
 	}
-	g.AccountIDOrName = args[0]
+	g.AccountNameOrID = args[0]
 	return nil
 }
 
@@ -105,8 +105,8 @@ func (g GetCommand) printUsage() error {
 	return g.UsageFunc()
 }
 
-func (g GetCommand) Execute(ctx context.Context, config *Config) error {
-	if HasTokenExpired(config.Tokens) {
+func (g GetCommand) Execute(ctx context.Context, cfg *Config) error {
+	if HasTokenExpired(cfg.Tokens) {
 		if !g.Login {
 			return ErrTokensExpiredOrAbsent
 		}
@@ -118,24 +118,24 @@ func (g GetCommand) Execute(ctx context.Context, config *Config) error {
 			NoBrowser:     g.NoBrowser,
 		}
 
-		if err := loginCommand.Execute(ctx, config); err != nil {
+		if err := loginCommand.Execute(ctx, cfg); err != nil {
 			return err
 		}
 	}
 
 	var accountID string
-	if g.AccountIDOrName != "" {
-		accountID = g.AccountIDOrName
-	} else if config.LastUsedAccount != nil {
+	if g.AccountNameOrID != "" {
+		accountID = g.AccountNameOrID
+	} else if cfg.LastUsedAccount != nil {
 		// No account specified. Can we use the most recent one?
-		accountID = *config.LastUsedAccount
+		accountID = *cfg.LastUsedAccount
 	} else {
 		return g.printUsage()
 	}
 
-	account, ok := resolveApplicationInfo(config, g.BypassCache, accountID)
+	account, ok := resolveApplicationInfo(cfg, g.BypassCache, accountID)
 	if !ok {
-		return UnknownAccountError(g.AccountIDOrName, FlagBypassCache)
+		return UnknownAccountError(g.AccountNameOrID, FlagBypassCache)
 	}
 
 	if g.RoleName == "" {
@@ -146,13 +146,13 @@ func (g GetCommand) Execute(ctx context.Context, config *Config) error {
 		g.RoleName = account.MostRecentRole
 	}
 
-	if config.TimeRemaining != 0 && g.TimeRemaining == DefaultTimeRemaining {
-		g.TimeRemaining = config.TimeRemaining
+	if cfg.TimeRemaining != 0 && g.TimeRemaining == DefaultTimeRemaining {
+		g.TimeRemaining = cfg.TimeRemaining
 	}
 
 	credentials := LoadAWSCredentialsFromEnvironment()
 	if !credentials.ValidUntil(account, time.Duration(g.TimeRemaining)*time.Minute) {
-		newCredentials, err := g.fetchNewCredentials(ctx, *account, config)
+		newCredentials, err := g.fetchNewCredentials(ctx, *account, cfg)
 		if err != nil {
 			return err
 		}
@@ -163,7 +163,7 @@ func (g GetCommand) Execute(ctx context.Context, config *Config) error {
 		account.MostRecentRole = g.RoleName
 	}
 
-	config.LastUsedAccount = &accountID
+	cfg.LastUsedAccount = &accountID
 	return echoCredentials(accountID, accountID, credentials, g.OutputType, g.ShellType, g.AWSCLIPath)
 }
 
@@ -175,7 +175,7 @@ func (g GetCommand) fetchNewCredentials(ctx context.Context, account Account, cf
 
 	pair, ok := findRoleInSAML(g.RoleName, samlResponse)
 	if !ok {
-		return nil, UnknownRoleError(g.RoleName, g.AccountIDOrName)
+		return nil, UnknownRoleError(g.RoleName, g.AccountNameOrID)
 	}
 
 	if g.TimeToLive == 1 && cfg.TTL != 0 {
@@ -224,10 +224,6 @@ A role must be specified when using this command through the --role flag. You ma
 	RunE: func(cmd *cobra.Command, args []string) error {
 		var getCmd GetCommand
 		if err := getCmd.Parse(cmd, args); err != nil {
-			return err
-		}
-
-		if err := getCmd.Validate(); err != nil {
 			return err
 		}
 
