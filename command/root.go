@@ -20,13 +20,14 @@ type Globals struct {
 type CLI struct {
 	Globals
 
-	Login    LoginCommand    `cmd:"" help:"Authenticate with KeyConjurer."`
-	Accounts AccountsCommand `cmd:"" help:"Display accounts."`
-	Get      GetCommand      `cmd:"" help:"Retrieve temporary cloud credentials."`
-	Switch   SwitchCommand   `cmd:"" help:"Switch between accounts."`
+	Login    LoginCommand     `cmd:"" help:"Authenticate with KeyConjurer."`
+	Accounts AccountsCommand  `cmd:"" help:"Display accounts."`
+	Get      GetCommand       `cmd:"" help:"Retrieve temporary cloud credentials."`
+	Switch   SwitchCommand    `cmd:"" help:"Switch between accounts."`
+	Roles    RolesCommand     `cmd:"" help:"Display roles for a specific account."`
+	Version  kong.VersionFlag `help:"Show version information." short:"v" flag:""`
 
-	Config  Config           `kong:"-"`
-	Version kong.VersionFlag `help:"Show version information." short:"v" flag:""`
+	Config Config `kong:"-"`
 }
 
 func (CLI) Help() string {
