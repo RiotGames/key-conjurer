@@ -31,9 +31,8 @@ func init() {
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
-	Use:     "keyconjurer",
-	Version: fmt.Sprintf("keyconjurer-%s-%s %s (%s)", runtime.GOOS, runtime.GOARCH, Version, BuildTimestamp),
-	Short:   "Retrieve temporary cloud credentials.",
+	Use:   "keyconjurer",
+	Short: ".",
 	FParseErrWhitelist: cobra.FParseErrWhitelist{
 		UnknownFlags: true,
 	},
@@ -46,8 +45,9 @@ type CLI struct {
 	Get   GetCommand   `cmd:"" help:"Retrieve temporary cloud credentials."`
 	// Switch SwitchCommand `cmd:"" help:"Switch between accounts."`
 
-	ConfigPath string `help:"path to .keyconjurerrc file" default:"~/.keyconjurerrc" name:"config"`
-	Quiet      bool   `help:"tells the CLI to be quiet; stdout will not contain human-readable informational messages"`
+	ConfigPath string      `help:"path to .keyconjurerrc file" default:"~/.keyconjurerrc" name:"config"`
+	Quiet      bool        `help:"tells the CLI to be quiet; stdout will not contain human-readable informational messages"`
+	Version    VersionFlag `help:"Show version information." short:"v"`
 
 	Config Config `kong:"-"`
 }
@@ -103,14 +103,19 @@ func (c *CLI) AfterRun(ctx *kong.Context) error {
 }
 
 func Execute(ctx context.Context, args []string) error {
-	vars := kong.Vars{
-		"client_id":      ClientID,
-		"server_address": ServerAddress,
-		"oidc_domain":    OIDCDomain,
-	}
-
 	var cli CLI
-	k, err := kong.New(&cli, vars)
+	k, err := kong.New(&cli,
+		kong.Name("keyconjurer"),
+		kong.Description("Retrieve temporary cloud credentials."),
+		kong.UsageOnError(),
+		kong.Vars{
+			"client_id":      ClientID,
+			"server_address": ServerAddress,
+			"oidc_domain":    OIDCDomain,
+			"version":        fmt.Sprintf("keyconjurer-%s-%s %s (%s)", runtime.GOOS, runtime.GOARCH, Version, BuildTimestamp),
+		},
+	)
+
 	if err != nil {
 		return err
 	}
