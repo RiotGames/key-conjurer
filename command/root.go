@@ -21,7 +21,6 @@ var (
 
 func init() {
 	rootCmd.AddCommand(accountsCmd)
-	rootCmd.AddCommand(getCmd)
 	rootCmd.AddCommand(setCmd)
 	rootCmd.AddCommand(&switchCmd)
 	rootCmd.AddCommand(&aliasCmd)
@@ -47,9 +46,10 @@ type CLI struct {
 	Get   GetCommand   `cmd:"" help:"Retrieve temporary cloud credentials."`
 	// Switch SwitchCommand `cmd:"" help:"Switch between accounts."`
 
-	Config     Config `kong:"-"`
-	ConfigPath string `help:"path to .keyconjurerrc file" default:"~/.keyconjurerrc"`
+	ConfigPath string `help:"path to .keyconjurerrc file" default:"~/.keyconjurerrc" name:"config"`
 	Quiet      bool   `help:"tells the CLI to be quiet; stdout will not contain human-readable informational messages"`
+
+	Config Config `kong:"-"`
 }
 
 func (CLI) Help() string {
