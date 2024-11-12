@@ -32,8 +32,8 @@ func ShouldUseMachineOutput(flags *pflag.FlagSet) bool {
 }
 
 type LoginCommand struct {
-	OIDCDomain    string `help:"The domain name of your OIDC server" hidden:""`
-	ClientID      string `help:"The client ID of your OIDC server" hidden:""`
+	OIDCDomain    string `help:"The domain name of your OIDC server" hidden:"" env:"KEYCONJURER_OIDC_DOMAIN" default:"${oidc_domain}"`
+	ClientID      string `help:"The client ID of your OIDC server" hidden:"" env:"KEYCONJURER_CLIENT_ID" default:"${client_id}"`
 	MachineOutput bool   `kong:"-"`
 	NoBrowser     bool   `kong:"-"`
 }

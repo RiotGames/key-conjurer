@@ -103,8 +103,14 @@ func (c *CLI) AfterRun(ctx *kong.Context) error {
 }
 
 func Execute(ctx context.Context, args []string) error {
+	vars := kong.Vars{
+		"client_id":      ClientID,
+		"server_address": ServerAddress,
+		"oidc_domain":    OIDCDomain,
+	}
+
 	var cli CLI
-	k, err := kong.New(&cli)
+	k, err := kong.New(&cli, vars)
 	if err != nil {
 		return err
 	}

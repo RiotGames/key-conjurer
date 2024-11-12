@@ -55,11 +55,14 @@ func resolveApplicationInfo(cfg *Config, bypassCache bool, nameOrID string) (*Ac
 }
 
 type GetCommand struct {
-	AccountNameOrID                                                           string `arg:""`
-	TimeToLive                                                                uint
-	TimeRemaining                                                             uint
-	OutputType, ShellType, RoleName, AWSCLIPath, OIDCDomain, ClientID, Region string
-	Login, URLOnly, NoBrowser, BypassCache, MachineOutput                     bool
+	OIDCDomain string `help:"The domain name of your OIDC server" hidden:"" env:"KEYCONJURER_OIDC_DOMAIN" default:"${oidc_domain}"`
+	ClientID   string `help:"The client ID of your OIDC server" hidden:"" env:"KEYCONJURER_CLIENT_ID" default:"${client_id}"`
+
+	AccountNameOrID                                       string `arg:""`
+	TimeToLive                                            uint
+	TimeRemaining                                         uint
+	OutputType, ShellType, RoleName, AWSCLIPath, Region   string
+	Login, URLOnly, NoBrowser, BypassCache, MachineOutput bool
 
 	UsageFunc  func() error `kong:"-"`
 	PrintErrln func(...any) `kong:"-"`
