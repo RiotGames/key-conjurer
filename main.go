@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -43,7 +42,7 @@ func main() {
 		args = append(args, strings.Split(flag, " ")...)
 	}
 
-	err := command.Execute(context.Background(), args)
+	err := command.Execute(args)
 	if IsWindowsPortAccessError(err) {
 		fmt.Fprintf(os.Stderr, "Encountered an issue when opening the port for KeyConjurer: %s\n", err)
 		fmt.Fprintln(os.Stderr, "Consider running `net stop hns` and then `net start hns`")
