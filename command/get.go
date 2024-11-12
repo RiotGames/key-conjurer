@@ -61,8 +61,8 @@ type GetCommand struct {
 	OutputType, ShellType, RoleName, AWSCLIPath, OIDCDomain, ClientID, Region string
 	Login, URLOnly, NoBrowser, BypassCache, MachineOutput                     bool
 
-	UsageFunc  func() error
-	PrintErrln func(...any)
+	UsageFunc  func() error `kong:"-"`
+	PrintErrln func(...any) `kong:"-"`
 }
 
 func (g *GetCommand) Parse(cmd *cobra.Command, args []string) error {
