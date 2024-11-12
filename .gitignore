@@ -249,3 +249,4 @@ cli/keyconjurer-darwin*
 cli/keyconjurer-linux*
 cli/keyconjurer-windows.exe
 vendor
+bin/
