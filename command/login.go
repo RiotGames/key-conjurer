@@ -5,10 +5,12 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"net/http"
 	"os"
 
 	"log/slog"
 
+	"github.com/coreos/go-oidc"
 	"github.com/pkg/browser"
 	"github.com/riotgames/key-conjurer/oauth2"
 	"github.com/spf13/pflag"
@@ -49,12 +51,13 @@ func (c *LoginCommand) Parse(flags *pflag.FlagSet, args []string) error {
 	return nil
 }
 
-func (c LoginCommand) Run(ctx context.Context, config *Config) error {
+func (c LoginCommand) RunContext(ctx context.Context, config *Config) error {
 	if !HasTokenExpired(config.Tokens) {
 		return nil
 	}
 
-	oauthCfg, err := oauth2.DiscoverConfig(ctx, c.OIDCDomain, c.ClientID)
+	client := &http.Client{Transport: LogRoundTripper{http.DefaultTransport}}
+	oauthCfg, err := oauth2.DiscoverConfig(oidc.ClientContext(ctx, client), c.OIDCDomain, c.ClientID)
 	if err != nil {
 		return err
 	}
@@ -90,6 +93,10 @@ func (c LoginCommand) Run(ctx context.Context, config *Config) error {
 	}
 
 	return config.SaveOAuthToken(accessToken, idToken)
+}
+
+func (c LoginCommand) Run(config *Config) error {
+	return c.RunContext(context.Background(), config)
 }
 
 var ErrNoPortsAvailable = errors.New("no ports available")
