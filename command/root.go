@@ -37,6 +37,9 @@ func init() {
 	rootCmd.AddCommand(&unaliasCmd)
 	rootCmd.AddCommand(&rolesCmd)
 	rootCmd.SetVersionTemplate("{{.Version}}\n")
+
+	rootCmd.PersistentFlags().MarkHidden(FlagOIDCDomain)
+	rootCmd.PersistentFlags().MarkHidden(FlagClientID)
 }
 
 // rootCmd represents the base command when called without any subcommands
