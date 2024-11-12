@@ -26,9 +26,7 @@ func init() {
 }
 
 var loginCmd = &cobra.Command{
-	Use:   "login",
-	Short: "Authenticate with KeyConjurer.",
-	Long:  "Login to KeyConjurer using OAuth2. You will be required to open the URL printed to the console or scan a QR code.",
+	Use: "login",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		var loginCmd LoginCommand
 		if err := loginCmd.Parse(cmd.Flags(), args); err != nil {
@@ -50,10 +48,14 @@ func ShouldUseMachineOutput(flags *pflag.FlagSet) bool {
 }
 
 type LoginCommand struct {
-	OIDCDomain    string
-	ClientID      string
-	MachineOutput bool
-	NoBrowser     bool
+	OIDCDomain    string `help:"The domain name of your OIDC server" hidden:""`
+	ClientID      string `help:"The client ID of your OIDC server" hidden:""`
+	MachineOutput bool   `kong:"-"`
+	NoBrowser     bool   `kong:"-"`
+}
+
+func (c LoginCommand) Help() string {
+	return "Login to KeyConjurer using OAuth2. You will be required to open the URL printed to the console or scan a QR code."
 }
 
 func (c *LoginCommand) Parse(flags *pflag.FlagSet, args []string) error {

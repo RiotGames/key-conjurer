@@ -9,6 +9,7 @@ import (
 	"runtime"
 	"time"
 
+	"github.com/alecthomas/kong"
 	"github.com/coreos/go-oidc"
 	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
@@ -107,9 +108,25 @@ To get started run the following commands:
 	SilenceUsage:  true,
 }
 
+var CLI struct {
+	Login LoginCommand `cmd:"" help:"Authenticate with KeyConjurer."`
+	Get   GetCommand   `cmd:"" help:"Retrieve temporary cloud credentials."`
+	// Switch SwitchCommand `cmd:"" help:"Switch between accounts."`
+}
+
 func Execute(ctx context.Context, args []string) error {
 	client := &http.Client{Transport: LogRoundTripper{http.DefaultTransport}}
 	ctx = oidc.ClientContext(ctx, client)
-	rootCmd.SetArgs(args)
-	return rootCmd.ExecuteContext(ctx)
+
+	k, err := kong.New(&CLI)
+	if err != nil {
+		return err
+	}
+
+	kongCtx, err := k.Parse(args)
+	if err != nil {
+		return err
+	}
+
+	return kongCtx.Run(ctx)
 }
