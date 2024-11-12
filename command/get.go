@@ -12,7 +12,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/riotgames/key-conjurer/oauth2"
 	"github.com/spf13/cobra"
-	"github.com/spf13/pflag"
 )
 
 var (
@@ -56,17 +55,14 @@ func resolveApplicationInfo(cfg *Config, bypassCache bool, nameOrID string) (*Ac
 }
 
 type GetCommand struct {
-	Args                                                                      []string
+	AccountIDOrName                                                           string
 	TimeToLive                                                                uint
 	TimeRemaining                                                             uint
 	OutputType, ShellType, RoleName, AWSCLIPath, OIDCDomain, ClientID, Region string
-	Login, URLOnly, NoBrowser, BypassCache                                    bool
+	Login, URLOnly, NoBrowser, BypassCache, MachineOutput                     bool
 
 	UsageFunc  func() error
 	PrintErrln func(...any)
-
-	Flags   *pflag.FlagSet
-	Command *cobra.Command
 }
 
 func (g *GetCommand) Parse(cmd *cobra.Command, args []string) error {
@@ -84,10 +80,13 @@ func (g *GetCommand) Parse(cmd *cobra.Command, args []string) error {
 	g.NoBrowser, _ = flags.GetBool(FlagNoBrowser)
 	g.BypassCache, _ = flags.GetBool(FlagBypassCache)
 	g.Region, _ = flags.GetString(FlagRegion)
-	g.Flags = flags
-	g.Args = args
 	g.UsageFunc = cmd.Usage
 	g.PrintErrln = cmd.PrintErrln
+	g.MachineOutput = ShouldUseMachineOutput(flags) || g.URLOnly
+	if len(args) == 0 {
+		return fmt.Errorf("account name or alias is required")
+	}
+	g.AccountIDOrName = args[0]
 	return nil
 }
 
@@ -115,7 +114,7 @@ func (g GetCommand) Execute(ctx context.Context, config *Config) error {
 		loginCommand := LoginCommand{
 			OIDCDomain:    g.OIDCDomain,
 			ClientID:      g.ClientID,
-			MachineOutput: ShouldUseMachineOutput(g.Flags) || g.URLOnly,
+			MachineOutput: g.MachineOutput,
 			NoBrowser:     g.NoBrowser,
 		}
 
@@ -125,8 +124,8 @@ func (g GetCommand) Execute(ctx context.Context, config *Config) error {
 	}
 
 	var accountID string
-	if len(g.Args) > 0 {
-		accountID = g.Args[0]
+	if g.AccountIDOrName != "" {
+		accountID = g.AccountIDOrName
 	} else if config.LastUsedAccount != nil {
 		// No account specified. Can we use the most recent one?
 		accountID = *config.LastUsedAccount
@@ -136,7 +135,7 @@ func (g GetCommand) Execute(ctx context.Context, config *Config) error {
 
 	account, ok := resolveApplicationInfo(config, g.BypassCache, accountID)
 	if !ok {
-		return UnknownAccountError(g.Args[0], FlagBypassCache)
+		return UnknownAccountError(g.AccountIDOrName, FlagBypassCache)
 	}
 
 	if g.RoleName == "" {
@@ -176,7 +175,7 @@ func (g GetCommand) fetchNewCredentials(ctx context.Context, account Account, cf
 
 	pair, ok := findRoleInSAML(g.RoleName, samlResponse)
 	if !ok {
-		return nil, UnknownRoleError(g.RoleName, g.Args[0])
+		return nil, UnknownRoleError(g.RoleName, g.AccountIDOrName)
 	}
 
 	if g.TimeToLive == 1 && cfg.TTL != 0 {
