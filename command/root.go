@@ -1,7 +1,6 @@
 package command
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -9,7 +8,6 @@ import (
 
 	"github.com/alecthomas/kong"
 	"github.com/mitchellh/go-homedir"
-	"github.com/spf13/cobra"
 )
 
 var (
@@ -19,35 +17,14 @@ var (
 	FlagQuiet      = "quiet"
 )
 
-func init() {
-	rootCmd.AddCommand(accountsCmd)
-	rootCmd.AddCommand(setCmd)
-	rootCmd.AddCommand(&switchCmd)
-	rootCmd.AddCommand(&aliasCmd)
-	rootCmd.AddCommand(&unaliasCmd)
-	rootCmd.AddCommand(&rolesCmd)
-	rootCmd.SetVersionTemplate("{{.Version}}\n")
-}
-
-// rootCmd represents the base command when called without any subcommands
-var rootCmd = &cobra.Command{
-	Use:   "keyconjurer",
-	Short: ".",
-	FParseErrWhitelist: cobra.FParseErrWhitelist{
-		UnknownFlags: true,
-	},
-	SilenceErrors: true,
-	SilenceUsage:  true,
-}
-
 type CLI struct {
 	Login LoginCommand `cmd:"" help:"Authenticate with KeyConjurer."`
 	Get   GetCommand   `cmd:"" help:"Retrieve temporary cloud credentials."`
 	// Switch SwitchCommand `cmd:"" help:"Switch between accounts."`
 
-	ConfigPath string      `help:"path to .keyconjurerrc file" default:"~/.keyconjurerrc" name:"config"`
-	Quiet      bool        `help:"tells the CLI to be quiet; stdout will not contain human-readable informational messages"`
-	Version    VersionFlag `help:"Show version information." short:"v"`
+	ConfigPath string           `help:"path to .keyconjurerrc file" default:"~/.keyconjurerrc" name:"config"`
+	Quiet      bool             `help:"tells the CLI to be quiet; stdout will not contain human-readable informational messages"`
+	Version    kong.VersionFlag `help:"Show version information." short:"v" flag:""`
 
 	Config Config `kong:"-"`
 }
@@ -102,9 +79,9 @@ func (c *CLI) AfterRun(ctx *kong.Context) error {
 	return c.Config.Write(file)
 }
 
-func Execute(ctx context.Context, args []string) error {
-	var cli CLI
-	k, err := kong.New(&cli,
+func newKong(cli *CLI) (*kong.Kong, error) {
+	return kong.New(
+		cli,
 		kong.Name("keyconjurer"),
 		kong.Description("Retrieve temporary cloud credentials."),
 		kong.UsageOnError(),
@@ -115,7 +92,11 @@ func Execute(ctx context.Context, args []string) error {
 			"version":        fmt.Sprintf("keyconjurer-%s-%s %s (%s)", runtime.GOOS, runtime.GOARCH, Version, BuildTimestamp),
 		},
 	)
+}
 
+func Execute(args []string) error {
+	var cli CLI
+	k, err := newKong(&cli)
 	if err != nil {
 		return err
 	}
