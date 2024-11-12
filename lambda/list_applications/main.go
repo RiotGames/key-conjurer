@@ -9,7 +9,6 @@ import (
 
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/coreos/go-oidc"
-	"github.com/riotgames/key-conjurer/internal"
 	"github.com/riotgames/key-conjurer/internal/api"
 )
 
@@ -33,5 +32,6 @@ func main() {
 	}
 
 	slog.Info("running list_applications_v2 Lambda")
-	lambda.Start(internal.Lambdaify(api.ServeUserApplications(service, idp)))
+
+	lambda.Start(api.ServeUserApplications(service, idp))
 }

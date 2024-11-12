@@ -1,11 +1,11 @@
 package api
 
 import (
-	"net/http"
 	"strings"
 
 	"log/slog"
 
+	"github.com/aws/aws-lambda-go/events"
 	"golang.org/x/oauth2"
 )
 
@@ -14,24 +14,26 @@ import (
 // []any is returned instead of []slog.Attr to make it easier to supply the attributes to slog functions using spread, for example:
 //
 //	slog.Error(msg, RequestAttrs(r)...)
-func RequestAttrs(r *http.Request) []any {
-	attrs := []any{
-		slog.String("origin_ip_address", r.RemoteAddr),
-	}
+func RequestAttrs(r events.ALBTargetGroupRequest) []any {
+	var attrs []any
 
-	if v := r.Header.Get("x-amzn-trace-id"); v != "" {
+	if v, ok := r.Headers["x-amzn-trace-id"]; ok {
 		attrs = append(attrs, slog.String("amz_request_id", v))
 	}
 
-	if v := r.Header.Get("x-forwarded-for"); v != "" {
+	if v, ok := r.Headers["x-forwarded-for"]; ok {
 		attrs = append(attrs, slog.String("x_forwarded_for", v))
 	}
 
 	return attrs
 }
 
-func requestTokenSource(r *http.Request) (oauth2.TokenSource, bool) {
-	headerValue := r.Header.Get("authorization")
+func requestTokenSource(r events.ALBTargetGroupRequest) (oauth2.TokenSource, bool) {
+	headerValue, ok := r.Headers["authorization"]
+	if !ok {
+		return nil, false
+	}
+
 	parts := strings.Split(headerValue, " ")
 	if len(parts) != 2 {
 		return nil, false
