@@ -11,7 +11,6 @@ import (
 
 	"github.com/pkg/browser"
 	"github.com/riotgames/key-conjurer/oauth2"
-	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
 
@@ -19,23 +18,6 @@ var (
 	FlagURLOnly   = "url-only"
 	FlagNoBrowser = "no-browser"
 )
-
-func init() {
-	loginCmd.Flags().BoolP(FlagURLOnly, "u", false, "Print only the URL to visit rather than a user-friendly message")
-	loginCmd.Flags().BoolP(FlagNoBrowser, "b", false, "Do not open a browser window, printing the URL instead")
-}
-
-var loginCmd = &cobra.Command{
-	Use: "login",
-	RunE: func(cmd *cobra.Command, args []string) error {
-		var loginCmd LoginCommand
-		if err := loginCmd.Parse(cmd.Flags(), args); err != nil {
-			return err
-		}
-
-		return loginCmd.Execute(cmd.Context(), ConfigFromCommand(cmd))
-	},
-}
 
 // ShouldUseMachineOutput indicates whether or not we should write to standard output as if the user is a machine.
 //
@@ -67,7 +49,7 @@ func (c *LoginCommand) Parse(flags *pflag.FlagSet, args []string) error {
 	return nil
 }
 
-func (c LoginCommand) Execute(ctx context.Context, config *Config) error {
+func (c LoginCommand) Run(ctx context.Context, config *Config) error {
 	if !HasTokenExpired(config.Tokens) {
 		return nil
 	}
