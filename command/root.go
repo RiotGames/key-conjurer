@@ -14,19 +14,25 @@ var (
 	FlagOIDCDomain = "oidc-domain"
 	FlagClientID   = "client-id"
 	FlagConfigPath = "config"
-	FlagQuiet      = "quiet"
 )
 
+type Globals struct {
+	OIDCDomain string `help:"The domain name of your OIDC server." hidden:"" env:"KEYCONJURER_OIDC_DOMAIN" default:"${oidc_domain}"`
+	ClientID   string `help:"The client ID of your OIDC server." hidden:"" env:"KEYCONJURER_CLIENT_ID" default:"${client_id}"`
+	ConfigPath string `help:"The path to .keyconjurerrc file." default:"~/.keyconjurerrc" name:"config"`
+	Quiet      bool   `help:"Tells the CLI to be quiet; stdout will not contain human-readable informational messages."`
+}
+
 type CLI struct {
-	Login LoginCommand `cmd:"" help:"Authenticate with KeyConjurer."`
-	Get   GetCommand   `cmd:"" help:"Retrieve temporary cloud credentials."`
+	Globals
+
+	Login    LoginCommand    `cmd:"" help:"Authenticate with KeyConjurer."`
+	Accounts AccountsCommand `cmd:"" help:"Display accounts."`
+	Get      GetCommand      `cmd:"" help:"Retrieve temporary cloud credentials."`
 	// Switch SwitchCommand `cmd:"" help:"Switch between accounts."`
 
-	ConfigPath string           `help:"path to .keyconjurerrc file" default:"~/.keyconjurerrc" name:"config"`
-	Quiet      bool             `help:"tells the CLI to be quiet; stdout will not contain human-readable informational messages"`
-	Version    kong.VersionFlag `help:"Show version information." short:"v" flag:""`
-
-	Config Config `kong:"-"`
+	Config  Config           `kong:"-"`
+	Version kong.VersionFlag `help:"Show version information." short:"v" flag:""`
 }
 
 func (CLI) Help() string {
@@ -106,5 +112,5 @@ func Execute(args []string) error {
 		return err
 	}
 
-	return kongCtx.Run()
+	return kongCtx.Run(&cli.Globals)
 }
