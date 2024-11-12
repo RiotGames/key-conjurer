@@ -29,7 +29,6 @@ func init() {
 	rootCmd.PersistentFlags().Int(FlagTimeout, 120, "the amount of time in seconds to wait for keyconjurer to respond")
 	rootCmd.PersistentFlags().String(FlagConfigPath, "~/.keyconjurerrc", "path to .keyconjurerrc file")
 	rootCmd.PersistentFlags().Bool(FlagQuiet, false, "tells the CLI to be quiet; stdout will not contain human-readable informational messages")
-	rootCmd.AddCommand(loginCmd)
 	rootCmd.AddCommand(accountsCmd)
 	rootCmd.AddCommand(getCmd)
 	rootCmd.AddCommand(setCmd)
@@ -128,5 +127,5 @@ func Execute(ctx context.Context, args []string) error {
 		return err
 	}
 
-	return kongCtx.Run(ctx)
+	return kongCtx.Run(kong.Bind(ctx))
 }

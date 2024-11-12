@@ -118,7 +118,7 @@ func (g GetCommand) Execute(ctx context.Context, cfg *Config) error {
 			NoBrowser:     g.NoBrowser,
 		}
 
-		if err := loginCommand.Execute(ctx, cfg); err != nil {
+		if err := loginCommand.Run(ctx, cfg); err != nil {
 			return err
 		}
 	}
