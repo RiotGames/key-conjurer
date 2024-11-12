@@ -107,7 +107,7 @@ To get started run the following commands:
 	SilenceUsage:  true,
 }
 
-var CLI struct {
+type CLI struct {
 	Login LoginCommand `cmd:"" help:"Authenticate with KeyConjurer."`
 	Get   GetCommand   `cmd:"" help:"Retrieve temporary cloud credentials."`
 	// Switch SwitchCommand `cmd:"" help:"Switch between accounts."`
@@ -117,7 +117,8 @@ func Execute(ctx context.Context, args []string) error {
 	client := &http.Client{Transport: LogRoundTripper{http.DefaultTransport}}
 	ctx = oidc.ClientContext(ctx, client)
 
-	k, err := kong.New(&CLI)
+	var cli CLI
+	k, err := kong.New(&cli)
 	if err != nil {
 		return err
 	}
