@@ -73,7 +73,7 @@ build/list_applications.zip:
 	mkdir -p build
 # A temporary destination is used because we don't want multiple targets run at the same time to conflict - they all have to be named 'bootstrap'
 	TMP_DST=$$(mktemp -d) ;\
-	GOOS=linux GOARCH=amd64 go build \
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
 		-tags lambda.norpc \
 		-o $$TMP_DST/bootstrap lambda/$(subst .zip,,$(notdir $@))/main.go && \
 	(cd $$TMP_DST && zip - bootstrap) > $@
