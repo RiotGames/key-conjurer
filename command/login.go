@@ -13,7 +13,6 @@ import (
 	"github.com/coreos/go-oidc"
 	"github.com/pkg/browser"
 	"github.com/riotgames/key-conjurer/oauth2"
-	"github.com/spf13/pflag"
 )
 
 var (
@@ -21,43 +20,27 @@ var (
 	FlagNoBrowser = "no-browser"
 )
 
-// ShouldUseMachineOutput indicates whether or not we should write to standard output as if the user is a machine.
-//
-// What this means is implementation specific, but this usually indicates the user is trying to use this program in a script and we should avoid user-friendly output messages associated with values a user might find useful.
-func ShouldUseMachineOutput(flags *pflag.FlagSet) bool {
-	quiet, _ := flags.GetBool(FlagQuiet)
+func isPiped() bool {
 	fi, _ := os.Stdout.Stat()
-	isPiped := fi.Mode()&os.ModeCharDevice == 0
-	return isPiped || quiet
+	return fi.Mode()&os.ModeCharDevice == 0
 }
 
 type LoginCommand struct {
-	OIDCDomain    string `help:"The domain name of your OIDC server" hidden:"" env:"KEYCONJURER_OIDC_DOMAIN" default:"${oidc_domain}"`
-	ClientID      string `help:"The client ID of your OIDC server" hidden:"" env:"KEYCONJURER_CLIENT_ID" default:"${client_id}"`
-	MachineOutput bool   `kong:"-"`
-	NoBrowser     bool   `kong:"-"`
+	URLOnly bool `help:"Print only the URL to visit rather than a user-friendly message." short:"u"`
+	Browser bool `help:"Open the browser to the Okta URL. If false, a URL will be printed to the command line instead." default:"true" negatable:"" short:"b"`
 }
 
 func (c LoginCommand) Help() string {
 	return "Login to KeyConjurer using OAuth2. You will be required to open the URL printed to the console or scan a QR code."
 }
 
-func (c *LoginCommand) Parse(flags *pflag.FlagSet, args []string) error {
-	c.OIDCDomain, _ = flags.GetString(FlagOIDCDomain)
-	c.ClientID, _ = flags.GetString(FlagClientID)
-	c.NoBrowser, _ = flags.GetBool(FlagNoBrowser)
-	urlOnly, _ := flags.GetBool(FlagURLOnly)
-	c.MachineOutput = ShouldUseMachineOutput(flags) || urlOnly
-	return nil
-}
-
-func (c LoginCommand) RunContext(ctx context.Context, config *Config) error {
+func (c LoginCommand) RunContext(ctx context.Context, globals *Globals, config *Config) error {
 	if !HasTokenExpired(config.Tokens) {
 		return nil
 	}
 
 	client := &http.Client{Transport: LogRoundTripper{http.DefaultTransport}}
-	oauthCfg, err := oauth2.DiscoverConfig(oidc.ClientContext(ctx, client), c.OIDCDomain, c.ClientID)
+	oauthCfg, err := oauth2.DiscoverConfig(oidc.ClientContext(ctx, client), globals.OIDCDomain, globals.ClientID)
 	if err != nil {
 		return err
 	}
@@ -79,8 +62,8 @@ func (c LoginCommand) RunContext(ctx context.Context, config *Config) error {
 		OnDisplayURL: openBrowserToURL,
 	}
 
-	if c.NoBrowser {
-		if c.MachineOutput {
+	if !c.Browser {
+		if isPiped() || globals.Quiet {
 			handler.OnDisplayURL = printURLToConsole
 		} else {
 			handler.OnDisplayURL = friendlyPrintURLToConsole
@@ -95,8 +78,8 @@ func (c LoginCommand) RunContext(ctx context.Context, config *Config) error {
 	return config.SaveOAuthToken(accessToken, idToken)
 }
 
-func (c LoginCommand) Run(config *Config) error {
-	return c.RunContext(context.Background(), config)
+func (c LoginCommand) Run(globals *Globals, config *Config) error {
+	return c.RunContext(context.Background(), globals, config)
 }
 
 var ErrNoPortsAvailable = errors.New("no ports available")

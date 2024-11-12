@@ -39,8 +39,6 @@ func resolveApplicationInfo(cfg *Config, bypassCache bool, nameOrID string) (*Ac
 }
 
 type GetCommand struct {
-	OIDCDomain      string `help:"The domain name of your OIDC server" hidden:"" env:"KEYCONJURER_OIDC_DOMAIN" default:"${oidc_domain}"`
-	ClientID        string `help:"The client ID of your OIDC server" hidden:"" env:"KEYCONJURER_CLIENT_ID" default:"${client_id}"`
 	AccountNameOrID string `arg:""`
 	TimeToLive      uint   `placeholder:"hours" help:"The key timeout in hours from 1 to 8." default:"1" name:"ttl"`
 	TimeRemaining   uint   `placeholder:"minutes" help:"Request new keys if there are no keys in the environment or the current keys expire within <time-remaining> minutes." default:"5" short:"t"`
@@ -55,9 +53,8 @@ type GetCommand struct {
 	Region          string `help:"The AWS region to use." env:"AWS_REGION" default:"us-west-2"`
 	BypassCache     bool   `help:"Do not check the cache for accounts and send the application ID as-is to Okta. This is useful if you have an ID you know is an Okta application ID and it is not stored in your local account cache." hidden:""`
 
-	UsageFunc     func() error `kong:"-"`
-	PrintErrln    func(...any) `kong:"-"`
-	MachineOutput bool         `kong:"-"`
+	UsageFunc  func() error `kong:"-"`
+	PrintErrln func(...any) `kong:"-"`
 }
 
 func (g GetCommand) Help() string {
@@ -81,22 +78,14 @@ func (g GetCommand) printUsage() error {
 	return g.UsageFunc()
 }
 
-func (g GetCommand) RunContext(ctx context.Context, cfg *Config) error {
-	// g.MachineOutput = ShouldUseMachineOutput(flags) || g.URLOnly
-
+func (g GetCommand) RunContext(ctx context.Context, globals *Globals, cfg *Config) error {
 	if HasTokenExpired(cfg.Tokens) {
 		if !g.Login {
 			return ErrTokensExpiredOrAbsent
 		}
 
-		loginCommand := LoginCommand{
-			OIDCDomain:    g.OIDCDomain,
-			ClientID:      g.ClientID,
-			MachineOutput: g.MachineOutput,
-			NoBrowser:     !g.Browser,
-		}
-
-		if err := loginCommand.RunContext(ctx, cfg); err != nil {
+		var loginCommand LoginCommand
+		if err := loginCommand.RunContext(ctx, globals, cfg); err != nil {
 			return err
 		}
 	}
@@ -130,7 +119,7 @@ func (g GetCommand) RunContext(ctx context.Context, cfg *Config) error {
 
 	credentials := LoadAWSCredentialsFromEnvironment()
 	if !credentials.ValidUntil(account, time.Duration(g.TimeRemaining)*time.Minute) {
-		newCredentials, err := g.fetchNewCredentials(ctx, *account, cfg)
+		newCredentials, err := g.fetchNewCredentials(ctx, *account, globals, cfg)
 		if err != nil {
 			return err
 		}
@@ -145,12 +134,12 @@ func (g GetCommand) RunContext(ctx context.Context, cfg *Config) error {
 	return echoCredentials(accountID, accountID, credentials, g.OutputType, g.ShellType, g.AWSCLIPath)
 }
 
-func (g GetCommand) Run(cfg *Config) error {
-	return g.RunContext(context.Background(), cfg)
+func (g GetCommand) Run(globals *Globals, cfg *Config) error {
+	return g.RunContext(context.Background(), globals, cfg)
 }
 
-func (g GetCommand) fetchNewCredentials(ctx context.Context, account Account, cfg *Config) (*CloudCredentials, error) {
-	samlResponse, assertionStr, err := oauth2.DiscoverConfigAndExchangeTokenForAssertion(ctx, cfg.Tokens.AccessToken, cfg.Tokens.IDToken, g.OIDCDomain, g.ClientID, account.ID)
+func (g GetCommand) fetchNewCredentials(ctx context.Context, account Account, globals *Globals, cfg *Config) (*CloudCredentials, error) {
+	samlResponse, assertionStr, err := oauth2.DiscoverConfigAndExchangeTokenForAssertion(ctx, cfg.Tokens.AccessToken, cfg.Tokens.IDToken, globals.OIDCDomain, globals.ClientID, account.ID)
 	if err != nil {
 		return nil, err
 	}
