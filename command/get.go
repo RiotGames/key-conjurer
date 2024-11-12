@@ -105,7 +105,7 @@ func (g GetCommand) printUsage() error {
 	return g.UsageFunc()
 }
 
-func (g GetCommand) Execute(ctx context.Context, cfg *Config) error {
+func (g GetCommand) RunContext(ctx context.Context, cfg *Config) error {
 	if HasTokenExpired(cfg.Tokens) {
 		if !g.Login {
 			return ErrTokensExpiredOrAbsent
@@ -118,7 +118,7 @@ func (g GetCommand) Execute(ctx context.Context, cfg *Config) error {
 			NoBrowser:     g.NoBrowser,
 		}
 
-		if err := loginCommand.Run(ctx, cfg); err != nil {
+		if err := loginCommand.RunContext(ctx, cfg); err != nil {
 			return err
 		}
 	}
@@ -165,6 +165,10 @@ func (g GetCommand) Execute(ctx context.Context, cfg *Config) error {
 
 	cfg.LastUsedAccount = &accountID
 	return echoCredentials(accountID, accountID, credentials, g.OutputType, g.ShellType, g.AWSCLIPath)
+}
+
+func (g GetCommand) Run(cfg *Config) error {
+	return g.RunContext(context.Background(), cfg)
 }
 
 func (g GetCommand) fetchNewCredentials(ctx context.Context, account Account, cfg *Config) (*CloudCredentials, error) {
@@ -227,7 +231,7 @@ A role must be specified when using this command through the --role flag. You ma
 			return err
 		}
 
-		return getCmd.Execute(cmd.Context(), ConfigFromCommand(cmd))
+		return getCmd.RunContext(cmd.Context(), ConfigFromCommand(cmd))
 	},
 }
 

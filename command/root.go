@@ -3,14 +3,12 @@ package command
 import (
 	"context"
 	"fmt"
-	"net/http"
 	"os"
 	"path/filepath"
 	"runtime"
 	"time"
 
 	"github.com/alecthomas/kong"
-	"github.com/coreos/go-oidc"
 	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
 )
@@ -114,9 +112,6 @@ type CLI struct {
 }
 
 func Execute(ctx context.Context, args []string) error {
-	client := &http.Client{Transport: LogRoundTripper{http.DefaultTransport}}
-	ctx = oidc.ClientContext(ctx, client)
-
 	var cli CLI
 	k, err := kong.New(&cli)
 	if err != nil {
@@ -128,5 +123,9 @@ func Execute(ctx context.Context, args []string) error {
 		return err
 	}
 
-	return kongCtx.Run(kong.Bind(ctx))
+	var config Config
+	return kongCtx.Run(
+		// This should be moved to a hook in Root so that we can use flags to load the config.
+		&config,
+	)
 }
