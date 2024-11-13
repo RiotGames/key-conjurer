@@ -10,7 +10,6 @@ import (
 	"log/slog"
 
 	"github.com/riotgames/key-conjurer/command"
-	"github.com/spf13/cobra"
 )
 
 func main() {
@@ -35,8 +34,7 @@ func main() {
 	}
 
 	if err != nil {
-		cobra.CheckErr(err)
-
+		fmt.Fprintln(os.Stderr, "Error:", err)
 		errorCode, ok := command.GetExitCode(err)
 		if !ok {
 			errorCode = command.ExitCodeUnknownError
