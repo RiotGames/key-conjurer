@@ -20,12 +20,16 @@ type Globals struct {
 type CLI struct {
 	Globals
 
-	Login    LoginCommand     `cmd:"" help:"Authenticate with KeyConjurer."`
-	Accounts AccountsCommand  `cmd:"" help:"Display accounts."`
-	Get      GetCommand       `cmd:"" help:"Retrieve temporary cloud credentials."`
-	Switch   SwitchCommand    `cmd:"" help:"Switch between accounts."`
-	Roles    RolesCommand     `cmd:"" help:"Display roles for a specific account."`
-	Version  kong.VersionFlag `help:"Show version information." short:"v" flag:""`
+	Login    LoginCommand    `cmd:"" help:"Authenticate with KeyConjurer."`
+	Accounts AccountsCommand `cmd:"" help:"Display accounts."`
+	Get      GetCommand      `cmd:"" help:"Retrieve temporary cloud credentials."`
+	Switch   SwitchCommand   `cmd:"" help:"Switch between accounts."`
+	Roles    RolesCommand    `cmd:"" help:"Display roles for a specific account."`
+	Alias    AliasCommand    `cmd:"" help:"Create an alias for an account."`
+	Unalias  UnaliasCommand  `cmd:"" help:"Remove an alias."`
+	Set      SetCommand      `cmd:"" help:"Set config values."`
+
+	Version kong.VersionFlag `help:"Show version information." short:"v" flag:""`
 
 	Config Config `kong:"-"`
 }
