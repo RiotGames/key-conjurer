@@ -1,16 +1,30 @@
 package command
 
-import (
-	"github.com/spf13/cobra"
-)
+import "context"
 
-var aliasCmd = cobra.Command{
-	Use:     "alias <accountName> <alias>",
-	Short:   "Give an account a nickname.",
-	Long:    "Alias an account to a nickname so you can refer to the account by the nickname.",
-	Args:    cobra.ExactArgs(2),
-	Example: "keyconjurer alias FooAccount Bar",
-	Run: func(cmd *cobra.Command, args []string) {
-		config := ConfigFromCommand(cmd)
-		config.Alias(args[0], args[1])
-	}}
+type AliasCommand struct {
+	AccountName string `arg:""`
+	Alias       string `arg:""`
+}
+
+func (a AliasCommand) Run(globals *Globals, config *Config) error {
+	return a.RunContext(context.Background(), globals, config)
+}
+
+func (a AliasCommand) RunContext(ctx context.Context, _ *Globals, config *Config) error {
+	config.Alias(a.AccountName, a.Alias)
+	return nil
+}
+
+type UnaliasCommand struct {
+	Alias string `arg:""`
+}
+
+func (a UnaliasCommand) Run(globals *Globals, config *Config) error {
+	return a.RunContext(context.Background(), globals, config)
+}
+
+func (a UnaliasCommand) RunContext(ctx context.Context, _ *Globals, config *Config) error {
+	config.Unalias(a.Alias)
+	return nil
+}
