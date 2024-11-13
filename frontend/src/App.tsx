@@ -14,8 +14,7 @@ export const App = () => (
 
     <div className={styles.Content}>
       <p className={styles.Para1}>
-        KeyConjurer is an application for generating temporary session
-        credentials for AWS and Tencent Cloud.
+        KeyConjurer is an application for generating temporary session credentials for AWS.
       </p>
       <div className={styles.History}>
         <History />

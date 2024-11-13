@@ -1,4 +1,4 @@
-package main
+package command
 
 // Vars for build time
 var (

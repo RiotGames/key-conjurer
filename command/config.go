@@ -1,4 +1,4 @@
-package main
+package command
 
 import (
 	"encoding/csv"
@@ -23,6 +23,16 @@ type TokenSet struct {
 	TokenType    string    `json:"token_type"`
 }
 
+// Token implements oauth2.TokenSource.
+func (t TokenSet) Token() (*oauth2.Token, error) {
+	return &oauth2.Token{
+		AccessToken:  t.AccessToken,
+		RefreshToken: t.RefreshToken,
+		Expiry:       t.Expiry,
+		TokenType:    t.TokenType,
+	}, nil
+}
+
 type Account struct {
 	ID             string `json:"id"`
 	Name           string `json:"name"`
@@ -31,7 +41,7 @@ type Account struct {
 }
 
 func (a *Account) NormalizeName() string {
-	magicPrefixes := []string{"AWS - ", "Tencent - "}
+	magicPrefixes := []string{"AWS - "}
 	name := a.Name
 	for _, prefix := range magicPrefixes {
 		name = strings.TrimPrefix(name, prefix)
@@ -62,9 +72,8 @@ type accountSet struct {
 	accounts map[string]*Account
 }
 
-// need support Aws and Tencent
 func generateDefaultAlias(name string) string {
-	magicPrefixes := []string{"AWS -", "Tencent -", "Tencent Cloud -"}
+	magicPrefixes := []string{"AWS -"}
 	for _, prefix := range magicPrefixes {
 		name = strings.TrimPrefix(name, prefix)
 		name = strings.TrimSpace(name)
@@ -220,13 +229,12 @@ func HasTokenExpired(tok *TokenSet) bool {
 	return time.Now().After(tok.Expiry)
 }
 
-func (c *Config) SaveOAuthToken(tok *oauth2.Token) error {
+func (c *Config) SaveOAuthToken(tok *oauth2.Token, idToken string) error {
 	if tok == nil {
 		c.Tokens = nil
 		return nil
 	}
 
-	idToken, _ := tok.Extra("id_token").(string)
 	tok2 := TokenSet{
 		AccessToken:  tok.AccessToken,
 		RefreshToken: tok.RefreshToken,

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/riotgames/vault-go-client"
+	"github.com/hashicorp/vault/api"
 )
 
 // Settings is used to hold keyconjurer settings
@@ -14,16 +14,12 @@ type Settings struct {
 	OktaToken string `json:"oktaToken"`
 }
 
-var SettingsProviders = map[string]SettingsProvider{}
-
-func init() {
-	SettingsProviders["env"] = SettingsProviderFunc(RetrieveSettingsFromEnv)
-	SettingsProviders["vault"] = VaultRetriever{
-		RoleName:        os.Getenv("VAULT_ROLE_NAME"),
-		SecretMountPath: os.Getenv("VAULT_SECRET_MOUNT_PATH"),
-		SecretPath:      os.Getenv("VAULT_SECRET_PATH"),
-		AWSAuthPath:     os.Getenv("VAULT_AWS_AUTH_PATH"),
-	}
+var SettingsProviders = map[string]SettingsProvider{
+	"env": SettingsProviderFunc(RetrieveSettingsFromEnv),
+	"vault": VaultRetriever{
+		SecretMountPath: os.Getenv("KC_SECRET_MOUNT_PATH"),
+		SecretPath:      os.Getenv("KC_SECRET_PATH"),
+	},
 }
 
 type SettingsProvider interface {
@@ -60,36 +56,24 @@ func RetrieveSettingsFromEnv(_ context.Context) (*Settings, error) {
 }
 
 type VaultRetriever struct {
-	RoleName        string
-	AWSAuthPath     string
 	SecretMountPath string
 	SecretPath      string
 }
 
-func (v VaultRetriever) FetchSettings(_ context.Context) (*Settings, error) {
-	var settings Settings
-	client, err := vault.NewClient(vault.DefaultConfig())
+func (v VaultRetriever) FetchSettings(ctx context.Context) (*Settings, error) {
+	client, err := api.NewClient(api.DefaultConfig())
 	if err != nil {
 		return nil, fmt.Errorf("unable to get Vault client: %w", err)
 	}
 
-	opts := vault.IAMLoginOptions{
-		Role:      v.RoleName,
-		MountPath: v.AWSAuthPath,
+	kv, err := client.KVv2(v.SecretMountPath).Get(ctx, v.SecretPath)
+	if err != nil {
+		return nil, err
 	}
 
-	if _, err := client.Auth.IAM.Login(opts); err != nil {
-		return nil, fmt.Errorf("unable to login to Vault: %w", err)
-	}
-
-	kvOpts := vault.KV2GetOptions{
-		MountPath:     v.SecretMountPath,
-		SecretPath:    v.SecretPath,
-		UnmarshalInto: &settings,
-	}
-
-	if _, err := client.KV2.Get(kvOpts); err != nil {
-		return nil, fmt.Errorf("unable to get vault settings from %s/%s: %w", v.SecretMountPath, v.SecretPath, err)
+	settings := Settings{
+		OktaHost:  kv.Data["oktaHost"].(string),
+		OktaToken: kv.Data["oktaToken"].(string),
 	}
 
 	return &settings, nil

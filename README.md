@@ -10,7 +10,7 @@ KeyConjurer is made of three parts:
 - [cli](./cli/) - The CLI interface.
 - [frontend](./frontend/) - A static webpage which informs users on how to download and use KeyConjurer.
 
-KeyConjurer is designed to work with Okta as an IdP, supports AWS and Tencent Cloud applications, and is inspired in part by [okta-aws-cli](https://github.com/okta/okta-aws-cli). The main difference from okta-aws-cli is that KeyConjurer does not require all users to have access to the Okta administration API - Instead, we use a Lambda function to access the protected resources required.
+KeyConjurer is designed to work with Okta as an IdP, supports AWS applications, and is inspired in part by [okta-aws-cli](https://github.com/okta/okta-aws-cli). The main difference from okta-aws-cli is that KeyConjurer does not require all users to have access to the Okta administration API - Instead, we use a Lambda function to access the protected resources required.
 
 We use KeyConjurer a lot at Riot, but we can't guarantee any external support for this project. It's use at your own risk. If you encounter a bug or have a feature request, please feel free to raise a pull request or an issue against this repository. You're also welcome to fork the code and modify it as you see fit.
 
@@ -48,7 +48,7 @@ In order to use KeyConjurer, an Okta administrator must configure their tenant a
   * Authorization Types: Hybrid Flow, Authorization Code, Token Exchange
   * Redirection URI: http://localhost:57468
   * We recommend you enable Federated Mode on this native application so that users don't need to be explicitly assigned to it.
-* All AWS and tencent applications must have their Allowed Web SSO Client set to the _Client ID_ of the native OIDC application that was created. This can be configured by going to the Sign On tab for each individual Okta application or managing the application configuration in an IAC provider, like Terraform.
+* All AWS applications must have their Allowed Web SSO Client set to the _Client ID_ of the native OIDC application that was created. This can be configured by going to the Sign On tab for each individual Okta application or managing the application configuration in an IAC provider, like Terraform.
 
 Okta configuration should be configured _out of band_ and is not provided in this repository.
 
@@ -64,10 +64,8 @@ To use Vault, the following environment variables must be configured:
 
 | Variable          | Purpose                                                           |
 | ----------------- | ----------------------------------------------------------------- |
-| VAULT_ROLE_NAME   | The name of the Vault role to use to acquire credentials          |
-| VAULT_SECRET_MOUNT_PATH | The mount path of your Vault secrets mount                  |
-| VAULT_SECRET_PATH | The path to the Vault secret containing your secrets              |
-| VAULT_AWS_AUTH_PATH | The path to the mount on your Vault instance that handles IAM authentication |
+| KC_SECRET_MOUNT_PATH | The mount path of your Vault secrets mount                  |
+| KC_SECRET_PATH | The path to the Vault secret containing your secrets              |
 
 The Vault secret should contain the following set of key-values - the values are examples and should be replaced as contextually appropriate:
 
@@ -77,6 +75,8 @@ okta_token={API TOKEN}
 ```
 
 `{API_TOKEN}` must be replaced with an API token for Okta that has the `okta.apps.read` scope.
+
+**The Lambda function does not handle authentication with Vault**. It is expected that you deploy the Lambda function with the [Hashicorp Vault Lambda Extension](https://developer.hashicorp.com/vault/docs/platform/aws/lambda-extension). How this Lambda extension is added depends on how you deploy your Lambda function and you should follow the instructions in the given link.
 
 #### Environment Variables
 

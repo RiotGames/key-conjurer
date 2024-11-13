@@ -1,4 +1,4 @@
-package main
+package command
 
 import (
 	"encoding/json"
@@ -118,8 +118,6 @@ func TestAliasesPreservedAfterReplaceWith(t *testing.T) {
 
 func TestGeneratesGoodAliases(t *testing.T) {
 	pairs := [][2]string{
-		{"Tencent Cloud - Foo Bar", "foo-bar"},
-		{"Tencent Cloud - Foobar", "foobar"},
 		{"AWS - Foo Bar", "foo-bar"},
 		{"AWS - Foobar", "foobar"},
 	}
