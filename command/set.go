@@ -6,8 +6,8 @@ import (
 )
 
 type SetCommand struct {
-	TTL           TTLCommand           `name:"ttl" help:"Sets ttl value in number of hours."`
-	TimeRemaining TimeRemainingCommand `name:"time-remaining" help:"Sets time remaining value in number of minutes."`
+	TTL           TTLCommand           `cmd:"" name:"ttl" help:"Sets ttl value in number of hours."`
+	TimeRemaining TimeRemainingCommand `cmd:"" name:"time-remaining" help:"Sets time remaining value in number of minutes."`
 }
 
 type TTLCommand struct {
