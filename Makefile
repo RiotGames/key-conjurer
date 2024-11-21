@@ -56,11 +56,11 @@ bin/keyconjurer: bin/
 	@go build \
 		-ldflags "\
 			-s -w \
-			-X main.Version=$(shell git rev-parse --short HEAD)-$(RELEASE) \
-			-X main.ClientID=$(CLIENT_ID) \
-			-X main.OIDCDomain=$(OIDC_DOMAIN) \
-			-X main.BuildTimestamp='$(TIMESTAMP)' \
-			-X main.ServerAddress=$(SERVER_ADDRESS)" \
+			-X github.com/riotgames/key-conjurer/command.Version=$(shell git rev-parse --short HEAD)-$(RELEASE) \
+			-X github.com/riotgames/key-conjurer/command.ClientID=$(CLIENT_ID) \
+			-X github.com/riotgames/key-conjurer/command.OIDCDomain=$(OIDC_DOMAIN) \
+			-X github.com/riotgames/key-conjurer/command.BuildTimestamp='$(TIMESTAMP)' \
+			-X github.com/riotgames/key-conjurer/command.ServerAddress=$(SERVER_ADDRESS)" \
 		-o bin/$(BUILD_TARGET)
 
 bin/:
