@@ -84,7 +84,7 @@ func (bashWriter) ExportEnvironmentVariable(w io.Writer, key, value string) (int
 type powershellWriter struct{}
 
 func (powershellWriter) ExportEnvironmentVariable(w io.Writer, key, value string) (int, error) {
-	return fmt.Fprintf(w, "$Env:%s = %s\n", key, value)
+	return fmt.Fprintf(w, "$Env:%s = %q\n", key, value)
 }
 
 type basicWriter struct{}
