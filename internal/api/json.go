@@ -16,6 +16,10 @@ func ServeJSON[T any](w *events.ALBTargetGroupResponse, data T) {
 		return
 	}
 
+	if w.Headers == nil {
+		w.Headers = make(map[string]string)
+	}
+
 	w.Headers["Content-Type"] = "application/json"
 	w.Body = string(buf)
 }
