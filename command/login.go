@@ -100,7 +100,7 @@ func (c LoginCommand) Execute(ctx context.Context, config *Config) error {
 		}
 	}
 
-	accessToken, err := handler.HandlePendingSession(ctx, sock, oauth2.GeneratePkceChallenge(), oauth2.GenerateState())
+	accessToken, err := handler.HandlePendingSession(ctx, sock, oauth2.GenerateState())
 	if err != nil {
 		return err
 	}

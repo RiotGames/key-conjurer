@@ -3,7 +3,6 @@ package oauth2
 import (
 	"context"
 	"crypto/rand"
-	"crypto/sha256"
 	"encoding/base64"
 	"errors"
 	"fmt"
@@ -116,24 +115,10 @@ func (e OAuth2Error) Error() string {
 	return fmt.Sprintf("oauth2 error: %s (%s)", e.Description, e.Reason)
 }
 
-func GeneratePkceChallenge() PkceChallenge {
-	codeVerifierBuf := make([]byte, stateBufSize)
-	rand.Read(codeVerifierBuf)
-	codeVerifier := base64.RawURLEncoding.EncodeToString(codeVerifierBuf)
-	codeChallengeHash := sha256.Sum256([]byte(codeVerifier))
-	codeChallenge := base64.RawURLEncoding.EncodeToString(codeChallengeHash[:])
-	return PkceChallenge{Verifier: codeVerifier, Challenge: codeChallenge}
-}
-
 func GenerateState() string {
 	stateBuf := make([]byte, stateBufSize)
 	rand.Read(stateBuf)
 	return base64.URLEncoding.EncodeToString(stateBuf)
-}
-
-type PkceChallenge struct {
-	Challenge string
-	Verifier  string
 }
 
 type RedirectionFlowHandler struct {
@@ -141,16 +126,13 @@ type RedirectionFlowHandler struct {
 	OnDisplayURL func(url string) error
 }
 
-func (r RedirectionFlowHandler) HandlePendingSession(ctx context.Context, listener net.Listener, challenge PkceChallenge, state string) (*oauth2.Token, error) {
+func (r RedirectionFlowHandler) HandlePendingSession(ctx context.Context, listener net.Listener, state string) (*oauth2.Token, error) {
 	if r.OnDisplayURL == nil {
 		panic("OnDisplayURL must be set")
 	}
 
-	url := r.Config.AuthCodeURL(state,
-		oauth2.SetAuthURLParam("code_challenge_method", "S256"),
-		oauth2.SetAuthURLParam("code_challenge", challenge.Challenge),
-	)
-
+	verifier := oauth2.GenerateVerifier()
+	url := r.Config.AuthCodeURL(state, oauth2.S256ChallengeOption(verifier))
 	callbackHandler, ch, cancel := OAuth2CallbackHandler()
 	// TODO: This error probably should not be ignored if it is not http.ErrServerClosed
 	go http.Serve(listener, callbackHandler)
@@ -167,7 +149,7 @@ func (r RedirectionFlowHandler) HandlePendingSession(ctx context.Context, listen
 		if err != nil {
 			return nil, fmt.Errorf("failed to get authorization code: %w", err)
 		}
-		return r.Config.Exchange(ctx, code, oauth2.SetAuthURLParam("code_verifier", challenge.Verifier))
+		return r.Config.Exchange(ctx, code, oauth2.VerifierOption(verifier))
 	case <-ctx.Done():
 		return nil, ctx.Err()
 	}
