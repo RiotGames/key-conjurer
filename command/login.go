@@ -100,15 +100,9 @@ func (c LoginCommand) Execute(ctx context.Context, config *Config) error {
 		}
 	}
 
-	accessToken, err := handler.HandlePendingSession(ctx, sock, oauth2.GenerateState())
+	accessToken, idToken, err := handler.HandlePendingSession(ctx, sock, oauth2.GenerateState())
 	if err != nil {
 		return err
-	}
-
-	// https://openid.net/specs/openid-connect-core-1_0.html#TokenResponse
-	idToken, ok := accessToken.Extra("id_token").(string)
-	if !ok {
-		return fmt.Errorf("id_token not found in token response")
 	}
 
 	return config.SaveOAuthToken(accessToken, idToken)

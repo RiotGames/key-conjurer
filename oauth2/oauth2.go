@@ -9,7 +9,6 @@ import (
 	"net"
 	"net/http"
 	"strings"
-	"sync"
 
 	"github.com/RobotsAndPencils/go-saml"
 	"github.com/coreos/go-oidc"
@@ -70,40 +69,53 @@ func (o OAuth2CallbackState) Verify(expectedState string) (string, error) {
 	return o.code, nil
 }
 
+type Callback struct {
+	Token   *oauth2.Token
+	IDToken *string
+	Error   error
+}
+
+type CodeExchanger interface {
+	Exchange(ctx context.Context, code string, opts ...oauth2.AuthCodeOption) (*oauth2.Token, error)
+}
+
 // OAuth2CallbackHandler returns a http.Handler, channel and function triple.
 //
 // The http handler will accept exactly one request, which it will assume is an OAuth2 callback, parse it into an OAuth2CallbackState and then provide it to the given channel. Subsequent requests will be silently ignored.
 //
 // The function may be called to ensure that the channel is closed. The channel is closed when a request is received. In general, it is a good idea to ensure this function is called in a defer() block.
-func OAuth2CallbackHandler() (http.Handler, <-chan OAuth2CallbackState, func()) {
-	// TODO: It is possible for the caller to close a panic() if they execute the function in the triplet while the handler has not yet received a request.
-	// That caller is us, so I don't care that much, but that probably indicates that this design is smelly.
-	//
-	// We should look at the Go SDK to see how they handle similar cases - channels that are not bound by a timer, or similar.
-
-	ch := make(chan OAuth2CallbackState, 1)
-	var reqHandle, closeHandle sync.Once
-	closeFn := func() {
-		closeHandle.Do(func() {
-			close(ch)
-		})
-	}
-
+func OAuth2CallbackHandler(codeEx CodeExchanger, state, verifier string, ch chan<- Callback) http.Handler {
 	fn := func(w http.ResponseWriter, r *http.Request) {
 		// This can sometimes be called multiple times, depending on the browser.
 		// We will simply ignore any other requests and only serve the first.
-		reqHandle.Do(func() {
-			var state OAuth2CallbackState
-			state.FromRequest(r)
-			ch <- state
-			closeFn()
-		})
+		var info OAuth2CallbackState
+		info.FromRequest(r)
 
-		// We still want to provide feedback to the end-user.
+		code, err := info.Verify(state)
+		if err != nil {
+			ch <- Callback{Error: err}
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		token, err := codeEx.Exchange(r.Context(), code, oauth2.VerifierOption(verifier))
+		if err != nil {
+			ch <- Callback{Error: err}
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		// https://openid.net/specs/openid-connect-core-1_0.html#TokenResponse
+		if idToken, ok := token.Extra("id_token").(string); ok {
+			ch <- Callback{Token: token, IDToken: &idToken}
+		} else {
+			ch <- Callback{Token: token}
+		}
+
 		fmt.Fprintln(w, "You may close this window now.")
 	}
 
-	return http.HandlerFunc(fn), ch, closeFn
+	return http.HandlerFunc(fn)
 }
 
 type OAuth2Error struct {
@@ -126,32 +138,32 @@ type RedirectionFlowHandler struct {
 	OnDisplayURL func(url string) error
 }
 
-func (r RedirectionFlowHandler) HandlePendingSession(ctx context.Context, listener net.Listener, state string) (*oauth2.Token, error) {
+func (r RedirectionFlowHandler) HandlePendingSession(ctx context.Context, listener net.Listener, state string) (*oauth2.Token, string, error) {
 	if r.OnDisplayURL == nil {
 		panic("OnDisplayURL must be set")
 	}
 
 	verifier := oauth2.GenerateVerifier()
 	url := r.Config.AuthCodeURL(state, oauth2.S256ChallengeOption(verifier))
-	callbackHandler, ch, cancel := OAuth2CallbackHandler()
+
+	ch := make(chan Callback, 1)
 	// TODO: This error probably should not be ignored if it is not http.ErrServerClosed
-	go http.Serve(listener, callbackHandler)
-	defer cancel()
+	go http.Serve(listener, OAuth2CallbackHandler(r.Config, state, verifier, ch))
 
 	if err := r.OnDisplayURL(url); err != nil {
-		// This is unlikely to ever happen
-		return nil, fmt.Errorf("failed to display link: %w", err)
+		return nil, "", fmt.Errorf("failed to display link: %w", err)
 	}
 
 	select {
 	case info := <-ch:
-		code, err := info.Verify(state)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get authorization code: %w", err)
+		// TODO: Close the server immediately to prevent any more requests being received.
+		if info.Error != nil {
+			return nil, "", info.Error
 		}
-		return r.Config.Exchange(ctx, code, oauth2.VerifierOption(verifier))
+
+		return info.Token, "", nil
 	case <-ctx.Done():
-		return nil, ctx.Err()
+		return nil, "", ctx.Err()
 	}
 }
 
