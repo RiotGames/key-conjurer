@@ -127,32 +127,40 @@ func (e OAuth2Error) Error() string {
 	return fmt.Sprintf("oauth2 error: %s (%s)", e.Description, e.Reason)
 }
 
-func GenerateState() string {
+func generateState() string {
 	stateBuf := make([]byte, stateBufSize)
 	rand.Read(stateBuf)
 	return base64.URLEncoding.EncodeToString(stateBuf)
 }
 
-type RedirectionFlowHandler struct {
-	Config       *oauth2.Config
-	OnDisplayURL func(url string) error
+type Session struct {
+	url      string
+	state    string
+	verifier string
 }
 
-func (r RedirectionFlowHandler) HandlePendingSession(ctx context.Context, listener net.Listener, state string) (*oauth2.Token, string, error) {
-	if r.OnDisplayURL == nil {
-		panic("OnDisplayURL must be set")
-	}
+func (s Session) URL() string {
+	return s.url
+}
 
+type AuthorizationCodeHandler struct {
+	Config   *oauth2.Config
+	sessions map[string]Session
+}
+
+func (r *AuthorizationCodeHandler) NewSession() Session {
+	state := generateState()
 	verifier := oauth2.GenerateVerifier()
 	url := r.Config.AuthCodeURL(state, oauth2.S256ChallengeOption(verifier))
+	s := Session{verifier: verifier, state: state, url: url}
+	r.sessions[state] = s
+	return s
+}
 
+func (r AuthorizationCodeHandler) WaitForToken(ctx context.Context, listener net.Listener, session Session) (*oauth2.Token, string, error) {
 	ch := make(chan Callback, 1)
 	// TODO: This error probably should not be ignored if it is not http.ErrServerClosed
-	go http.Serve(listener, OAuth2CallbackHandler(r.Config, state, verifier, ch))
-
-	if err := r.OnDisplayURL(url); err != nil {
-		return nil, "", fmt.Errorf("failed to display link: %w", err)
-	}
+	go http.Serve(listener, OAuth2CallbackHandler(r.Config, session.state, session.verifier, ch))
 
 	select {
 	case info := <-ch:
