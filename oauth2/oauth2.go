@@ -35,31 +35,20 @@ func DiscoverConfig(ctx context.Context, domain, clientID string) (*oauth2.Confi
 	return &cfg, nil
 }
 
-// OAuth2CallbackState encapsulates all of the information from an oauth2 callback.
-//
-// To retrieve the Code from the struct, you must use the Verify(string) function.
-type OAuth2CallbackState struct {
+type callbackState struct {
 	code             string
 	state            string
 	errorMessage     string
 	errorDescription string
 }
 
-// FromRequest parses the given http.Request and populates the OAuth2CallbackState with those values.
-func (o *OAuth2CallbackState) FromRequest(r *http.Request) {
-	o.errorMessage = r.FormValue("error")
-	o.errorDescription = r.FormValue("error_description")
-	o.state = r.FormValue("state")
-	o.code = r.FormValue("code")
-}
-
-type OAuth2Error struct {
-	Reason      string
-	Description string
-}
-
-func (e OAuth2Error) Error() string {
-	return fmt.Sprintf("oauth2 error: %s (%s)", e.Description, e.Reason)
+func parseOAuth2CallbackState(r *http.Request, info *callbackState) error {
+	err := r.ParseForm()
+	info.errorMessage = r.FormValue("error")
+	info.errorDescription = r.FormValue("error_description")
+	info.state = r.FormValue("state")
+	info.code = r.FormValue("code")
+	return err
 }
 
 func generateState() string {
@@ -81,43 +70,61 @@ func (s Session) URL() string {
 	return s.url
 }
 
-type AuthorizationCodeHandler struct {
-	Config *oauth2.Config
+// NewAuthorizationCodeHandler creates a new AuthorizationCodeHandler.
+func NewAuthorizationCodeHandler(config *oauth2.Config) *AuthorizationCodeHandler {
+	return &AuthorizationCodeHandler{
+		config:   config,
+		sessions: make(map[string]Session),
+	}
+}
 
+// AuthorizationCodeHandler is an http.Handler that handles the OAuth2 authorization code flow.
+//
+// It is intended to be used by CLIs that need to authenticate with an OAuth2 provider.
+//
+// Sessions can be created using NewSession, and those sessions can be used to retrieve the OAuth2 token.
+type AuthorizationCodeHandler struct {
+	config   *oauth2.Config
 	sessions map[string]Session
 	mu       sync.Mutex
 }
 
-func (h *AuthorizationCodeHandler) NewSession() Session {
+func (a *AuthorizationCodeHandler) NewSession() Session {
 	state := generateState()
 	verifier := oauth2.GenerateVerifier()
-	url := h.Config.AuthCodeURL(state, oauth2.S256ChallengeOption(verifier))
-	s := Session{verifier: verifier, state: state, url: url, Token: make(chan *oauth2.Token)}
-	h.mu.Lock()
-	defer h.mu.Unlock()
-	h.sessions[state] = s
+	url := a.config.AuthCodeURL(state, oauth2.S256ChallengeOption(verifier))
+	// A channel capacity of 1 is used to prevent requests from blocking if they are not actively being awaited on.
+	s := Session{verifier: verifier, state: state, url: url, Token: make(chan *oauth2.Token, 1)}
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	a.sessions[state] = s
 	return s
 }
 
-func (h *AuthorizationCodeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	var info OAuth2CallbackState
-	info.FromRequest(r)
+func (a *AuthorizationCodeHandler) removeSessionIfExists(state string) (Session, bool) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	s, ok := a.sessions[state]
+	if ok {
+		delete(a.sessions, state)
+	}
+	return s, ok
+}
 
-	// This lock is manually released in both branches, because if we defer() it, then it will get released
-	// after the Exchange() call. Exchange() can take a decent amount of time since it involves a remote call,
-	// and we don't want to hold the mutex lock for that long.
-	h.mu.Lock()
-	session, ok := h.sessions[info.state]
+func (a *AuthorizationCodeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	var st callbackState
+	if err := parseOAuth2CallbackState(r, &st); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	session, ok := a.removeSessionIfExists(st.state)
 	if !ok {
-		h.mu.Unlock()
 		http.Error(w, "no session", http.StatusBadRequest)
 		return
 	}
-	// Delete the session early so we can release the lock.
-	delete(h.sessions, info.state)
-	h.mu.Unlock()
 
-	token, err := h.Config.Exchange(r.Context(), info.code, oauth2.VerifierOption(session.verifier))
+	token, err := a.config.Exchange(r.Context(), st.code, oauth2.VerifierOption(session.verifier))
 	if err != nil {
 		session.Error <- err
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -134,36 +141,23 @@ func (h *AuthorizationCodeHandler) ServeHTTP(w http.ResponseWriter, r *http.Requ
 func DiscoverConfigAndExchangeTokenForAssertion(ctx context.Context, accessToken, idToken, oidcDomain, clientID, applicationID string) (*saml.Response, string, error) {
 	oauthCfg, err := DiscoverConfig(ctx, oidcDomain, clientID)
 	if err != nil {
-		return nil, "", Error{Message: "could not discover oauth2  config", InnerError: err}
+		return nil, "", fmt.Errorf("could not discover oauth2 config: %w", err)
 	}
 
 	tok, err := exchangeAccessTokenForWebSSOToken(ctx, oauthCfg, accessToken, idToken, applicationID)
 	if err != nil {
-		return nil, "", Error{Message: "error exchanging token", InnerError: err}
+		return nil, "", fmt.Errorf("error exchanging token: %w", err)
 	}
 
 	assertionBytes, err := exchangeWebSSOTokenForSAMLAssertion(ctx, oidcDomain, tok)
 	if err != nil {
-		return nil, "", Error{Message: "failed to fetch SAML assertion", InnerError: err}
+		return nil, "", fmt.Errorf("failed to fetch SAML assertion: %w", err)
 	}
 
 	response, err := saml.ParseEncodedResponse(string(assertionBytes))
 	if err != nil {
-		return nil, "", Error{Message: "failed to parse SAML response", InnerError: err}
+		return nil, "", fmt.Errorf("failed to parse SAML response: %w", err)
 	}
 
 	return response, string(assertionBytes), nil
-}
-
-type Error struct {
-	InnerError error
-	Message    string
-}
-
-func (o Error) Unwrap() error {
-	return o.InnerError
-}
-
-func (o Error) Error() string {
-	return o.Message
 }

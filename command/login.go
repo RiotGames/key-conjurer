@@ -47,7 +47,7 @@ func (c LoginCommand) RunContext(ctx context.Context, globals *Globals, config *
 	}
 	oauthCfg.RedirectURL = fmt.Sprintf("http://%s", net.JoinHostPort("localhost", port))
 
-	handler := &oauth2.AuthorizationCodeHandler{Config: oauthCfg}
+	handler := oauth2.NewAuthorizationCodeHandler(oauthCfg)
 	session := handler.NewSession()
 	if !c.Browser {
 		if isPiped() || globals.Quiet {
