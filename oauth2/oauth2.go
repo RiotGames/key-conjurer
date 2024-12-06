@@ -4,17 +4,13 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/base64"
-	"errors"
 	"fmt"
 	"net/http"
 	"sync"
 
-	"github.com/RobotsAndPencils/go-saml"
 	"github.com/coreos/go-oidc"
 	"golang.org/x/oauth2"
 )
-
-var ErrNoSAMLAssertion = errors.New("no saml assertion")
 
 // stateBufSize is the size of the buffer used to generate the state parameter.
 // 43 is a magic number - It generates states that are not too short or long for Okta's validation.
@@ -136,28 +132,4 @@ func (a *AuthorizationCodeHandler) ServeHTTP(w http.ResponseWriter, r *http.Requ
 	fmt.Fprintln(w, "You may close this window now.")
 	session.Token <- token
 	close(session.Token)
-}
-
-func DiscoverConfigAndExchangeTokenForAssertion(ctx context.Context, accessToken, idToken, oidcDomain, clientID, applicationID string) (*saml.Response, string, error) {
-	oauthCfg, err := DiscoverConfig(ctx, oidcDomain, clientID)
-	if err != nil {
-		return nil, "", fmt.Errorf("could not discover oauth2 config: %w", err)
-	}
-
-	tok, err := exchangeAccessTokenForWebSSOToken(ctx, oauthCfg, accessToken, idToken, applicationID)
-	if err != nil {
-		return nil, "", fmt.Errorf("error exchanging token: %w", err)
-	}
-
-	assertionBytes, err := exchangeWebSSOTokenForSAMLAssertion(ctx, oidcDomain, tok)
-	if err != nil {
-		return nil, "", fmt.Errorf("failed to fetch SAML assertion: %w", err)
-	}
-
-	response, err := saml.ParseEncodedResponse(string(assertionBytes))
-	if err != nil {
-		return nil, "", fmt.Errorf("failed to parse SAML response: %w", err)
-	}
-
-	return response, string(assertionBytes), nil
 }

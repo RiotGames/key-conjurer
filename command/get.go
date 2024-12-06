@@ -10,6 +10,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/riotgames/key-conjurer/oauth2"
+	"github.com/riotgames/key-conjurer/okta"
 )
 
 func resolveApplicationInfo(cfg *Config, bypassCache bool, nameOrID string) (*Account, bool) {
@@ -109,7 +110,12 @@ func (g GetCommand) Run(globals *Globals, cfg *Config) error {
 }
 
 func (g GetCommand) fetchNewCredentials(ctx context.Context, account Account, globals *Globals, cfg *Config) (*CloudCredentials, error) {
-	samlResponse, assertionStr, err := oauth2.DiscoverConfigAndExchangeTokenForAssertion(ctx, cfg.Tokens.AccessToken, cfg.Tokens.IDToken, globals.OIDCDomain, globals.ClientID, account.ID)
+	oauth2Cfg, err := oauth2.DiscoverConfig(ctx, globals.OIDCDomain, globals.ClientID)
+	if err != nil {
+		return nil, err
+	}
+
+	samlResponse, assertionStr, err := okta.ExchangeTokenForAssertion(ctx, oauth2Cfg, cfg.Tokens.AccessToken, cfg.Tokens.IDToken, globals.OIDCDomain, account.ID)
 	if err != nil {
 		return nil, err
 	}

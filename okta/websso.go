@@ -1,4 +1,4 @@
-package oauth2
+package okta
 
 import (
 	"context"
@@ -7,9 +7,12 @@ import (
 	"net/http"
 	"net/url"
 
+	"github.com/RobotsAndPencils/go-saml"
 	"golang.org/x/net/html"
 	"golang.org/x/oauth2"
 )
+
+var ErrNoSAMLAssertion = errors.New("no saml assertion")
 
 // exchangeAccessTokenForWebSSOToken exchanges an OAuth2 token for an Okta Web SSO token.
 //
@@ -62,4 +65,23 @@ func exchangeWebSSOTokenForSAMLAssertion(ctx context.Context, issuer string, tok
 	}
 
 	return []byte(saml), nil
+}
+
+func ExchangeTokenForAssertion(ctx context.Context, cfg *oauth2.Config, accessToken, idToken, oidcDomain, applicationID string) (*saml.Response, string, error) {
+	tok, err := exchangeAccessTokenForWebSSOToken(ctx, cfg, accessToken, idToken, applicationID)
+	if err != nil {
+		return nil, "", fmt.Errorf("error exchanging token: %w", err)
+	}
+
+	assertionBytes, err := exchangeWebSSOTokenForSAMLAssertion(ctx, oidcDomain, tok)
+	if err != nil {
+		return nil, "", fmt.Errorf("failed to fetch SAML assertion: %w", err)
+	}
+
+	response, err := saml.ParseEncodedResponse(string(assertionBytes))
+	if err != nil {
+		return nil, "", fmt.Errorf("failed to parse SAML response: %w", err)
+	}
+
+	return response, string(assertionBytes), nil
 }

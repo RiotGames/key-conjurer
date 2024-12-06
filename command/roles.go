@@ -7,6 +7,7 @@ import (
 
 	"github.com/RobotsAndPencils/go-saml"
 	"github.com/riotgames/key-conjurer/oauth2"
+	"github.com/riotgames/key-conjurer/okta"
 )
 
 type RolesCommand struct {
@@ -27,12 +28,17 @@ func (r RolesCommand) RunContext(ctx context.Context, globals *Globals, config *
 		r.ApplicationID = account.ID
 	}
 
-	samlResponse, _, err := oauth2.DiscoverConfigAndExchangeTokenForAssertion(
+	cfg, err := oauth2.DiscoverConfig(ctx, globals.OIDCDomain, globals.ClientID)
+	if err != nil {
+		return err
+	}
+
+	samlResponse, _, err := okta.ExchangeTokenForAssertion(
 		ctx,
+		cfg,
 		config.Tokens.AccessToken,
 		config.Tokens.IDToken,
 		globals.OIDCDomain,
-		globals.ClientID,
 		r.ApplicationID,
 	)
 
