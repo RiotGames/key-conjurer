@@ -47,7 +47,7 @@ func (c LoginCommand) RunContext(ctx context.Context, globals *Globals, config *
 	}
 	oauthCfg.RedirectURL = fmt.Sprintf("http://%s", net.JoinHostPort("localhost", port))
 
-	handler := oauth2.AuthorizationCodeHandler{Config: oauthCfg}
+	handler := &oauth2.AuthorizationCodeHandler{Config: oauthCfg}
 	session := handler.NewSession()
 	if !c.Browser {
 		if isPiped() || globals.Quiet {
@@ -59,12 +59,27 @@ func (c LoginCommand) RunContext(ctx context.Context, globals *Globals, config *
 		browser.OpenURL(session.URL())
 	}
 
-	accessToken, idToken, err := handler.WaitForToken(ctx, sock, session)
-	if err != nil {
-		return err
-	}
+	errCh := make(chan error, 1)
+	go func() {
+		err := http.Serve(sock, handler)
+		if err != nil && !errors.Is(err, http.ErrServerClosed) {
+			errCh <- err
+		}
+	}()
 
-	return config.SaveOAuthToken(accessToken, idToken)
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case err := <-errCh:
+		return err
+	case err := <-session.Error:
+		return err
+	case token := <-session.Token:
+		// TODO Will panic if id_token not present
+		// TODO Verify token with OIDC provider
+		idToken := token.Extra("id_token").(string)
+		return config.SaveOAuthToken(token, idToken)
+	}
 }
 
 func (c LoginCommand) Run(globals *Globals, config *Config) error {
