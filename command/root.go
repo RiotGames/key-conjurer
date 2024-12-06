@@ -44,7 +44,11 @@ To get started run the following commands:
 func getConfigPath() (string, error) {
 	cfgDir, err := os.UserConfigDir()
 	if err != nil {
-		return "", err
+		// UserConfigDir() and UserHomeDir() do slightly different things. If UserConfigDir() fails, try UserHomeDir()
+		cfgDir, err = os.UserHomeDir()
+		if err != nil {
+			return "", err
+		}
 	}
 
 	return filepath.Join(cfgDir, "keyconjurer", "config.json"), nil
