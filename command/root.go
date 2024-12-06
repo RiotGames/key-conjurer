@@ -7,13 +7,11 @@ import (
 	"runtime"
 
 	"github.com/alecthomas/kong"
-	"github.com/mitchellh/go-homedir"
 )
 
 type Globals struct {
 	OIDCDomain string `help:"The domain name of your OIDC server." hidden:"" env:"KEYCONJURER_OIDC_DOMAIN" default:"${oidc_domain}"`
 	ClientID   string `help:"The client ID of your OIDC server." hidden:"" env:"KEYCONJURER_CLIENT_ID" default:"${client_id}"`
-	ConfigPath string `help:"The path to .keyconjurerrc file." default:"~/.keyconjurerrc" name:"config"`
 	Quiet      bool   `help:"Tells the CLI to be quiet; stdout will not contain human-readable informational messages."`
 }
 
@@ -43,12 +41,22 @@ To get started run the following commands:
   keyconjurer get <accountName>`
 }
 
-func (c *CLI) BeforeApply(ctx *kong.Context, trace *kong.Path) error {
-	if expanded, err := homedir.Expand(c.ConfigPath); err == nil {
-		c.ConfigPath = expanded
+func getConfigPath() (string, error) {
+	cfgDir, err := os.UserConfigDir()
+	if err != nil {
+		return "", err
 	}
 
-	file, err := EnsureConfigFileExists(c.ConfigPath)
+	return filepath.Join(cfgDir, "keyconjurer", "config.json"), nil
+}
+
+func (c *CLI) BeforeApply(ctx *kong.Context, trace *kong.Path) error {
+	cfgPath, err := getConfigPath()
+	if err != nil {
+		return err
+	}
+
+	file, err := EnsureConfigFileExists(cfgPath)
 	if err != nil {
 		return err
 	}
@@ -65,19 +73,20 @@ func (c *CLI) BeforeApply(ctx *kong.Context, trace *kong.Path) error {
 }
 
 func (c *CLI) AfterRun(ctx *kong.Context) error {
-	if expanded, err := homedir.Expand(c.ConfigPath); err == nil {
-		c.ConfigPath = expanded
+	cfgPath, err := getConfigPath()
+	if err != nil {
+		return err
 	}
 
 	// Do not use EnsureConfigFileExists here! EnsureConfigFileExists opens the file in append mode.
 	// If we open the file in append mode, we'll always append to the file. If we open the file in truncate mode before reading from the file, the content will be truncated _before we read from it_, which will cause a users configuration to be discarded every time we run the program.
-	if err := os.MkdirAll(filepath.Dir(c.ConfigPath), os.ModeDir|os.FileMode(0755)); err != nil {
+	if err := os.MkdirAll(filepath.Dir(cfgPath), os.ModeDir|os.FileMode(0755)); err != nil {
 		return err
 	}
 
-	file, err := os.Create(c.ConfigPath)
+	file, err := os.Create(cfgPath)
 	if err != nil {
-		return fmt.Errorf("unable to create %s reason: %w", c.ConfigPath, err)
+		return fmt.Errorf("unable to create %s reason: %w", cfgPath, err)
 	}
 
 	defer file.Close()
