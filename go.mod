@@ -2,6 +2,7 @@ module github.com/riotgames/key-conjurer
 
 require (
 	github.com/RobotsAndPencils/go-saml v0.0.0-20170520135329-fb13cb52a46b
+	github.com/alecthomas/kong v1.4.0
 	github.com/aws/aws-lambda-go v1.47.0
 	github.com/aws/aws-sdk-go-v2 v1.32.4
 	github.com/aws/aws-sdk-go-v2/config v1.28.3
@@ -14,11 +15,9 @@ require (
 	github.com/mitchellh/go-ps v1.0.0
 	github.com/okta/okta-sdk-golang/v2 v2.2.1
 	github.com/pkg/browser v0.0.0-20210911075715-681adbf594b8
-	github.com/spf13/cobra v1.7.0
-	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.8.4
 	golang.org/x/net v0.25.0
-	golang.org/x/oauth2 v0.6.0
+	golang.org/x/oauth2 v0.24.0
 )
 
 require (
@@ -34,7 +33,6 @@ require (
 	github.com/cenkalti/backoff/v4 v4.3.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/go-jose/go-jose/v4 v4.0.1 // indirect
-	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
@@ -44,7 +42,6 @@ require (
 	github.com/hashicorp/go-secure-stdlib/strutil v0.1.2 // indirect
 	github.com/hashicorp/go-sockaddr v1.0.2 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
-	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/kardianos/osext v0.0.0-20190222173326-2bc1f35cddc0 // indirect
 	github.com/kelseyhightower/envconfig v1.4.0 // indirect
 	github.com/kr/text v0.2.0 // indirect
@@ -60,8 +57,6 @@ require (
 	golang.org/x/sys v0.20.0 // indirect
 	golang.org/x/text v0.15.0 // indirect
 	golang.org/x/time v0.0.0-20220922220347-f3bd1da661af // indirect
-	google.golang.org/appengine v1.6.7 // indirect
-	google.golang.org/protobuf v1.28.0 // indirect
 	gopkg.in/check.v1 v1.0.0-20200227125254-8fa46927fb4f // indirect
 	gopkg.in/ini.v1 v1.42.0 // indirect
 	gopkg.in/square/go-jose.v2 v2.5.1 // indirect

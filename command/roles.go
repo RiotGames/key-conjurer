@@ -1,43 +1,56 @@
 package command
 
 import (
+	"context"
+	"fmt"
 	"strings"
 
 	"github.com/RobotsAndPencils/go-saml"
 	"github.com/riotgames/key-conjurer/oauth2"
-	"github.com/spf13/cobra"
+	"github.com/riotgames/key-conjurer/okta"
 )
 
-var rolesCmd = cobra.Command{
-	Use:   "roles <accountName/alias>",
-	Short: "Returns the roles that you have access to in the given account.",
-	Args:  cobra.ExactArgs(1),
-	RunE: func(cmd *cobra.Command, args []string) error {
-		config := ConfigFromCommand(cmd)
-		if HasTokenExpired(config.Tokens) {
-			return ErrTokensExpiredOrAbsent
-		}
+type RolesCommand struct {
+	ApplicationID string `arg:""`
+}
 
-		oidcDomain, _ := cmd.Flags().GetString(FlagOIDCDomain)
-		clientID, _ := cmd.Flags().GetString(FlagClientID)
+func (r RolesCommand) Run(globals *Globals, config *Config) error {
+	return r.RunContext(context.Background(), globals, config)
+}
 
-		var applicationID = args[0]
-		account, ok := config.FindAccount(applicationID)
-		if ok {
-			applicationID = account.ID
-		}
+func (r RolesCommand) RunContext(ctx context.Context, globals *Globals, config *Config) error {
+	if HasTokenExpired(config.Tokens) {
+		return ErrTokensExpiredOrAbsent
+	}
 
-		samlResponse, _, err := oauth2.DiscoverConfigAndExchangeTokenForAssertion(cmd.Context(), config.Tokens.AccessToken, config.Tokens.IDToken, oidcDomain, clientID, applicationID)
-		if err != nil {
-			return err
-		}
+	account, ok := config.FindAccount(r.ApplicationID)
+	if ok {
+		r.ApplicationID = account.ID
+	}
 
-		for _, name := range listRoles(samlResponse) {
-			cmd.Println(name)
-		}
+	cfg, err := oauth2.DiscoverConfig(ctx, globals.OIDCDomain, globals.ClientID)
+	if err != nil {
+		return err
+	}
 
-		return nil
-	},
+	samlResponse, _, err := okta.ExchangeTokenForAssertion(
+		ctx,
+		cfg,
+		config.Tokens.AccessToken,
+		config.Tokens.IDToken,
+		globals.OIDCDomain,
+		r.ApplicationID,
+	)
+
+	if err != nil {
+		return err
+	}
+
+	for _, name := range listRoles(samlResponse) {
+		fmt.Println(name)
+	}
+
+	return nil
 }
 
 type roleProviderPair struct {

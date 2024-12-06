@@ -1,4 +1,4 @@
-package oauth2
+package okta
 
 import (
 	"context"
@@ -7,9 +7,12 @@ import (
 	"net/http"
 	"net/url"
 
+	"github.com/RobotsAndPencils/go-saml"
 	"golang.org/x/net/html"
 	"golang.org/x/oauth2"
 )
+
+var ErrNoSAMLAssertion = errors.New("no saml assertion")
 
 // exchangeAccessTokenForWebSSOToken exchanges an OAuth2 token for an Okta Web SSO token.
 //
@@ -30,16 +33,11 @@ func exchangeAccessTokenForWebSSOToken(ctx context.Context, oauthCfg *oauth2.Con
 // exchangeWebSSOTokenForSAMLAssertion is an Okta-specific API which exchanges an Okta Web SSO token, which is obtained by exchanging an OAuth2 token using the RFC8693 Token Exchange Flow, for a SAML assertion.
 //
 // It is not standards compliant, but is used by Okta in their own okta-aws-cli.
-func exchangeWebSSOTokenForSAMLAssertion(ctx context.Context, issuer string, token *oauth2.Token) ([]byte, error) {
+func exchangeWebSSOTokenForSAMLAssertion(ctx context.Context, client *http.Client, issuer string, token *oauth2.Token) ([]byte, error) {
 	data := url.Values{"token": {token.AccessToken}}
 	uri := fmt.Sprintf("%s/login/token/sso?%s", issuer, data.Encode())
 	req, _ := http.NewRequestWithContext(ctx, "GET", uri, nil)
 	req.Header.Add("Accept", "text/html")
-
-	client := http.DefaultClient
-	if val, ok := ctx.Value(oauth2.HTTPClient).(*http.Client); ok {
-		client = val
-	}
 
 	resp, err := client.Do(req)
 	if err != nil {
@@ -62,4 +60,23 @@ func exchangeWebSSOTokenForSAMLAssertion(ctx context.Context, issuer string, tok
 	}
 
 	return []byte(saml), nil
+}
+
+func ExchangeTokenForAssertion(ctx context.Context, cfg *oauth2.Config, accessToken, idToken, oidcDomain, applicationID string) (*saml.Response, string, error) {
+	tok, err := exchangeAccessTokenForWebSSOToken(ctx, cfg, accessToken, idToken, applicationID)
+	if err != nil {
+		return nil, "", fmt.Errorf("error exchanging token: %w", err)
+	}
+
+	assertionBytes, err := exchangeWebSSOTokenForSAMLAssertion(ctx, cfg.Client(ctx, nil), oidcDomain, tok)
+	if err != nil {
+		return nil, "", fmt.Errorf("failed to fetch SAML assertion: %w", err)
+	}
+
+	response, err := saml.ParseEncodedResponse(string(assertionBytes))
+	if err != nil {
+		return nil, "", fmt.Errorf("failed to parse SAML response: %w", err)
+	}
+
+	return response, string(assertionBytes), nil
 }
