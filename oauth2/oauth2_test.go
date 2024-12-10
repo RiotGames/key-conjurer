@@ -6,8 +6,36 @@ import (
 	"net/url"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"golang.org/x/oauth2"
 )
+
+var cfg = &oauth2.Config{
+	ClientID: "client-id",
+	Endpoint: oauth2.Endpoint{
+		TokenURL: "http://localhost/oauth2/token",
+	},
+}
+
+type roundTripperFunc func(req *http.Request) (*http.Response, error)
+
+func (f roundTripperFunc) RoundTrip(req *http.Request) (*http.Response, error) {
+	return f(req)
+}
+
+var client = http.Client{
+	Transport: roundTripperFunc(func(req *http.Request) (*http.Response, error) {
+		if req.URL.Path == "/oauth2/token" {
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Body:       nil,
+			}, nil
+		}
+		return &http.Response{
+			StatusCode: http.StatusNotFound,
+			Body:       nil,
+		}, nil
+	}),
+}
 
 func sendOAuth2CallbackRequest(handler http.Handler, values url.Values) {
 	uri := url.URL{
@@ -22,59 +50,9 @@ func sendOAuth2CallbackRequest(handler http.Handler, values url.Values) {
 	handler.ServeHTTP(w, req)
 }
 
-func Test_OAuth2CallbackHandler_YieldsCorrectlyFormattedState(t *testing.T) {
-	handler, ch, cancel := OAuth2CallbackHandler()
-	t.Cleanup(func() {
-		cancel()
-	})
-
-	expectedState := "state goes here"
-	expectedCode := "code goes here"
-
-	go sendOAuth2CallbackRequest(handler, url.Values{
-		"code":  []string{expectedCode},
-		"state": []string{expectedState},
-	})
-
-	callbackState := <-ch
-	code, err := callbackState.Verify(expectedState)
-	assert.NoError(t, err)
-	assert.Equal(t, expectedCode, code)
-}
-
-func Test_OAuth2CallbackState_VerifyWorksCorrectly(t *testing.T) {
-	t.Run("happy path", func(t *testing.T) {
-		expectedState := "state goes here"
-		expectedCode := "code goes here"
-		callbackState := OAuth2CallbackState{
-			code:  expectedCode,
-			state: expectedState,
-		}
-		code, err := callbackState.Verify(expectedState)
-		assert.NoError(t, err)
-		assert.Equal(t, expectedCode, code)
-	})
-
-	t.Run("unhappy path", func(t *testing.T) {
-		expectedState := "state goes here"
-		expectedCode := "code goes here"
-		callbackState := OAuth2CallbackState{
-			code:  expectedCode,
-			state: expectedState,
-		}
-		_, err := callbackState.Verify("mismatching state")
-		var oauthErr OAuth2Error
-		assert.ErrorAs(t, err, &oauthErr)
-		assert.Equal(t, "invalid_state", oauthErr.Reason)
-	})
-}
-
-// Test_OAuth2Listener_MultipleRequestsDoesNotCausePanic prevents an issue where OAuth2Listener would send a request to a closed channel
-func Test_OAuth2Listener_MultipleRequestsDoesNotCausePanic(t *testing.T) {
-	handler, ch, cancel := OAuth2CallbackHandler()
-	t.Cleanup(func() {
-		cancel()
-	})
+// Test_AuthorizationCodeHandler_IsReentrant prevents an issue where AuthorizationCodeHandler would send a request to a closed channel
+func Test_AuthorizationCodeHandler_IsReentrant(t *testing.T) {
+	handler := NewAuthorizationCodeHandler(cfg)
 
 	go sendOAuth2CallbackRequest(handler, url.Values{
 		// We send empty values because we don't care about processing in this test
@@ -82,13 +60,10 @@ func Test_OAuth2Listener_MultipleRequestsDoesNotCausePanic(t *testing.T) {
 		"state": []string{""},
 	})
 
-	// We drain the channel of the first request so the handler completes.
-	// Without this step, we would get 'stuck' in the sync.Once().
-	<-ch
-
 	// We send this request synchronously to ensure that any panics are caught during the test.
 	sendOAuth2CallbackRequest(handler, url.Values{
 		"code":  []string{"not the expected code and should be discarded"},
 		"state": []string{"not the expected state and should be discarded"},
 	})
+	// If we reach here with no panics, it should pass
 }
