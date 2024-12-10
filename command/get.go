@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/riotgames/key-conjurer/oauth2"
 	"github.com/riotgames/key-conjurer/okta"
@@ -129,12 +128,7 @@ func (g GetCommand) fetchNewCredentials(ctx context.Context, account Account, gl
 		g.TimeToLive = cfg.TTL
 	}
 
-	awsCfg, err := config.LoadDefaultConfig(ctx, config.WithRegion(g.Region))
-	if err != nil {
-		return nil, err
-	}
-
-	stsClient := sts.NewFromConfig(awsCfg)
+	stsClient := sts.New(sts.Options{Region: g.Region})
 	timeoutInSeconds := int32(3600 * g.TimeToLive)
 	resp, err := stsClient.AssumeRoleWithSAML(ctx, &sts.AssumeRoleWithSAMLInput{
 		DurationSeconds: aws.Int32(timeoutInSeconds),
