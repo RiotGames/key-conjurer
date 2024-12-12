@@ -78,7 +78,7 @@ func (c *CloudCredentials) ValidUntil(account *Account, dur time.Duration) bool 
 type bashWriter struct{}
 
 func (bashWriter) ExportEnvironmentVariable(w io.Writer, key, value string) (int, error) {
-	return fmt.Fprintf(w, "export %s=%q\n", key, value)
+	return fmt.Fprintf(w, "export %s=%s\n", key, value)
 }
 
 type powershellWriter struct{}
