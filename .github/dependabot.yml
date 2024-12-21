@@ -12,3 +12,15 @@ updates:
     # Check the for updates once a week
     schedule:
       interval: "weekly"
+  # Enable version updates for Go
+  - package-ecosystem: "gomod"
+    directory: "/"
+    # Check for updates once a week
+    schedule:
+      interval: "weekly"
+  # Enable version updates for npm
+  - package-ecosystem: "npm"
+    directory: "/"
+    # Check for updates once a week
+    schedule:
+      interval: "weekly"
