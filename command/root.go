@@ -1,115 +1,128 @@
 package command
 
 import (
-	"context"
 	"fmt"
-	"net/http"
 	"os"
 	"path/filepath"
 	"runtime"
-	"time"
 
-	"github.com/coreos/go-oidc"
-	"github.com/mitchellh/go-homedir"
-	"github.com/spf13/cobra"
+	"github.com/alecthomas/kong"
 )
 
-var (
-	FlagOIDCDomain = "oidc-domain"
-	FlagClientID   = "client-id"
-	FlagConfigPath = "config"
-	FlagQuiet      = "quiet"
-	FlagTimeout    = "timeout"
-)
-
-func init() {
-	rootCmd.PersistentFlags().String(FlagOIDCDomain, OIDCDomain, "The domain name of your OIDC server")
-	rootCmd.PersistentFlags().String(FlagClientID, ClientID, "The OAuth2 Client ID for the application registered with your OIDC server")
-	rootCmd.PersistentFlags().Int(FlagTimeout, 120, "the amount of time in seconds to wait for keyconjurer to respond")
-	rootCmd.PersistentFlags().String(FlagConfigPath, "~/.keyconjurerrc", "path to .keyconjurerrc file")
-	rootCmd.PersistentFlags().Bool(FlagQuiet, false, "tells the CLI to be quiet; stdout will not contain human-readable informational messages")
-	rootCmd.AddCommand(loginCmd)
-	rootCmd.AddCommand(accountsCmd)
-	rootCmd.AddCommand(getCmd)
-	rootCmd.AddCommand(setCmd)
-	rootCmd.AddCommand(&switchCmd)
-	rootCmd.AddCommand(&aliasCmd)
-	rootCmd.AddCommand(&unaliasCmd)
-	rootCmd.AddCommand(&rolesCmd)
-	rootCmd.SetVersionTemplate("{{.Version}}\n")
-
-	rootCmd.PersistentFlags().MarkHidden(FlagOIDCDomain)
-	rootCmd.PersistentFlags().MarkHidden(FlagClientID)
+type Globals struct {
+	OIDCDomain string `help:"The domain name of your OIDC server." hidden:"" env:"KEYCONJURER_OIDC_DOMAIN" default:"${oidc_domain}"`
+	ClientID   string `help:"The client ID of your OIDC server." hidden:"" env:"KEYCONJURER_CLIENT_ID" default:"${client_id}"`
+	Quiet      bool   `help:"Tells the CLI to be quiet; stdout will not contain human-readable informational messages."`
 }
 
-// rootCmd represents the base command when called without any subcommands
-var rootCmd = &cobra.Command{
-	Use:     "keyconjurer",
-	Version: fmt.Sprintf("keyconjurer-%s-%s %s (%s)", runtime.GOOS, runtime.GOARCH, Version, BuildTimestamp),
-	Short:   "Retrieve temporary cloud credentials.",
-	Long: `KeyConjurer retrieves temporary credentials from Okta with the assistance of an optional API.
+type CLI struct {
+	Globals
+
+	Login    LoginCommand    `cmd:"" help:"Authenticate with KeyConjurer."`
+	Accounts AccountsCommand `cmd:"" help:"Display accounts."`
+	Get      GetCommand      `cmd:"" help:"Retrieve temporary cloud credentials."`
+	Switch   SwitchCommand   `cmd:"" help:"Switch between accounts."`
+	Roles    RolesCommand    `cmd:"" help:"Display roles for a specific account."`
+	Alias    AliasCommand    `cmd:"" help:"Create an alias for an account."`
+	Unalias  UnaliasCommand  `cmd:"" help:"Remove an alias."`
+	Set      SetCommand      `cmd:"" help:"Set config values."`
+
+	Version kong.VersionFlag `help:"Show version information." short:"v" flag:""`
+
+	Config Config `kong:"-"`
+}
+
+func (CLI) Help() string {
+	return `KeyConjurer retrieves temporary credentials from Okta with the assistance of an optional API.
 
 To get started run the following commands:
   keyconjurer login
   keyconjurer accounts
-  keyconjurer get <accountName>
-`,
-	FParseErrWhitelist: cobra.FParseErrWhitelist{
-		UnknownFlags: true,
-	},
-	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-		var config Config
-		// The error of this function call is only non-nil if the flag was not provided or is not a string.
-		configPath, _ := cmd.Flags().GetString(FlagConfigPath)
-		if expanded, err := homedir.Expand(configPath); err == nil {
-			configPath = expanded
-		}
-
-		file, err := EnsureConfigFileExists(configPath)
-		if err != nil {
-			return err
-		}
-
-		if err := config.Read(file); err != nil {
-			return err
-		}
-
-		// We don't care about this being cancelled.
-		timeout, _ := cmd.Flags().GetInt(FlagTimeout)
-		nextCtx, _ := context.WithTimeout(cmd.Context(), time.Duration(timeout)*time.Second)
-		cmd.SetContext(ConfigContext(nextCtx, &config, configPath))
-		return nil
-	},
-	PersistentPostRunE: func(cmd *cobra.Command, _ []string) error {
-		config := ConfigFromCommand(cmd)
-		path := ConfigPathFromCommand(cmd)
-		if expanded, err := homedir.Expand(path); err == nil {
-			path = expanded
-		}
-
-		// Do not use EnsureConfigFileExists here!
-		// EnsureConfigFileExists opens the file in append mode.
-		// If we open the file in append mode, we'll always append to the file. If we open the file in truncate mode before reading from the file, the content will be truncated _before we read from it_, which will cause a users configuration to be discarded every time we run the program.
-
-		if err := os.MkdirAll(filepath.Dir(path), os.ModeDir|os.FileMode(0755)); err != nil {
-			return err
-		}
-
-		file, err := os.Create(path)
-		if err != nil {
-			return fmt.Errorf("unable to create %s reason: %w", path, err)
-		}
-
-		defer file.Close()
-		return config.Write(file)
-	},
-	SilenceErrors: true,
-	SilenceUsage:  true,
+  keyconjurer get <accountName>`
 }
 
-func Execute(ctx context.Context, args []string) error {
-	client := &http.Client{Transport: LogRoundTripper{http.DefaultTransport}}
-	ctx = oidc.ClientContext(ctx, client)
-	rootCmd.SetArgs(args)
-	return rootCmd.ExecuteContext(ctx)
+func getConfigPath() (string, error) {
+	cfgDir, err := os.UserConfigDir()
+	if err != nil {
+		// UserConfigDir() and UserHomeDir() do slightly different things. If UserConfigDir() fails, try UserHomeDir()
+		cfgDir, err = os.UserHomeDir()
+		if err != nil {
+			return "", err
+		}
+	}
+
+	return filepath.Join(cfgDir, "keyconjurer", "config.json"), nil
+}
+
+func (c *CLI) BeforeApply(ctx *kong.Context, trace *kong.Path) error {
+	cfgPath, err := getConfigPath()
+	if err != nil {
+		return err
+	}
+
+	file, err := EnsureConfigFileExists(cfgPath)
+	if err != nil {
+		return err
+	}
+
+	err = c.Config.Read(file)
+	if err != nil {
+		return err
+	}
+
+	// Make *Config available to all sub-commands.
+	// This must be &c.Config because c.Config is not a pointer.
+	ctx.Bind(&c.Config)
+	return nil
+}
+
+func (c *CLI) AfterRun(ctx *kong.Context) error {
+	cfgPath, err := getConfigPath()
+	if err != nil {
+		return err
+	}
+
+	// Do not use EnsureConfigFileExists here! EnsureConfigFileExists opens the file in append mode.
+	// If we open the file in append mode, we'll always append to the file. If we open the file in truncate mode before reading from the file, the content will be truncated _before we read from it_, which will cause a users configuration to be discarded every time we run the program.
+	if err := os.MkdirAll(filepath.Dir(cfgPath), os.ModeDir|os.FileMode(0755)); err != nil {
+		return err
+	}
+
+	file, err := os.Create(cfgPath)
+	if err != nil {
+		return fmt.Errorf("unable to create %s reason: %w", cfgPath, err)
+	}
+
+	defer file.Close()
+	return c.Config.Write(file)
+}
+
+func newKong(cli *CLI) (*kong.Kong, error) {
+	return kong.New(
+		cli,
+		kong.Name("keyconjurer"),
+		kong.Description("Retrieve temporary cloud credentials."),
+		kong.UsageOnError(),
+		kong.Vars{
+			"client_id":      ClientID,
+			"server_address": ServerAddress,
+			"oidc_domain":    OIDCDomain,
+			"version":        fmt.Sprintf("keyconjurer-%s-%s %s (%s)", runtime.GOOS, runtime.GOARCH, Version, BuildTimestamp),
+		},
+	)
+}
+
+func Execute(args []string) error {
+	var cli CLI
+	k, err := newKong(&cli)
+	if err != nil {
+		return err
+	}
+
+	kongCtx, err := k.Parse(args)
+	if err != nil {
+		return err
+	}
+
+	return kongCtx.Run(&cli.Globals)
 }

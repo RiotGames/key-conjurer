@@ -3,51 +3,37 @@ package command
 import (
 	"fmt"
 	"strconv"
-
-	"github.com/spf13/cobra"
 )
 
-func init() {
-	setCmd.AddCommand(setTTLCmd)
-	setCmd.AddCommand(setTimeRemainingCmd)
+type SetCommand struct {
+	TTL           TTLCommand           `cmd:"" name:"ttl" help:"Sets ttl value in number of hours."`
+	TimeRemaining TimeRemainingCommand `cmd:"" name:"time-remaining" help:"Sets time remaining value in number of minutes."`
 }
 
-var setCmd = &cobra.Command{
-	Use:   "set",
-	Short: "Sets config values.",
-	Long:  "Sets config values.",
+type TTLCommand struct {
+	TTL string `arg:"" help:"The ttl value in number of hours." placeholder:"hours"`
 }
 
-var setTTLCmd = &cobra.Command{
-	Use:   "ttl <ttl>",
-	Short: "Sets ttl value in number of hours.",
-	Long:  "Sets ttl value in number of hours.",
-	Args:  cobra.ExactArgs(1),
-	RunE: func(cmd *cobra.Command, args []string) error {
-		config := ConfigFromCommand(cmd)
-		ttl, err := strconv.ParseUint(args[0], 10, 32)
-		if err != nil {
-			return fmt.Errorf("unable to parse value %s", args[0])
-		}
+func (t TTLCommand) Run(globals *Globals, config *Config) error {
+	ttl, err := strconv.ParseUint(t.TTL, 10, 32)
+	if err != nil {
+		return fmt.Errorf("unable to parse value %s", t.TTL)
+	}
 
-		config.TTL = uint(ttl)
-		return nil
-	},
+	config.TTL = uint(ttl)
+	return nil
 }
 
-var setTimeRemainingCmd = &cobra.Command{
-	Use:   "time-remaining <timeRemaining>",
-	Short: "Sets time remaining value in number of minutes.",
-	Long:  "Sets time remaining value in number of minutes. Using minutes is an artifact from when keys could only live for 1 hour.",
-	Args:  cobra.ExactArgs(1),
-	RunE: func(cmd *cobra.Command, args []string) error {
-		config := ConfigFromCommand(cmd)
-		timeRemaining, err := strconv.ParseUint(args[0], 10, 32)
-		if err != nil {
-			return fmt.Errorf("unable to parse value %s", args[0])
-		}
+type TimeRemainingCommand struct {
+	TimeRemaining string `arg:"" help:"The time remaining value in number of minutes." placeholder:"minutes"`
+}
 
-		config.TimeRemaining = uint(timeRemaining)
-		return nil
-	},
+func (t TimeRemainingCommand) Run(globals *Globals, config *Config) error {
+	timeRemaining, err := strconv.ParseUint(t.TimeRemaining, 10, 32)
+	if err != nil {
+		return fmt.Errorf("unable to parse value %s", t.TimeRemaining)
+	}
+
+	config.TimeRemaining = uint(timeRemaining)
+	return nil
 }
