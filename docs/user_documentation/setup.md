@@ -2,7 +2,6 @@
 
 ## Context
 The build documentation is fairly sparce and contributors could benifit from having a more defined step-by-step explination of how to build, configure, and utilize the KeyConjurer tool. 
-> There is also no document laying out the overall flow of the tool and you must investigate for yourself based off of hints given in configurations. A high level outline as well as a user level drilldown on steps would be greatly helpful to others.
 
 ## Requirements
 
@@ -90,7 +89,7 @@ make frontend_upload
 make upload
 ```
 
-# Installation
+# CLI Installation
 
 ## Linux
 
@@ -160,3 +159,13 @@ keyconjurer roles [account-name]
 ```
 
 KeyConjurer will function anywhere you have access to Okta. **You do not need to be on a specific VPN**. You may be required to have access to your YubiKey to access KeyConjurer.
+
+# Web UI
+
+At this point you also have the option of using the web user interface. Once built and uploaded there will be a directory on your system with the path of `frontend/dist` and inside of that there is an `index.html` along with a directory containing all of the assets for the site. You can run this site manually by using:
+```bash
+npm start
+```
+![npm command for KeyConjurer](doc_assets/npm.png "npm command for KeyConjurer")
+
+![KeyConjurer site](doc_assets/keyconjurer_site.png "KeyConjurer site")
