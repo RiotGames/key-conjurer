@@ -41,11 +41,19 @@ export S3_TF_BUCKET_NAME="{PLACEHOLDER}"
 ```
 
 The environment variables each determine a specific and important piece of information required for KeyConjurer to function correctly. These values are consumed during the build process and embedded in the KeyConjurer executable. 
-- `RELEASE`: By default KeyConjurer runs in `dev` mode. If you want to run it in dev mode you can either specify dev mode or remove this line.
-    - Depending on how you configure this the name and path of the S3 buckets will be formatted differently. Please take note of this 
+
+#### Required for the building of the main KeyConjurer GO binary.
 - `CLIENT_ID`: This will be the client ID used for your Open ID Connect linked application. This is required.
 - `OIDC_DOMAIN`: This will be the domain URL for your Open ID Connect application. This could look something like `keyconjurer.us.auth0.com`.
 - `SERVER_ADDRESS`: Address of the target server that will be queried to get account data.
+
+#### Optional flags
+- `RELEASE`: By default KeyConjurer runs in `dev` mode. If you want to run it in dev mode you can either specify dev mode or remove this line and let the build process run with the default.
+    - Depending on how you configure this the name and path of the S3 buckets will be formatted differently. Please take note of this
+- `VERSION`: Default gets the short version of the current commit hash. Optionally customizable in the environment file.
+- `TIMESTAMP`: Default to the value of the current time (to the nearest minute) following the ISO 8601 format. Optionally customizable in the environment file.
+
+#### Used in the upload process
 - `S3_FRONTEND_BUCKET_NAME`: The name of the S3 bucket that we will upload front-end and built binary files to during the build process. There are 2 main upload modes in the build process that will interact with this S3 bucket.
     - `cli_upload`: The CLI upload will upload only the finalized binaries that are produced after the build process is complete.
     - `frontend_upload`: The front-end upload will everything in the newly made `frontend/dist` directory which are files pertaining to the front-end of KeyConjurer. This will include site assets and an `index.html` file mainly.
