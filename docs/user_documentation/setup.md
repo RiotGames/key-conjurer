@@ -164,6 +164,7 @@ KeyConjurer will function anywhere you have access to Okta. **You do not need to
 
 At this point you also have the option of using the web user interface. Once built and uploaded there will be a directory on your system with the path of `frontend/dist` and inside of that there is an `index.html` along with a directory containing all of the assets for the site. You can run this site manually by using:
 ```bash
+cd frontend/dist
 npm start
 ```
 ![npm command for KeyConjurer](doc_assets/npm.png "npm command for KeyConjurer")
