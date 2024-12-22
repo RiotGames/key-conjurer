@@ -84,6 +84,29 @@ make upload
 
 # Installation
 
+## Linux
+
+Open a terminal and execute the following commands.
+```bash
+mkdir -p ~/.bin/
+mv ~/Downloads/keyconjurer-* ~/.bin/keyconjurer
+chmod +x ~/.bin/keyconjurer
+```
+
+Next, add `~/.bin` to your `$PATH`. With Bash, this can be accomplished in the Terminal with:
+```bash
+echo "export PATH="$PATH:$HOME/.bin"' >> ~/.bashrc
+```
+
+Restart your shell.
+
+## Windows x64
+
+Navigate to the `keyconjurer-windows.exe` in your windows terminal of choice and run as usual.
+```bash
+./keyconjurer-windows.exe
+```
+
 ## MacOS
 Open a terminal and execute the following commands.
 
