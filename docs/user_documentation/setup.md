@@ -168,4 +168,4 @@ npm start
 ```
 ![npm command for KeyConjurer](doc_assets/npm.png "npm command for KeyConjurer")
 
-![KeyConjurer site](doc_assets/keyconjurer_site.png "KeyConjurer site")
+![KeyConjurer site](doc_assets/keyconjurer_ui.png "KeyConjurer site")
