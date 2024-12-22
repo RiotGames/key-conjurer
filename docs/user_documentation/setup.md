@@ -131,7 +131,7 @@ Restart your shell.
 > Please follow the instructions to add an exception to your Mac security policy in this [Apple support article][apple-support-article]. This is a known bug. We do not have the facility to sign Mac binaries, so the binary we ship is unsigned and Mac will, by default, try to prevent you from running it. 
 >apple-support-article: https://support.apple.com/guide/mac-help/open-a-mac-app-from-an-unidentified-developer-mh40616/mac
 
-# Daily Usage
+# CLI Usage
 
 Open a terminal and execute the following command to see the help menu:
 ```bash
@@ -160,7 +160,7 @@ keyconjurer roles [account-name]
 
 KeyConjurer will function anywhere you have access to Okta. **You do not need to be on a specific VPN**. You may be required to have access to your YubiKey to access KeyConjurer.
 
-# Web UI
+# Web UI Usage
 
 At this point you also have the option of using the web user interface. Once built and uploaded there will be a directory on your system with the path of `frontend/dist` and inside of that there is an `index.html` along with a directory containing all of the assets for the site. You can run this site manually by using:
 ```bash
