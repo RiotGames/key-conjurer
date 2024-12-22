@@ -14,14 +14,12 @@ type Settings struct {
 	OktaToken string `json:"oktaToken"`
 }
 
-var SettingsProviders = map[string]SettingsProvider{}
-
-func init() {
-	SettingsProviders["env"] = SettingsProviderFunc(RetrieveSettingsFromEnv)
-	SettingsProviders["vault"] = VaultRetriever{
+var SettingsProviders = map[string]SettingsProvider{
+	"env": SettingsProviderFunc(RetrieveSettingsFromEnv),
+	"vault": VaultRetriever{
 		SecretMountPath: os.Getenv("KC_SECRET_MOUNT_PATH"),
 		SecretPath:      os.Getenv("KC_SECRET_PATH"),
-	}
+	},
 }
 
 type SettingsProvider interface {

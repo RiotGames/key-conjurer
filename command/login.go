@@ -5,72 +5,32 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"net/http"
 	"os"
 
 	"log/slog"
 
+	"github.com/coreos/go-oidc"
 	"github.com/pkg/browser"
 	"github.com/riotgames/key-conjurer/oauth2"
-	"github.com/spf13/cobra"
-	"github.com/spf13/pflag"
 )
-
-var (
-	FlagURLOnly   = "url-only"
-	FlagNoBrowser = "no-browser"
-)
-
-func init() {
-	loginCmd.Flags().BoolP(FlagURLOnly, "u", false, "Print only the URL to visit rather than a user-friendly message")
-	loginCmd.Flags().BoolP(FlagNoBrowser, "b", false, "Do not open a browser window, printing the URL instead")
-}
-
-var loginCmd = &cobra.Command{
-	Use:   "login",
-	Short: "Authenticate with KeyConjurer.",
-	Long:  "Login to KeyConjurer using OAuth2. You will be required to open the URL printed to the console or scan a QR code.",
-	RunE: func(cmd *cobra.Command, args []string) error {
-		var loginCmd LoginCommand
-		if err := loginCmd.Parse(cmd.Flags(), args); err != nil {
-			return err
-		}
-
-		return loginCmd.Execute(cmd.Context(), ConfigFromCommand(cmd))
-	},
-}
-
-// ShouldUseMachineOutput indicates whether or not we should write to standard output as if the user is a machine.
-//
-// What this means is implementation specific, but this usually indicates the user is trying to use this program in a script and we should avoid user-friendly output messages associated with values a user might find useful.
-func ShouldUseMachineOutput(flags *pflag.FlagSet) bool {
-	quiet, _ := flags.GetBool(FlagQuiet)
-	fi, _ := os.Stdout.Stat()
-	isPiped := fi.Mode()&os.ModeCharDevice == 0
-	return isPiped || quiet
-}
 
 type LoginCommand struct {
-	OIDCDomain    string
-	ClientID      string
-	MachineOutput bool
-	NoBrowser     bool
+	URLOnly bool `help:"Print only the URL to visit rather than a user-friendly message." short:"u"`
+	Browser bool `help:"Open the browser to the Okta URL. If false, a URL will be printed to the command line instead." default:"true" negatable:"" short:"b"`
 }
 
-func (c *LoginCommand) Parse(flags *pflag.FlagSet, args []string) error {
-	c.OIDCDomain, _ = flags.GetString(FlagOIDCDomain)
-	c.ClientID, _ = flags.GetString(FlagClientID)
-	c.NoBrowser, _ = flags.GetBool(FlagNoBrowser)
-	urlOnly, _ := flags.GetBool(FlagURLOnly)
-	c.MachineOutput = ShouldUseMachineOutput(flags) || urlOnly
-	return nil
+func (c LoginCommand) Help() string {
+	return "Login to KeyConjurer using OAuth2. You will be required to open the URL printed to the console or scan a QR code."
 }
 
-func (c LoginCommand) Execute(ctx context.Context, config *Config) error {
+func (c LoginCommand) RunContext(ctx context.Context, globals *Globals, config *Config) error {
 	if !HasTokenExpired(config.Tokens) {
 		return nil
 	}
 
-	oauthCfg, err := oauth2.DiscoverConfig(ctx, c.OIDCDomain, c.ClientID)
+	client := &http.Client{Transport: LogRoundTripper{http.DefaultTransport}}
+	oauthCfg, err := oauth2.DiscoverConfig(oidc.ClientContext(ctx, client), globals.OIDCDomain, globals.ClientID)
 	if err != nil {
 		return err
 	}
@@ -87,31 +47,43 @@ func (c LoginCommand) Execute(ctx context.Context, config *Config) error {
 	}
 	oauthCfg.RedirectURL = fmt.Sprintf("http://%s", net.JoinHostPort("localhost", port))
 
-	handler := oauth2.RedirectionFlowHandler{
-		Config:       oauthCfg,
-		OnDisplayURL: openBrowserToURL,
-	}
-
-	if c.NoBrowser {
-		if c.MachineOutput {
-			handler.OnDisplayURL = printURLToConsole
+	handler := oauth2.NewAuthorizationCodeHandler(oauthCfg)
+	session := handler.NewSession()
+	if !c.Browser {
+		if isPiped() || globals.Quiet {
+			printURLToConsole(session.URL())
 		} else {
-			handler.OnDisplayURL = friendlyPrintURLToConsole
+			friendlyPrintURLToConsole(session.URL())
 		}
+	} else {
+		browser.OpenURL(session.URL())
 	}
 
-	accessToken, err := handler.HandlePendingSession(ctx, sock, oauth2.GeneratePkceChallenge(), oauth2.GenerateState())
-	if err != nil {
+	errCh := make(chan error, 1)
+	go func() {
+		err := http.Serve(sock, handler)
+		if err != nil && !errors.Is(err, http.ErrServerClosed) {
+			errCh <- err
+		}
+	}()
+
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case err := <-errCh:
 		return err
+	case err := <-session.Error:
+		return err
+	case token := <-session.Token:
+		// TODO Will panic if id_token not present
+		// TODO Verify token with OIDC provider
+		idToken := token.Extra("id_token").(string)
+		return config.SaveOAuthToken(token, idToken)
 	}
+}
 
-	// https://openid.net/specs/openid-connect-core-1_0.html#TokenResponse
-	idToken, ok := accessToken.Extra("id_token").(string)
-	if !ok {
-		return fmt.Errorf("id_token not found in token response")
-	}
-
-	return config.SaveOAuthToken(accessToken, idToken)
+func (c LoginCommand) Run(globals *Globals, config *Config) error {
+	return c.RunContext(context.Background(), globals, config)
 }
 
 var ErrNoPortsAvailable = errors.New("no ports available")
@@ -150,4 +122,9 @@ func friendlyPrintURLToConsole(url string) error {
 func openBrowserToURL(url string) error {
 	slog.Debug("trying to open browser window", slog.String("url", url))
 	return browser.OpenURL(url)
+}
+
+func isPiped() bool {
+	fi, _ := os.Stdout.Stat()
+	return fi.Mode()&os.ModeCharDevice == 0
 }
