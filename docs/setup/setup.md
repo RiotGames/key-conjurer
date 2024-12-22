@@ -1,8 +1,8 @@
 # User Startup Documentation
 
 ## Context
-
-The build process for keyconjurer is non-functional and has been outdated for at least the past year. There are broken links and no document detailing the build and usage process from start to finish. There is also no document laying out the overall flow of the tool and you must investigate for yourself based off of hints given in configurations. A high level outline as well as a user level drilldown on steps would be greatly helpful to others.
+The build documentation is fairly sparce and contributors could benifit from having a more defined step-by-step explination of how to build, configure, and utilize the KeyConjurer tool. 
+> There is also no document laying out the overall flow of the tool and you must investigate for yourself based off of hints given in configurations. A high level outline as well as a user level drilldown on steps would be greatly helpful to others.
 
 ## Requirements
 
