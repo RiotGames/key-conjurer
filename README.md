@@ -89,10 +89,7 @@ We advise against using environment variables for secrets in AWS Lambda as they 
 | SETTINGS_PROVIDER | This must be set to 'env' for the Lambda functions to read from the environment. |
 
 
-# User Startup Documentation
-
-## Context
-The build documentation is fairly sparce and contributors could benifit from having a more defined step-by-step explination of how to build, configure, and utilize the KeyConjurer tool. 
+# Post-Deployment Steps
 
 ## Requirements
 
