@@ -53,7 +53,7 @@ bin/keyconjurer: bin/
 	@test $${CLIENT_ID?is not set}
 	@test $${OIDC_DOMAIN?is not set}
 	@test $${SERVER_ADDRESS?is not set}
-	@go build \
+	@CGO_ENABLED=0 go build \
 		-ldflags "\
 			-s -w \
 			-X github.com/riotgames/key-conjurer/command.Version=$(shell git rev-parse --short HEAD)-$(RELEASE) \
