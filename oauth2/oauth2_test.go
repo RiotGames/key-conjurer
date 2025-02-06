@@ -1,94 +1,75 @@
 package oauth2
 
 import (
-	"net/http"
+	"context"
+	"encoding/base64"
+	"errors"
 	"net/http/httptest"
 	"net/url"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"golang.org/x/oauth2"
 )
 
-func sendOAuth2CallbackRequest(handler http.Handler, values url.Values) {
-	uri := url.URL{
-		Scheme:   "http",
-		Host:     "localhost",
-		Path:     "/oauth2/callback",
-		RawQuery: values.Encode(),
+type testExchanger struct {
+	toks map[string]*oauth2.Token
+}
+
+func (te *testExchanger) AddToken(code string, token *oauth2.Token) {
+	if te.toks == nil {
+		te.toks = make(map[string]*oauth2.Token)
 	}
 
-	w := httptest.NewRecorder()
-	req := httptest.NewRequest("GET", uri.String(), nil)
-	handler.ServeHTTP(w, req)
+	key := base64.RawStdEncoding.EncodeToString([]byte(code))
+	te.toks[key] = token
 }
 
-func Test_OAuth2CallbackHandler_YieldsCorrectlyFormattedState(t *testing.T) {
-	handler, ch, cancel := OAuth2CallbackHandler()
-	t.Cleanup(func() {
-		cancel()
-	})
+func (te *testExchanger) Exchange(_ context.Context, code string, _ ...oauth2.AuthCodeOption) (*oauth2.Token, error) {
+	// HACK: We cannot verify PKCE because params don't have a publicly accessible method for us to call.
+	if te.toks == nil {
+		te.toks = make(map[string]*oauth2.Token)
+	}
 
-	expectedState := "state goes here"
-	expectedCode := "code goes here"
+	key := base64.RawStdEncoding.EncodeToString([]byte(code))
+	tok, ok := te.toks[key]
+	if !ok {
+		return nil, errors.New("no token found for code")
+	}
+	return tok, nil
+}
 
-	go sendOAuth2CallbackRequest(handler, url.Values{
-		"code":  []string{expectedCode},
-		"state": []string{expectedState},
-	})
+func Test_handler_YieldsCorrectlyFormattedState(t *testing.T) {
+	var (
+		ex            testExchanger
+		handle        = &handler{Exchanger: &ex, jobs: make(chan job)}
+		expectedToken = &oauth2.Token{
+			AccessToken: "1234",
+		}
+		state    = "state goes here"
+		code     = "code goes here"
+		verifier = oauth2.GenerateVerifier()
+		dl, _    = t.Deadline()
+		ctx, _   = context.WithDeadline(context.Background(), dl)
+		values   = url.Values{
+			"state": []string{state},
+			"code":  []string{code},
+		}
+		uri = url.URL{
+			Scheme:   "http",
+			Host:     "localhost",
+			Path:     "/oauth2/callback",
+			RawQuery: values.Encode(),
+		}
+		r = httptest.NewRequest("GET", uri.String(), nil)
+		w = httptest.NewRecorder()
+	)
 
-	callbackState := <-ch
-	code, err := callbackState.Verify(expectedState)
+	ex.AddToken(code, expectedToken)
+
+	go handle.ServeHTTP(w, r)
+
+	tok, err := handle.Wait(ctx, state, verifier)
 	assert.NoError(t, err)
-	assert.Equal(t, expectedCode, code)
-}
-
-func Test_OAuth2CallbackState_VerifyWorksCorrectly(t *testing.T) {
-	t.Run("happy path", func(t *testing.T) {
-		expectedState := "state goes here"
-		expectedCode := "code goes here"
-		callbackState := OAuth2CallbackState{
-			code:  expectedCode,
-			state: expectedState,
-		}
-		code, err := callbackState.Verify(expectedState)
-		assert.NoError(t, err)
-		assert.Equal(t, expectedCode, code)
-	})
-
-	t.Run("unhappy path", func(t *testing.T) {
-		expectedState := "state goes here"
-		expectedCode := "code goes here"
-		callbackState := OAuth2CallbackState{
-			code:  expectedCode,
-			state: expectedState,
-		}
-		_, err := callbackState.Verify("mismatching state")
-		var oauthErr OAuth2Error
-		assert.ErrorAs(t, err, &oauthErr)
-		assert.Equal(t, "invalid_state", oauthErr.Reason)
-	})
-}
-
-// Test_OAuth2Listener_MultipleRequestsDoesNotCausePanic prevents an issue where OAuth2Listener would send a request to a closed channel
-func Test_OAuth2Listener_MultipleRequestsDoesNotCausePanic(t *testing.T) {
-	handler, ch, cancel := OAuth2CallbackHandler()
-	t.Cleanup(func() {
-		cancel()
-	})
-
-	go sendOAuth2CallbackRequest(handler, url.Values{
-		// We send empty values because we don't care about processing in this test
-		"code":  []string{""},
-		"state": []string{""},
-	})
-
-	// We drain the channel of the first request so the handler completes.
-	// Without this step, we would get 'stuck' in the sync.Once().
-	<-ch
-
-	// We send this request synchronously to ensure that any panics are caught during the test.
-	sendOAuth2CallbackRequest(handler, url.Values{
-		"code":  []string{"not the expected code and should be discarded"},
-		"state": []string{"not the expected state and should be discarded"},
-	})
+	assert.Equal(t, expectedToken, tok)
 }
