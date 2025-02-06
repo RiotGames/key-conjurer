@@ -1,4 +1,4 @@
-package oauth2
+package oktawebsso
 
 import (
 	"context"
@@ -11,10 +11,13 @@ import (
 	"golang.org/x/oauth2"
 )
 
-// exchangeAccessTokenForWebSSOToken exchanges an OAuth2 token for an Okta Web SSO token.
+// ErrNoSAMLAssertion indicates that the sso endpoint had no SAML assertion in its response.
+var ErrNoSAMLAssertion = errors.New("no saml assertion")
+
+// ExchangeAccessTokenForWebSSOToken exchanges an OAuth2 token for an Okta Web SSO token.
 //
 // An Okta Web SSO token is a non-standard authorization token for Okta's Web SSO endpoint.
-func exchangeAccessTokenForWebSSOToken(ctx context.Context, oauthCfg *oauth2.Config, accessToken string, idToken string, applicationID string) (*oauth2.Token, error) {
+func ExchangeAccessTokenForWebSSOToken(ctx context.Context, oauthCfg *oauth2.Config, accessToken string, idToken string, applicationID string) (*oauth2.Token, error) {
 	return oauthCfg.Exchange(ctx, "",
 		oauth2.SetAuthURLParam("grant_type", "urn:ietf:params:oauth:grant-type:token-exchange"),
 		oauth2.SetAuthURLParam("actor_token", accessToken),
@@ -27,10 +30,10 @@ func exchangeAccessTokenForWebSSOToken(ctx context.Context, oauthCfg *oauth2.Con
 	)
 }
 
-// exchangeWebSSOTokenForSAMLAssertion is an Okta-specific API which exchanges an Okta Web SSO token, which is obtained by exchanging an OAuth2 token using the RFC8693 Token Exchange Flow, for a SAML assertion.
+// ExchangeWebSSOTokenForSAMLAssertion is an Okta-specific API which exchanges an Okta Web SSO token, which is obtained by exchanging an OAuth2 token using the RFC8693 Token Exchange Flow, for a SAML assertion.
 //
 // It is not standards compliant, but is used by Okta in their own okta-aws-cli.
-func exchangeWebSSOTokenForSAMLAssertion(ctx context.Context, issuer string, token *oauth2.Token) ([]byte, error) {
+func ExchangeWebSSOTokenForSAMLAssertion(ctx context.Context, issuer string, token *oauth2.Token) ([]byte, error) {
 	data := url.Values{"token": {token.AccessToken}}
 	uri := fmt.Sprintf("%s/login/token/sso?%s", issuer, data.Encode())
 	req, _ := http.NewRequestWithContext(ctx, "GET", uri, nil)

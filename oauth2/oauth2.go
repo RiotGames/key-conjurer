@@ -4,17 +4,15 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/base64"
-	"errors"
 	"fmt"
 	"net"
 	"net/http"
 
 	"github.com/RobotsAndPencils/go-saml"
 	"github.com/coreos/go-oidc"
+	"github.com/riotgames/key-conjurer/internal/oktawebsso"
 	"golang.org/x/oauth2"
 )
-
-var ErrNoSAMLAssertion = errors.New("no saml assertion")
 
 // stateBufSize is the size of the buffer used to generate the state parameter.
 // 43 is a magic number - It generates states that are not too short or long for Okta's validation.
@@ -73,12 +71,12 @@ func DiscoverConfigAndExchangeTokenForAssertion(ctx context.Context, accessToken
 		return nil, "", fmt.Errorf("discover oauth2 config: %w", err)
 	}
 
-	tok, err := exchangeAccessTokenForWebSSOToken(ctx, oauthCfg, accessToken, idToken, applicationID)
+	tok, err := oktawebsso.ExchangeAccessTokenForWebSSOToken(ctx, oauthCfg, accessToken, idToken, applicationID)
 	if err != nil {
 		return nil, "", fmt.Errorf("get websso token: %w", err)
 	}
 
-	assertionBytes, err := exchangeWebSSOTokenForSAMLAssertion(ctx, oidcDomain, tok)
+	assertionBytes, err := oktawebsso.ExchangeWebSSOTokenForSAMLAssertion(ctx, oidcDomain, tok)
 	if err != nil {
 		return nil, "", fmt.Errorf("get saml assertion: %w", err)
 	}
