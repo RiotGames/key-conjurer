@@ -35,7 +35,7 @@ func DiscoverConfig(ctx context.Context, domain, clientID string) (*oauth2.Confi
 	return &cfg, nil
 }
 
-func GenerateState() string {
+func generateState() string {
 	stateBuf := make([]byte, stateBufSize)
 	rand.Read(stateBuf)
 	return base64.URLEncoding.EncodeToString(stateBuf)
@@ -46,11 +46,12 @@ type RedirectionFlowHandler struct {
 	OnDisplayURL func(url string) error
 }
 
-func (r RedirectionFlowHandler) HandlePendingSession(ctx context.Context, listener net.Listener, state string) (*oauth2.Token, error) {
+func (r RedirectionFlowHandler) HandlePendingSession(ctx context.Context, listener net.Listener) (*oauth2.Token, error) {
 	if r.OnDisplayURL == nil {
 		panic("OnDisplayURL must be set")
 	}
 
+	state := generateState()
 	verifier := oauth2.GenerateVerifier()
 	url := r.Config.AuthCodeURL(state, oauth2.S256ChallengeOption(verifier))
 	handler := &handler{jobs: make(chan job), Exchanger: r.Config}
