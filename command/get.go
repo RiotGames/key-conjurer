@@ -9,7 +9,7 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
-	"github.com/riotgames/key-conjurer/oauth2"
+	"github.com/riotgames/key-conjurer/pkg/oauth2cli"
 	"github.com/spf13/cobra"
 )
 
@@ -167,7 +167,7 @@ func (g GetCommand) Execute(ctx context.Context, config *Config) error {
 }
 
 func (g GetCommand) fetchNewCredentials(ctx context.Context, account Account, cfg *Config) (*CloudCredentials, error) {
-	samlResponse, assertionStr, err := oauth2.DiscoverConfigAndExchangeTokenForAssertion(ctx, cfg.Tokens.AccessToken, cfg.Tokens.IDToken, g.OIDCDomain, g.ClientID, account.ID)
+	samlResponse, assertionStr, err := oauth2cli.DiscoverConfigAndExchangeTokenForAssertion(ctx, cfg.Tokens.AccessToken, cfg.Tokens.IDToken, g.OIDCDomain, g.ClientID, account.ID)
 	if err != nil {
 		return nil, err
 	}

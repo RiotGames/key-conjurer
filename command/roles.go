@@ -4,7 +4,7 @@ import (
 	"strings"
 
 	"github.com/RobotsAndPencils/go-saml"
-	"github.com/riotgames/key-conjurer/oauth2"
+	"github.com/riotgames/key-conjurer/pkg/oauth2cli"
 	"github.com/spf13/cobra"
 )
 
@@ -27,7 +27,7 @@ var rolesCmd = cobra.Command{
 			applicationID = account.ID
 		}
 
-		samlResponse, _, err := oauth2.DiscoverConfigAndExchangeTokenForAssertion(cmd.Context(), config.Tokens.AccessToken, config.Tokens.IDToken, oidcDomain, clientID, applicationID)
+		samlResponse, _, err := oauth2cli.DiscoverConfigAndExchangeTokenForAssertion(cmd.Context(), config.Tokens.AccessToken, config.Tokens.IDToken, oidcDomain, clientID, applicationID)
 		if err != nil {
 			return err
 		}

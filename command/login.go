@@ -9,10 +9,12 @@ import (
 
 	"log/slog"
 
+	"github.com/coreos/go-oidc"
 	"github.com/pkg/browser"
-	"github.com/riotgames/key-conjurer/oauth2"
+	"github.com/riotgames/key-conjurer/pkg/oauth2cli"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
+	"golang.org/x/oauth2"
 )
 
 var (
@@ -70,9 +72,18 @@ func (c LoginCommand) Execute(ctx context.Context, config *Config) error {
 		return nil
 	}
 
-	oauthCfg, err := oauth2.DiscoverConfig(ctx, c.OIDCDomain, c.ClientID)
+	serveURL := openBrowserToURL
+	if c.NoBrowser {
+		if c.MachineOutput {
+			serveURL = printURLToConsole
+		} else {
+			serveURL = friendlyPrintURLToConsole
+		}
+	}
+
+	prov, err := oidc.NewProvider(ctx, c.OIDCDomain)
 	if err != nil {
-		return err
+		return fmt.Errorf("discover provider: %w", err)
 	}
 
 	sock, err := findFirstFreePort(ctx, "127.0.0.1", CallbackPorts)
@@ -85,21 +96,15 @@ func (c LoginCommand) Execute(ctx context.Context, config *Config) error {
 		// Failed to split the host and port. We need the port to continue, so bail
 		return err
 	}
-	oauthCfg.RedirectURL = fmt.Sprintf("http://%s", net.JoinHostPort("localhost", port))
 
-	handler := oauth2.RedirectionFlowHandler{
-		Config:       oauthCfg,
-		OnDisplayURL: openBrowserToURL,
+	cfg := oauth2.Config{
+		ClientID:    c.ClientID,
+		Endpoint:    prov.Endpoint(),
+		Scopes:      []string{oidc.ScopeOpenID, "profile", "okta.apps.read", "okta.apps.sso"},
+		RedirectURL: fmt.Sprintf("http://%s", net.JoinHostPort("localhost", port)),
 	}
 
-	if c.NoBrowser {
-		if c.MachineOutput {
-			handler.OnDisplayURL = printURLToConsole
-		} else {
-			handler.OnDisplayURL = friendlyPrintURLToConsole
-		}
-	}
-
+	handler := oauth2cli.NewAuthorizationCodeHandler(&cfg, serveURL)
 	accessToken, err := handler.HandlePendingSession(ctx, sock)
 	if err != nil {
 		return err
@@ -111,10 +116,15 @@ func (c LoginCommand) Execute(ctx context.Context, config *Config) error {
 		return fmt.Errorf("id_token not found in token response")
 	}
 
+	_, err = prov.Verifier(&oidc.Config{ClientID: c.ClientID}).Verify(ctx, idToken)
+	if err != nil {
+		return fmt.Errorf("validate id token: %w", err)
+	}
+
 	return config.SaveOAuthToken(accessToken, idToken)
 }
 
-var ErrNoPortsAvailable = errors.New("no ports available")
+var errNoPortsAvailable = errors.New("no ports available")
 
 // findFirstFreePort will attempt to open a network listener for each port in turn, and return the first one that succeeded.
 //
@@ -134,7 +144,7 @@ func findFirstFreePort(ctx context.Context, broadcastAddr string, ports []string
 		slog.Debug("could not listen, trying a different addr", slog.String("addr", addr), slog.String("error", err.Error()))
 	}
 
-	return nil, ErrNoPortsAvailable
+	return nil, errNoPortsAvailable
 }
 
 func printURLToConsole(url string) error {

@@ -1,4 +1,5 @@
-package oauth2
+// Package oauth2cli contains utilities useful for interacting with OAuth2 flows from a command line interface.
+package oauth2cli
 
 import (
 	"context"
@@ -39,25 +40,28 @@ func generateState() string {
 	return base64.URLEncoding.EncodeToString(stateBuf)
 }
 
-type RedirectionFlowHandler struct {
-	Config       *oauth2.Config
-	OnDisplayURL func(url string) error
+func NewAuthorizationCodeHandler(cfg *oauth2.Config, serveURL func(string) error) *AuthorizationCodeHandler {
+	return &AuthorizationCodeHandler{
+		config:   cfg,
+		serveURL: serveURL,
+	}
 }
 
-func (r RedirectionFlowHandler) HandlePendingSession(ctx context.Context, listener net.Listener) (*oauth2.Token, error) {
-	if r.OnDisplayURL == nil {
-		panic("OnDisplayURL must be set")
-	}
+type AuthorizationCodeHandler struct {
+	config   *oauth2.Config
+	serveURL func(url string) error
+}
 
+func (r AuthorizationCodeHandler) HandlePendingSession(ctx context.Context, listener net.Listener) (*oauth2.Token, error) {
 	state := generateState()
 	verifier := oauth2.GenerateVerifier()
-	url := r.Config.AuthCodeURL(state, oauth2.S256ChallengeOption(verifier))
-	handler := &handler{jobs: make(chan job), Exchanger: r.Config}
+	url := r.config.AuthCodeURL(state, oauth2.S256ChallengeOption(verifier))
+	handler := &handler{jobs: make(chan job), Exchanger: r.config}
 	// TODO: This error probably should not be ignored if it is not http.ErrServerClosed
 	go http.Serve(listener, handler)
 	defer handler.Close()
 
-	if err := r.OnDisplayURL(url); err != nil {
+	if err := r.serveURL(url); err != nil {
 		// This is unlikely to ever happen
 		return nil, fmt.Errorf("failed to display link: %w", err)
 	}
