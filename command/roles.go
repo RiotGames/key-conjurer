@@ -27,7 +27,7 @@ var rolesCmd = cobra.Command{
 			applicationID = account.ID
 		}
 
-		samlResponse, _, err := oauth2cli.DiscoverConfigAndExchangeTokenForAssertion(cmd.Context(), config.Tokens.AccessToken, config.Tokens.IDToken, oidcDomain, clientID, applicationID)
+		samlResponse, _, err := oauth2cli.DiscoverConfigAndExchangeTokenForAssertion(cmd.Context(), config.Tokens, oidcDomain, clientID, applicationID)
 		if err != nil {
 			return err
 		}

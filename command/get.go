@@ -167,7 +167,7 @@ func (g GetCommand) Execute(ctx context.Context, config *Config) error {
 }
 
 func (g GetCommand) fetchNewCredentials(ctx context.Context, account Account, cfg *Config) (*CloudCredentials, error) {
-	samlResponse, assertionStr, err := oauth2cli.DiscoverConfigAndExchangeTokenForAssertion(ctx, cfg.Tokens.AccessToken, cfg.Tokens.IDToken, g.OIDCDomain, g.ClientID, account.ID)
+	samlResponse, assertionStr, err := oauth2cli.DiscoverConfigAndExchangeTokenForAssertion(ctx, cfg.Tokens, g.OIDCDomain, g.ClientID, account.ID)
 	if err != nil {
 		return nil, err
 	}

@@ -69,18 +69,18 @@ func (r AuthorizationCodeHandler) HandlePendingSession(ctx context.Context, list
 	return handler.Wait(ctx, state, verifier)
 }
 
-func DiscoverConfigAndExchangeTokenForAssertion(ctx context.Context, accessToken, idToken, oidcDomain, clientID, applicationID string) (*saml.Response, string, error) {
+func DiscoverConfigAndExchangeTokenForAssertion(ctx context.Context, ts oauth2.TokenSource, oidcDomain, clientID, applicationID string) (*saml.Response, string, error) {
 	oauthCfg, err := DiscoverConfig(ctx, oidcDomain, clientID)
 	if err != nil {
 		return nil, "", fmt.Errorf("discover oauth2 config: %w", err)
 	}
 
-	tok, err := oktawebsso.ExchangeAccessTokenForWebSSOToken(ctx, oauthCfg, accessToken, idToken, applicationID)
+	tok, err := oktawebsso.ExchangeAccessToken(ctx, oauthCfg, ts, applicationID)
 	if err != nil {
 		return nil, "", fmt.Errorf("get websso token: %w", err)
 	}
 
-	assertionBytes, err := oktawebsso.ExchangeWebSSOTokenForSAMLAssertion(ctx, oidcDomain, tok)
+	assertionBytes, err := oktawebsso.GetSAMLAssertion(ctx, oidcDomain, tok)
 	if err != nil {
 		return nil, "", fmt.Errorf("get saml assertion: %w", err)
 	}
