@@ -4,6 +4,7 @@ import (
 	"encoding/csv"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -256,14 +257,14 @@ func (c *Config) SaveOAuthToken(tok *oauth2.Token, idToken string) error {
 	return nil
 }
 
-// Write writes the config to the file provided overwriting the file if it exists
-func (c *Config) Write(w io.Writer) error {
+// Encode writes the config to the file provided overwriting the file if it exists
+func (c *Config) Encode(w io.Writer) error {
 	enc := json.NewEncoder(w)
 	return enc.Encode(c)
 }
 
-// Reader populates all member values of config using default values where needed
-func (c *Config) Read(reader io.Reader) error {
+// Decode populates all member values of config using default values where needed
+func (c *Config) Decode(reader io.Reader) error {
 	dec := json.NewDecoder(reader)
 	// If we encounter an end of file, use the default values and don't treat it as an error
 	// This also conveniently allows someone to use /dev/null for the config file.
@@ -329,10 +330,54 @@ func (c *Config) DumpAccounts(w io.Writer, withHeaders bool) {
 	c.Accounts.WriteTable(w, withHeaders)
 }
 
-func EnsureConfigFileExists(fp string) (io.ReadWriteCloser, error) {
+func ensureConfigFileExists(fp string) (io.ReadWriteCloser, error) {
 	if err := os.MkdirAll(filepath.Dir(fp), os.ModeDir|os.FileMode(0755)); err != nil {
 		return nil, err
 	}
 
 	return os.OpenFile(fp, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+}
+
+func findConfigPath() (string, error) {
+	dir, err := os.UserConfigDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(dir, "keyconjurer", "config.json"), nil
+}
+
+func loadConfig() (Config, error) {
+	var config Config
+	path, err := findConfigPath()
+	if err != nil {
+		return config, fmt.Errorf("find config path: %s", err)
+	}
+
+	file, err := ensureConfigFileExists(path)
+	if err != nil {
+		return config, err
+	}
+
+	err = config.Decode(file)
+	return config, err
+}
+
+func saveConfig(config *Config) error {
+	path, err := findConfigPath()
+	if err != nil {
+		return fmt.Errorf("find config path: %s", err)
+	}
+
+	if err := os.MkdirAll(filepath.Dir(path), os.ModeDir|os.FileMode(0755)); err != nil {
+		return err
+	}
+
+	w, err := os.Create(path)
+	if err != nil {
+		return fmt.Errorf("unable to create %s reason: %w", path, err)
+	}
+	defer w.Close()
+
+	err = config.Encode(w)
+	return err
 }
