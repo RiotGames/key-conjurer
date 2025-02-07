@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"net"
 	"os"
 
@@ -16,6 +17,12 @@ import (
 	"github.com/spf13/pflag"
 	"golang.org/x/oauth2"
 )
+
+func init() {
+	// Silence stdout/stderr from browsers
+	browser.Stdout = io.Discard
+	browser.Stderr = io.Discard
+}
 
 var (
 	FlagURLOnly   = "url-only"
