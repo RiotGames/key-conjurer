@@ -3,6 +3,7 @@ package command
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"slices"
@@ -107,23 +108,6 @@ func (g GetCommand) printUsage() error {
 }
 
 func (g GetCommand) Execute(ctx context.Context, config *Config) error {
-	if HasTokenExpired(config.Tokens) {
-		if !g.Login {
-			return ErrTokensExpiredOrAbsent
-		}
-
-		loginCommand := LoginCommand{
-			OIDCDomain:    g.OIDCDomain,
-			ClientID:      g.ClientID,
-			MachineOutput: g.MachineOutput,
-			NoBrowser:     g.NoBrowser,
-		}
-
-		if err := loginCommand.Execute(ctx, config); err != nil {
-			return err
-		}
-	}
-
 	var accountID string
 	if g.AccountIDOrName != "" {
 		accountID = g.AccountIDOrName
@@ -154,9 +138,24 @@ func (g GetCommand) Execute(ctx context.Context, config *Config) error {
 	credentials := LoadAWSCredentialsFromEnvironment()
 	if !credentials.ValidUntil(account, time.Duration(g.TimeRemaining)*time.Minute) {
 		newCredentials, err := g.fetchNewCredentials(ctx, *account, config)
+		if errors.Is(err, ErrTokensExpiredOrAbsent) && g.Login {
+			loginCommand := LoginCommand{
+				OIDCDomain:    g.OIDCDomain,
+				ClientID:      g.ClientID,
+				MachineOutput: g.MachineOutput,
+				NoBrowser:     g.NoBrowser,
+			}
+			err = loginCommand.Execute(ctx, config)
+			if err != nil {
+				return err
+			}
+			newCredentials, err = g.fetchNewCredentials(ctx, *account, config)
+		}
+
 		if err != nil {
 			return err
 		}
+
 		credentials = *newCredentials
 	}
 
@@ -169,7 +168,7 @@ func (g GetCommand) Execute(ctx context.Context, config *Config) error {
 }
 
 func (g GetCommand) fetchNewCredentials(ctx context.Context, account Account, cfg *Config) (*CloudCredentials, error) {
-	samlResponse, assertionStr, err := oauth2cli.DiscoverConfigAndExchangeTokenForAssertion(ctx, cfg.Tokens, g.OIDCDomain, g.ClientID, account.ID)
+	samlResponse, assertionStr, err := oauth2cli.DiscoverConfigAndExchangeTokenForAssertion(ctx, &keychainTokenSource{}, g.OIDCDomain, g.ClientID, account.ID)
 	if err != nil {
 		return nil, err
 	}
