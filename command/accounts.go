@@ -57,8 +57,7 @@ var accountsCmd = &cobra.Command{
 		if HasTokenExpired(config.Tokens) {
 			return ErrTokensExpiredOrAbsent
 		}
-
-		accounts, err := refreshAccounts(cmd.Context(), serverAddrURI, config.Tokens)
+		accounts, err := refreshAccounts(cmd.Context(), serverAddrURI, config)
 		if err != nil {
 			return fmt.Errorf("error refreshing accounts: %w", err)
 		}

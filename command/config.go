@@ -219,6 +219,13 @@ func (c Config) GetOAuthToken() (*TokenSet, bool) {
 	return c.Tokens, c.Tokens != nil
 }
 
+func (c Config) Token() (*oauth2.Token, error) {
+	if c.Tokens == nil {
+		return nil, nil
+	}
+	return c.Tokens.Token()
+}
+
 func HasTokenExpired(tok *TokenSet) bool {
 	if tok == nil {
 		return true
