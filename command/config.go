@@ -25,12 +25,14 @@ type TokenSet struct {
 
 // Token implements oauth2.TokenSource.
 func (t TokenSet) Token() (*oauth2.Token, error) {
-	return &oauth2.Token{
+	tok := oauth2.Token{
 		AccessToken:  t.AccessToken,
 		RefreshToken: t.RefreshToken,
 		Expiry:       t.Expiry,
 		TokenType:    t.TokenType,
-	}, nil
+	}
+
+	return tok.WithExtra(map[string]any{"id_token": t.IDToken}), nil
 }
 
 type Account struct {
