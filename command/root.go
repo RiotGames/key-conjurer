@@ -32,7 +32,8 @@ func init() {
 	rootCmd.AddCommand(&unaliasCmd)
 	rootCmd.AddCommand(&rolesCmd)
 	rootCmd.AddCommand(&cobra.Command{
-		Use: "config-path",
+		Use:   "config-path",
+		Short: "Print the absolute path to the configuration file",
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			path, err := findConfigPath()
 			if err != nil {
