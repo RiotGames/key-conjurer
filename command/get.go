@@ -115,12 +115,6 @@ func (g GetCommand) printUsage() error {
 	return g.UsageFunc()
 }
 
-func (g GetCommand) rolesInteractivePrompt(roles []string, mostRecent string) (string, error) {
-	panic("nyi")
-	huh.NewForm()
-	return "", nil
-}
-
 func (g GetCommand) Execute(ctx context.Context, config *Config) error {
 	var accountID string
 	if g.AccountIDOrName != "" {
@@ -143,7 +137,7 @@ func (g GetCommand) Execute(ctx context.Context, config *Config) error {
 
 	credentials := LoadAWSCredentialsFromEnvironment()
 	if !credentials.ValidUntil(account, time.Duration(g.TimeRemaining)*time.Minute) {
-		newCredentials, err := g.fetchNewCredentials(ctx, *account, config)
+		newCredentials, err := g.fetchNewCredentials(ctx, account, config)
 		if errors.Is(err, ErrTokensExpiredOrAbsent) && g.Login {
 			loginCommand := LoginCommand{
 				OIDCDomain:    g.OIDCDomain,
@@ -155,7 +149,7 @@ func (g GetCommand) Execute(ctx context.Context, config *Config) error {
 			if err != nil {
 				return err
 			}
-			newCredentials, err = g.fetchNewCredentials(ctx, *account, config)
+			newCredentials, err = g.fetchNewCredentials(ctx, account, config)
 		}
 
 		if errors.Is(err, ErrNoRoles) {
@@ -175,15 +169,14 @@ func (g GetCommand) Execute(ctx context.Context, config *Config) error {
 		credentials = *newCredentials
 	}
 
-	if account != nil {
-		account.MostRecentRole = g.RoleName
-	}
-
 	config.LastUsedAccount = &accountID
 	return echoCredentials(accountID, accountID, credentials, g.OutputType, g.ShellType, g.AWSCLIPath)
 }
 
-func (g GetCommand) fetchNewCredentials(ctx context.Context, account Account, cfg *Config) (*CloudCredentials, error) {
+// fetchNewCredentials fetches new credentials for the given account.
+//
+// 'account' will have its MostRecentRole field updated to the role used if this call is successful.
+func (g GetCommand) fetchNewCredentials(ctx context.Context, account *Account, cfg *Config) (*CloudCredentials, error) {
 	samlResponse, assertionStr, err := oauth2cli.DiscoverConfigAndExchangeTokenForAssertion(ctx, &keychainTokenSource{}, g.OIDCDomain, g.ClientID, account.ID)
 	if err != nil {
 		return nil, err
@@ -196,7 +189,7 @@ func (g GetCommand) fetchNewCredentials(ctx context.Context, account Account, cf
 
 	if g.RoleName == "" {
 		if account.MostRecentRole == "" || g.Interactive {
-			g.RoleName, err = g.rolesInteractivePrompt(listRoles(samlResponse), account.MostRecentRole)
+			g.RoleName, err = rolesInteractivePrompt(listRoles(samlResponse), account.MostRecentRole)
 			if err != nil {
 				return nil, ErrNoRole
 			}
@@ -209,6 +202,7 @@ func (g GetCommand) fetchNewCredentials(ctx context.Context, account Account, cf
 	if !ok {
 		return nil, UnknownRoleError(g.RoleName, g.AccountIDOrName)
 	}
+	account.MostRecentRole = g.RoleName
 
 	if g.TimeToLive == 1 && cfg.TTL != 0 {
 		g.TimeToLive = cfg.TTL
@@ -282,4 +276,18 @@ func echoCredentials(id, name string, credentials CloudCredentials, outputType, 
 	default:
 		return fmt.Errorf("%s is an invalid output type", outputType)
 	}
+}
+
+func rolesInteractivePrompt(roles []string, mostRecent string) (string, error) {
+	opts := huh.NewOptions(roles...)
+	ctrl := huh.NewSelect[string]().
+		Options(opts...).
+		Value(&mostRecent).
+		Description("Choose a role using your arrow keys and press the return key to confirm.")
+
+	err := huh.Run(ctrl)
+	if err != nil {
+		return "", err
+	}
+	return ctrl.GetValue().(string), nil
 }
