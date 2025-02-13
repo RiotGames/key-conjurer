@@ -107,7 +107,7 @@ func (c LoginCommand) Execute(ctx context.Context, config *Config) error {
 	cfg := oauth2.Config{
 		ClientID:    c.ClientID,
 		Endpoint:    prov.Endpoint(),
-		Scopes:      []string{oidc.ScopeOpenID, "profile", "okta.apps.read", "okta.apps.sso"},
+		Scopes:      []string{oidc.ScopeOpenID, "profile", "okta.apps.read", "okta.web.sso"},
 		RedirectURL: fmt.Sprintf("http://%s", net.JoinHostPort("localhost", port)),
 	}
 
