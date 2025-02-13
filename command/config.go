@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"iter"
 	"os"
 	"path/filepath"
 	"sort"
@@ -60,6 +61,16 @@ func generateDefaultAlias(name string) string {
 	}
 
 	return strings.ToLower(strings.ReplaceAll(name, " ", "-"))
+}
+
+func (a *accountSet) Seq() iter.Seq[Account] {
+	return iter.Seq[Account](func(yield func(account Account) bool) {
+		for _, v := range a.accounts {
+			if !yield(*v) {
+				return
+			}
+		}
+	})
 }
 
 func (a *accountSet) ForEach(f func(id string, account Account, alias string)) {
@@ -216,6 +227,10 @@ func (c *Config) Decode(reader io.Reader) error {
 	}
 
 	return nil
+}
+
+func (c Config) EnumerateAccounts() iter.Seq[Account] {
+	return c.Accounts.Seq()
 }
 
 func (c *Config) AddAccount(id string, account Account) {

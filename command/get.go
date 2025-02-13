@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"iter"
 	"os"
 	"slices"
 	"time"
@@ -25,8 +26,9 @@ var (
 	FlagLogin         = "login"
 	FlagInteractive   = "interactive"
 
-	ErrNoRoles = errors.New("no roles")
-	ErrNoRole  = errors.New("no role")
+	ErrNoRoles      = errors.New("no roles")
+	ErrNoRole       = errors.New("no role")
+	ErrNoAccountArg = errors.New("account name or alias is required")
 )
 
 var (
@@ -93,10 +95,14 @@ func (g *GetCommand) Parse(cmd *cobra.Command, args []string) error {
 	g.PrintErrln = cmd.PrintErrln
 	g.Interactive, _ = flags.GetBool(FlagInteractive)
 	g.MachineOutput = ShouldUseMachineOutput(flags) || g.URLOnly
-	if len(args) == 0 {
-		return fmt.Errorf("account name or alias is required")
+	if len(args) > 0 {
+		g.AccountIDOrName = args[0]
+	} else if g.Interactive {
+		// We can resolve this at execution time with an interactive prompt.
+		g.AccountIDOrName = ""
+	} else {
+		return ErrNoAccountArg
 	}
-	g.AccountIDOrName = args[0]
 	return nil
 }
 
@@ -119,6 +125,12 @@ func (g GetCommand) Execute(ctx context.Context, config *Config) error {
 	var accountID string
 	if g.AccountIDOrName != "" {
 		accountID = g.AccountIDOrName
+	} else if g.Interactive {
+		acc, err := accountsInteractivePrompt(config.EnumerateAccounts(), nil)
+		if err != nil {
+			return err
+		}
+		accountID = acc.ID
 	} else if config.LastUsedAccount != nil {
 		// No account specified. Can we use the most recent one?
 		accountID = *config.LastUsedAccount
@@ -278,12 +290,40 @@ func echoCredentials(id, name string, credentials CloudCredentials, outputType, 
 	}
 }
 
+func accountsInteractivePrompt(accounts iter.Seq[Account], selected *Account) (Account, error) {
+	var opts []huh.Option[Account]
+	for account := range accounts {
+		opts = append(opts, huh.Option[Account]{
+			Key:   account.Alias,
+			Value: account,
+		})
+	}
+
+	ctrl := huh.NewSelect[Account]().
+		Options(opts...).
+		Filtering(true).
+		Title("account").
+		Description("Choose an account using your arrow keys or by typing the account name and pressing return to confirm your selection.")
+
+	if selected != nil {
+		ctrl = ctrl.Value(selected)
+	}
+
+	err := huh.Run(ctrl)
+	if err != nil {
+		return Account{}, err
+	}
+	return ctrl.GetValue().(Account), nil
+}
+
 func rolesInteractivePrompt(roles []string, mostRecent string) (string, error) {
 	opts := huh.NewOptions(roles...)
 	ctrl := huh.NewSelect[string]().
 		Options(opts...).
+		Filtering(true).
+		Title("role").
 		Value(&mostRecent).
-		Description("Choose a role using your arrow keys and press the return key to confirm.")
+		Description("Choose a role using your arrow keys or by typing the role name and press the return key to confirm.")
 
 	err := huh.Run(ctrl)
 	if err != nil {
