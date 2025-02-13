@@ -8,6 +8,7 @@ import (
 	"iter"
 	"os"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -299,6 +300,10 @@ func accountsInteractivePrompt(accounts iter.Seq[Account], selected *Account) (A
 			Value: account,
 		})
 	}
+
+	slices.SortStableFunc(opts, func(a huh.Option[Account], b huh.Option[Account]) int {
+		return strings.Compare(a.Key, b.Key)
+	})
 
 	ctrl := huh.NewSelect[Account]().
 		Options(opts...).
