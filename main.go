@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"runtime"
 	"strings"
 	"syscall"
 
@@ -48,6 +49,11 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Encountered an issue when opening the port for KeyConjurer: %s\n", err)
 		fmt.Fprintln(os.Stderr, "Consider running `net stop hns` and then `net start hns`")
 		os.Exit(command.ExitCodeConnectivityError)
+	}
+
+	if errors.Is(err, command.ErrKeychainLocked) && runtime.GOOS == "darwin" {
+		fmt.Fprintln(os.Stderr, "The keychain used to store secrets is locked. It can be unlocked with the following command: `security unlock-keychain`. You may be asked to enter your password.")
+		os.Exit(command.ExitCodeUnknownError)
 	}
 
 	if err != nil {

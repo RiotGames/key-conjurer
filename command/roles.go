@@ -14,10 +14,6 @@ var rolesCmd = cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		config := ConfigFromCommand(cmd)
-		if HasTokenExpired(config.Tokens) {
-			return ErrTokensExpiredOrAbsent
-		}
-
 		oidcDomain, _ := cmd.Flags().GetString(FlagOIDCDomain)
 		clientID, _ := cmd.Flags().GetString(FlagClientID)
 
@@ -27,7 +23,7 @@ var rolesCmd = cobra.Command{
 			applicationID = account.ID
 		}
 
-		samlResponse, _, err := oauth2cli.DiscoverConfigAndExchangeTokenForAssertion(cmd.Context(), config, oidcDomain, clientID, applicationID)
+		samlResponse, _, err := oauth2cli.DiscoverConfigAndExchangeTokenForAssertion(cmd.Context(), &keychainTokenSource{}, oidcDomain, clientID, applicationID)
 		if err != nil {
 			return err
 		}

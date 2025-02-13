@@ -75,8 +75,9 @@ func (c *LoginCommand) Parse(flags *pflag.FlagSet, args []string) error {
 }
 
 func (c LoginCommand) Execute(ctx context.Context, config *Config) error {
-	if !HasTokenExpired(config.Tokens) {
-		return nil
+	if checkKeychainLocked() {
+		// Don't go through the whole login flow if the keychain is locked, prompt the user to unlock it first
+		return ErrKeychainLocked
 	}
 
 	serveURL := openBrowserToURL
@@ -128,7 +129,7 @@ func (c LoginCommand) Execute(ctx context.Context, config *Config) error {
 		return fmt.Errorf("validate id token: %w", err)
 	}
 
-	return config.SaveOAuthToken(accessToken, idToken)
+	return putAccountCredentialInKeychain(accessToken, idToken)
 }
 
 var errNoPortsAvailable = errors.New("no ports available")

@@ -9,32 +9,9 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
-	"time"
 
 	"strings"
-
-	"golang.org/x/oauth2"
 )
-
-type TokenSet struct {
-	AccessToken  string    `json:"access_token"`
-	RefreshToken string    `json:"refresh_token"`
-	IDToken      string    `json:"id_token"`
-	Expiry       time.Time `json:"expiry"`
-	TokenType    string    `json:"token_type"`
-}
-
-// Token implements oauth2.TokenSource.
-func (t TokenSet) Token() (*oauth2.Token, error) {
-	tok := oauth2.Token{
-		AccessToken:  t.AccessToken,
-		RefreshToken: t.RefreshToken,
-		Expiry:       t.Expiry,
-		TokenType:    t.TokenType,
-	}
-
-	return tok.WithExtra(map[string]any{"id_token": t.IDToken}), nil
-}
 
 type Account struct {
 	ID             string `json:"id"`
@@ -212,49 +189,7 @@ type Config struct {
 	Accounts        *accountSet `json:"accounts"`
 	TTL             uint        `json:"ttl"`
 	TimeRemaining   uint        `json:"time_remaining"`
-	Tokens          *TokenSet   `json:"tokens"`
 	LastUsedAccount *string     `json:"last_used_account"`
-}
-
-func (c Config) GetOAuthToken() (*TokenSet, bool) {
-	return c.Tokens, c.Tokens != nil
-}
-
-func (c Config) Token() (*oauth2.Token, error) {
-	if c.Tokens == nil {
-		return nil, nil
-	}
-	return c.Tokens.Token()
-}
-
-func HasTokenExpired(tok *TokenSet) bool {
-	if tok == nil {
-		return true
-	}
-
-	if tok.Expiry.IsZero() {
-		return false
-	}
-
-	return time.Now().After(tok.Expiry)
-}
-
-func (c *Config) SaveOAuthToken(tok *oauth2.Token, idToken string) error {
-	if tok == nil {
-		c.Tokens = nil
-		return nil
-	}
-
-	tok2 := TokenSet{
-		AccessToken:  tok.AccessToken,
-		RefreshToken: tok.RefreshToken,
-		TokenType:    tok.TokenType,
-		Expiry:       tok.Expiry,
-		IDToken:      idToken,
-	}
-
-	c.Tokens = &tok2
-	return nil
 }
 
 // Encode writes the config to the file provided overwriting the file if it exists
