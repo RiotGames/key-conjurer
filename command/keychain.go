@@ -3,7 +3,6 @@ package command
 import (
 	"encoding/json"
 	"errors"
-	"os/exec"
 
 	"github.com/zalando/go-keyring"
 	"golang.org/x/oauth2"
@@ -25,7 +24,7 @@ type keyringToken struct {
 
 func checkKeychainLocked() bool {
 	_, err := getAccountCredentialFromKeychain()
-	return err != nil && errors.Is(err, ErrTokensExpiredOrAbsent)
+	return isKeychainLockedErr(err)
 }
 
 func getAccountCredentialFromKeychain() (*oauth2.Token, error) {
@@ -54,9 +53,7 @@ func putAccountCredentialInKeychain(tok *oauth2.Token, idToken string) error {
 	}
 	buf, _ := json.Marshal(tk)
 	err := keyring.Set("keyconjurer", "accounts-credential", string(buf))
-	// On Darwin, keyring uses the 'security' binary, and that might exit with an error if it's not unlocked.
-	var exitErr *exec.ExitError
-	if errors.As(err, &exitErr) && exitErr.ExitCode() == 36 {
+	if isKeychainLockedErr(err) {
 		return ErrKeychainLocked
 	}
 	return err
