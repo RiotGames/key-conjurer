@@ -7,9 +7,10 @@ import (
 	"fmt"
 	"io"
 	"iter"
+	"maps"
 	"os"
 	"path/filepath"
-	"sort"
+	"slices"
 
 	"strings"
 )
@@ -71,22 +72,6 @@ func (a *accountSet) Seq() iter.Seq[Account] {
 			}
 		}
 	})
-}
-
-func (a *accountSet) ForEach(f func(id string, account Account, alias string)) {
-	// Golang does not maintain the order of maps, so we create a slice which is sorted instead.
-	var accounts []*Account
-	for _, acc := range a.accounts {
-		accounts = append(accounts, acc)
-	}
-
-	sort.SliceStable(accounts, func(i, j int) bool {
-		return accounts[i].Name < accounts[j].Name
-	})
-
-	for _, acc := range accounts {
-		f(acc.ID, *acc, acc.Alias)
-	}
 }
 
 // Add adds an account to the set.
@@ -180,6 +165,18 @@ func (a *accountSet) ReplaceWith(other []Account) {
 	}
 }
 
+func (a accountSet) Sorted() iter.Seq[Account] {
+	keys := slices.Sorted(maps.Keys(a.accounts))
+	return iter.Seq[Account](func(yield func(Account) bool) {
+		for _, k := range keys {
+			v := a.accounts[k]
+			if !yield(*v) {
+				return
+			}
+		}
+	})
+}
+
 func (a accountSet) WriteTable(w io.Writer, withHeaders bool) {
 	tbl := csv.NewWriter(w)
 	tbl.Comma = '\t'
@@ -188,9 +185,9 @@ func (a accountSet) WriteTable(w io.Writer, withHeaders bool) {
 		tbl.Write([]string{"id", "name", "alias"})
 	}
 
-	a.ForEach(func(id string, acc Account, alias string) {
-		tbl.Write([]string{id, acc.Name, alias})
-	})
+	for account := range a.Sorted() {
+		tbl.Write([]string{account.ID, account.Name, account.Alias})
+	}
 
 	tbl.Flush()
 }
