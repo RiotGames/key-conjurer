@@ -2,6 +2,7 @@ package command
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"slices"
@@ -27,7 +28,8 @@ var (
 	outputTypeEnvironmentVariable = "env"
 	// outputTypeAWSCredentialsFile indicates that keyconjurer will dump the credentials into the ~/.aws/credentials file.
 	outputTypeAWSCredentialsFile = "awscli"
-	permittedOutputTypes         = []string{outputTypeAWSCredentialsFile, outputTypeEnvironmentVariable}
+	outputTypeJSON               = "json"
+	permittedOutputTypes         = []string{outputTypeAWSCredentialsFile, outputTypeEnvironmentVariable, outputTypeJSON}
 	permittedShellTypes          = []string{shellTypePowershell, shellTypeBash, shellTypeBasic, shellTypeInfer}
 )
 
@@ -37,7 +39,7 @@ func init() {
 	getCmd.Flags().UintP(FlagTimeRemaining, "t", DefaultTimeRemaining, "Request new keys if there are no keys in the environment or the current keys expire within <time-remaining> minutes. Defaults to 60.")
 	getCmd.Flags().StringP(FlagRoleName, "r", "", "The name of the role to assume.")
 	getCmd.Flags().String(FlagRoleSessionName, "KeyConjurer-AssumeRole", "the name of the role session name that will show up in CloudTrail logs")
-	getCmd.Flags().StringP(FlagOutputType, "o", outputTypeEnvironmentVariable, "Format to save new credentials in. Supported outputs: env, awscli")
+	getCmd.Flags().StringP(FlagOutputType, "o", outputTypeEnvironmentVariable, "Format to save new credentials in. Supported outputs: env, awscli, json")
 	getCmd.Flags().String(FlagShellType, shellTypeInfer, "If output type is env, determines which format to output credentials in - by default, the format is inferred based on the execution environment. WSL users may wish to overwrite this to `bash`")
 	getCmd.Flags().Bool(FlagBypassCache, false, "Do not check the cache for accounts and send the application ID as-is to Okta. This is useful if you have an ID you know is an Okta application ID and it is not stored in your local account cache.")
 	getCmd.Flags().Bool(FlagLogin, false, "Login to Okta before running the command")
@@ -202,6 +204,7 @@ func (g GetCommand) fetchNewCredentials(ctx context.Context, account Account, cf
 	}
 
 	return &CloudCredentials{
+		AccountID:       account.ID,
 		AccessKeyID:     *resp.Credentials.AccessKeyId,
 		Expiration:      resp.Credentials.Expiration.Format(time.RFC3339),
 		SecretAccessKey: *resp.Credentials.SecretAccessKey,
@@ -231,6 +234,13 @@ A role must be specified when using this command through the --role flag. You ma
 
 func echoCredentials(id, name string, credentials CloudCredentials, outputType, shellType, cliPath string) error {
 	switch outputType {
+	case outputTypeJSON:
+		buf, err := json.Marshal(credentials)
+		if err != nil {
+			return err
+		}
+		fmt.Fprintln(os.Stdout, string(buf))
+		return nil
 	case outputTypeEnvironmentVariable:
 		credentials.WriteFormat(os.Stdout, shellType)
 		return nil
