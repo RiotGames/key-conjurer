@@ -11,6 +11,7 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
+	"github.com/charmbracelet/huh"
 	"github.com/riotgames/key-conjurer/pkg/oauth2cli"
 	"github.com/spf13/cobra"
 )
@@ -105,6 +106,11 @@ func (g GetCommand) Validate() error {
 
 func (g GetCommand) printUsage() error {
 	return g.UsageFunc()
+}
+
+func (g GetCommand) rolesInteractivePrompt(roles []string) (string, error) {
+	huh.NewForm()
+	return "", nil
 }
 
 func (g GetCommand) Execute(ctx context.Context, config *Config) error {
