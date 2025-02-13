@@ -202,13 +202,17 @@ func (g GetCommand) fetchNewCredentials(ctx context.Context, account *Account, c
 	}
 
 	if g.RoleName == "" {
-		if account.MostRecentRole == "" && !g.NoInteractive {
+		if g.NoInteractive {
+			if account.MostRecentRole == "" {
+				return nil, ErrNoRole
+			} else {
+				g.RoleName = account.MostRecentRole
+			}
+		} else {
 			g.RoleName, err = rolesInteractivePrompt(listRoles(samlResponse), account.MostRecentRole)
 			if err != nil {
 				return nil, ErrNoRole
 			}
-		} else {
-			g.RoleName = account.MostRecentRole
 		}
 	}
 
@@ -307,7 +311,6 @@ func accountsInteractivePrompt(accounts iter.Seq[Account], selected *Account) (A
 
 	ctrl := huh.NewSelect[Account]().
 		Options(opts...).
-		Filtering(true).
 		Title("account").
 		Description("Choose an account using your arrow keys or by typing the account name and pressing return to confirm your selection.")
 
@@ -326,10 +329,8 @@ func rolesInteractivePrompt(roles []string, mostRecent string) (string, error) {
 	opts := huh.NewOptions(roles...)
 	ctrl := huh.NewSelect[string]().
 		Options(opts...).
-		Filtering(true).
-		Title("role").
 		Value(&mostRecent).
-		Description("Choose a role using your arrow keys or by typing the role name and press the return key to confirm.")
+		Description("Choose a role using your arrow keys and press the return key to confirm.")
 
 	err := huh.Run(ctrl)
 	if err != nil {
