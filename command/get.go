@@ -24,7 +24,7 @@ var (
 	FlagTimeToLive    = "ttl"
 	FlagBypassCache   = "bypass-cache"
 	FlagLogin         = "login"
-	FlagInteractive   = "interactive"
+	FlagNoInteractive = "no-interactive"
 
 	ErrNoRoles      = errors.New("no roles")
 	ErrNoRole       = errors.New("no role")
@@ -55,7 +55,7 @@ func init() {
 	flags.String(FlagAWSCLIPath, "~/.aws/", "Path for directory used by the aws CLI")
 	flags.BoolP(FlagURLOnly, "u", false, "Print only the URL to visit rather than a user-friendly message")
 	flags.BoolP(FlagNoBrowser, "b", false, "Do not open a browser window, printing the URL instead")
-	flags.Bool(FlagInteractive, false, "Use interactive prompts to supply information not otherwise supplied with flags")
+	flags.Bool(FlagNoInteractive, false, "Disable interactive prompts")
 }
 
 func resolveApplicationInfo(cfg *Config, bypassCache bool, nameOrID string) (*Account, bool) {
@@ -70,7 +70,7 @@ type GetCommand struct {
 	TimeToLive                                                                uint
 	TimeRemaining                                                             uint
 	OutputType, ShellType, RoleName, AWSCLIPath, OIDCDomain, ClientID, Region string
-	Login, URLOnly, NoBrowser, BypassCache, MachineOutput, Interactive        bool
+	Login, URLOnly, NoBrowser, BypassCache, MachineOutput, NoInteractive      bool
 
 	UsageFunc  func() error
 	PrintErrln func(...any)
@@ -93,15 +93,16 @@ func (g *GetCommand) Parse(cmd *cobra.Command, args []string) error {
 	g.Region, _ = flags.GetString(FlagRegion)
 	g.UsageFunc = cmd.Usage
 	g.PrintErrln = cmd.PrintErrln
-	g.Interactive, _ = flags.GetBool(FlagInteractive)
+	g.NoInteractive, _ = flags.GetBool(FlagNoInteractive)
 	g.MachineOutput = ShouldUseMachineOutput(flags) || g.URLOnly
+
 	if len(args) > 0 {
 		g.AccountIDOrName = args[0]
-	} else if g.Interactive {
+	} else if g.NoInteractive {
+		return ErrNoAccountArg
+	} else {
 		// We can resolve this at execution time with an interactive prompt.
 		g.AccountIDOrName = ""
-	} else {
-		return ErrNoAccountArg
 	}
 	return nil
 }
@@ -125,7 +126,7 @@ func (g GetCommand) Execute(ctx context.Context, config *Config) error {
 	var accountID string
 	if g.AccountIDOrName != "" {
 		accountID = g.AccountIDOrName
-	} else if g.Interactive {
+	} else if !g.NoInteractive {
 		acc, err := accountsInteractivePrompt(config.EnumerateAccounts(), nil)
 		if err != nil {
 			return err
@@ -200,7 +201,7 @@ func (g GetCommand) fetchNewCredentials(ctx context.Context, account *Account, c
 	}
 
 	if g.RoleName == "" {
-		if account.MostRecentRole == "" || g.Interactive {
+		if account.MostRecentRole == "" && !g.NoInteractive {
 			g.RoleName, err = rolesInteractivePrompt(listRoles(samlResponse), account.MostRecentRole)
 			if err != nil {
 				return nil, ErrNoRole
