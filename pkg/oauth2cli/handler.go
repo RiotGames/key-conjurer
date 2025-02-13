@@ -13,9 +13,14 @@ import (
 // ErrBadRequest indicates that the request to the oauth2 callback endpoint contained malformed data.
 var ErrBadRequest = errors.New("bad request")
 
+type result struct {
+	Token *oauth2.Token
+	Err   error
+}
+
 type job struct {
 	State, Verifier string
-	C               chan *oauth2.Token
+	C               chan result
 }
 
 type codeExchanger interface {
@@ -51,51 +56,56 @@ func defaultResponseHandler(err error, w http.ResponseWriter, _ *http.Request) e
 	return nil
 }
 
-func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	var job job
+func (h *handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	var (
+		job job
+		r   result
+	)
+
 	srvResponse := h.serveResponse
 	if srvResponse == nil {
 		srvResponse = defaultResponseHandler
 	}
 
-	ctx := r.Context()
+	ctx := req.Context()
 	select {
 	case j := <-h.jobs:
 		job = j
-		defer close(job.C)
+
+		// Ensure that the result is sent.
+		defer func() {
+			job.C <- r
+			close(job.C)
+		}()
 	case <-ctx.Done():
-		srvResponse(ctx.Err(), w, r)
+		srvResponse(ctx.Err(), w, req)
 		return
 	}
 
-	req := authorizationCodeReq{
-		errorMessage:     r.FormValue("error"),
-		errorDescription: r.FormValue("error_description"),
-		state:            r.FormValue("state"),
-		code:             r.FormValue("code"),
+	authCodeReq := authorizationCodeReq{
+		errorMessage:     req.FormValue("error"),
+		errorDescription: req.FormValue("error_description"),
+		state:            req.FormValue("state"),
+		code:             req.FormValue("code"),
 	}
 
 	var code string
-	if err := req.Verify(req.state, &code); err != nil {
-		srvResponse(err, w, r)
-		return
-	}
-	token, err := h.Exchanger.Exchange(ctx, code, oauth2.VerifierOption(job.Verifier))
-	if err != nil {
-		srvResponse(err, w, r)
+	if r.Err = authCodeReq.Verify(authCodeReq.state, &code); r.Err != nil {
+		srvResponse(r.Err, w, req)
 		return
 	}
 
-	select {
-	case job.C <- token:
-		srvResponse(nil, w, r)
-	case <-ctx.Done():
-		srvResponse(ctx.Err(), w, r)
+	r.Token, r.Err = h.Exchanger.Exchange(ctx, code, oauth2.VerifierOption(job.Verifier))
+	if r.Err != nil {
+		srvResponse(r.Err, w, req)
+		return
 	}
+
+	srvResponse(nil, w, req)
 }
 
 func (h *handler) Wait(ctx context.Context, state, verifier string) (*oauth2.Token, error) {
-	j := job{State: state, Verifier: verifier, C: make(chan *oauth2.Token)}
+	j := job{State: state, Verifier: verifier, C: make(chan result)}
 	select {
 	case h.jobs <- j:
 	case <-ctx.Done():
@@ -105,8 +115,8 @@ func (h *handler) Wait(ctx context.Context, state, verifier string) (*oauth2.Tok
 	select {
 	case <-ctx.Done():
 		return nil, ctx.Err()
-	case tok := <-j.C:
-		return tok, nil
+	case r := <-j.C:
+		return r.Token, r.Err
 	}
 }
 
