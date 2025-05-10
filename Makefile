@@ -1,4 +1,4 @@
-.PHONY: cli_upload frontend_upload api_upload upload clean
+.PHONY: cli_upload frontend_upload upload clean
 
 RELEASE ?= dev
 VERSION ?= $(shell git rev-parse --short HEAD)
@@ -66,21 +66,8 @@ bin/keyconjurer: bin/
 bin/:
 	mkdir -p bin/
 
-## API Build Targets
-api_build: build/list_applications.zip
-
-build/list_applications.zip:
-	mkdir -p build
-# A temporary destination is used because we don't want multiple targets run at the same time to conflict - they all have to be named 'bootstrap'
-	TMP_DST=$$(mktemp -d) ;\
-	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
-		-tags lambda.norpc \
-		-o $$TMP_DST/bootstrap lambda/$(subst .zip,,$(notdir $@))/main.go && \
-	(cd $$TMP_DST && zip - bootstrap) > $@
-
-
 ## Upload Targets
-upload: api_upload cli_upload frontend_upload
+upload: cli_upload frontend_upload
 
 cli_upload: $(CLI_TARGETS)
 	@test $${S3_FRONTEND_BUCKET_NAME?is not set}
@@ -93,11 +80,3 @@ frontend_upload: frontend/dist/index.html
 	@test $${RELEASE?is not set}
 	cd frontend/dist && \
 	aws s3 cp . s3://$(S3_FRONTEND_BUCKET_NAME)-$(RELEASE) --include "*" --recursive
-
-api_upload: build/list_applications.zip
-	@test $${S3_TF_BUCKET_NAME?is not set}
-# tr is used to split $^, which is a space separated string, into newlines so that they can be
-# passed to aws s3 cp one at a time.
-#
-# aws s3 cp doesnt support multiple targets, so we have to do one per line.
-	echo $^ | tr " " "\n" | xargs -I{} -n1 aws s3 cp "{}" s3://$(S3_TF_BUCKET_NAME)/$(RELEASE)/
