@@ -2,6 +2,7 @@ package command
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -9,6 +10,7 @@ import (
 	"net/http"
 	"net/url"
 
+	"github.com/coreos/go-oidc"
 	"github.com/riotgames/key-conjurer/internal/api"
 	"github.com/spf13/cobra"
 	"golang.org/x/oauth2"
@@ -17,6 +19,7 @@ import (
 var (
 	FlagNoRefresh     = "no-refresh"
 	FlagServerAddress = "server-address"
+	FlagInsecure      = "insecure"
 
 	ErrSessionExpired = errors.New("session expired")
 )
@@ -24,6 +27,7 @@ var (
 func init() {
 	accountsCmd.Flags().Bool(FlagNoRefresh, false, "Indicate that the account list should not be refreshed when executing this command. This is useful if you're not able to reach the account server.")
 	accountsCmd.Flags().String(FlagServerAddress, ServerAddress, "The address of the account server. This does not usually need to be changed or specified.")
+	accountsCmd.Flags().BoolP(FlagInsecure, "k", false, "Skip SSL verification")
 }
 
 var accountsCmd = &cobra.Command{
@@ -54,7 +58,25 @@ var accountsCmd = &cobra.Command{
 			}
 		}
 
-		accounts, err := refreshAccounts(cmd.Context(), serverAddrURI, &keychainTokenSource{})
+		ctx := cmd.Context()
+		if insecure, err := cmd.Flags().GetBool(FlagInsecure); err == nil && insecure {
+			client := newHttpClient(func(c *http.Client) {
+				tr, ok := c.Transport.(*http.Transport)
+				if !ok {
+					return
+				}
+
+				if tr.TLSClientConfig == nil {
+					tr.TLSClientConfig = &tls.Config{}
+				}
+
+				tr.TLSClientConfig.InsecureSkipVerify = true
+			})
+
+			ctx = oidc.ClientContext(ctx, client)
+		}
+
+		accounts, err := refreshAccounts(ctx, serverAddrURI, &keychainTokenSource{})
 		if err != nil {
 			return fmt.Errorf("error refreshing accounts: %w", err)
 		}
