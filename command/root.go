@@ -88,8 +88,15 @@ To get started run the following commands:
 }
 
 func Execute(ctx context.Context, args []string) error {
-	client := &http.Client{Transport: LogRoundTripper{http.DefaultTransport}}
-	ctx = oidc.ClientContext(ctx, client)
+	ctx = oidc.ClientContext(ctx, newHttpClient())
 	rootCmd.SetArgs(args)
 	return rootCmd.ExecuteContext(ctx)
+}
+
+func newHttpClient(fns ...func(*http.Client)) *http.Client {
+	client := &http.Client{Transport: LogRoundTripper{http.DefaultTransport}}
+	for _, fn := range fns {
+		fn(client)
+	}
+	return client
 }
