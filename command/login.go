@@ -16,6 +16,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"golang.org/x/oauth2"
+	"golang.org/x/term"
 )
 
 func init() {
@@ -160,8 +161,25 @@ func printURLToConsole(url string) error {
 	return nil
 }
 
+// hyperlink wraps text in a terminal hyperlink pointing at url, so supporting
+// terminals (including tmux) render it as a clickable link. When stdout is not a
+// terminal, the plain text is returned unchanged so piped or redirected output is
+// never corrupted by escape sequences.
+func hyperlink(url, text string) string {
+	if !term.IsTerminal(int(os.Stdout.Fd())) {
+		return text
+	}
+	return osc8Hyperlink(url, text)
+}
+
+// osc8Hyperlink formats an OSC 8 terminal hyperlink escape sequence:
+// ESC ]8;;<url> ESC \ <text> ESC ]8;; ESC \
+func osc8Hyperlink(url, text string) string {
+	return fmt.Sprintf("\x1b]8;;%s\x1b\\%s\x1b]8;;\x1b\\", url, text)
+}
+
 func friendlyPrintURLToConsole(url string) error {
-	fmt.Printf("Visit the following link in your terminal: %s\n", url)
+	fmt.Printf("Visit the following link in your terminal: %s\n", hyperlink(url, url))
 	return nil
 }
 

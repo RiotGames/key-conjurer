@@ -20,6 +20,7 @@ require (
 	github.com/zalando/go-keyring v0.2.6
 	golang.org/x/net v0.25.0
 	golang.org/x/oauth2 v0.26.0
+	golang.org/x/term v0.20.0
 )
 
 require (
