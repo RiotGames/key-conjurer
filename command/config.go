@@ -2,22 +2,16 @@ package command
 
 import (
 	"encoding/csv"
-	"encoding/json"
-	"errors"
-	"fmt"
 	"io"
-	"os"
-	"path/filepath"
 	"sort"
-
 	"strings"
 )
 
 type Account struct {
-	ID             string `json:"id"`
-	Name           string `json:"name"`
-	Alias          string `json:"alias"`
-	MostRecentRole string `json:"most_recent_role"`
+	ID             string
+	Name           string
+	Alias          string
+	MostRecentRole string
 }
 
 func (a *Account) NormalizeName() string {
@@ -62,6 +56,12 @@ func generateDefaultAlias(name string) string {
 	return strings.ToLower(strings.ReplaceAll(name, " ", "-"))
 }
 
+func (a *accountSet) ensureInit() {
+	if a.accounts == nil {
+		a.accounts = make(map[string]*Account)
+	}
+}
+
 func (a *accountSet) ForEach(f func(id string, account Account, alias string)) {
 	// Golang does not maintain the order of maps, so we create a slice which is sorted instead.
 	var accounts []*Account
@@ -80,11 +80,7 @@ func (a *accountSet) ForEach(f func(id string, account Account, alias string)) {
 
 // Add adds an account to the set.
 func (a *accountSet) Add(id string, account Account) {
-	// TODO: This is bad
-	if a.accounts == nil {
-		a.accounts = make(map[string]*Account)
-	}
-
+	a.ensureInit()
 	a.accounts[id] = &account
 }
 
@@ -124,29 +120,8 @@ func (a accountSet) Alias(id, name string) bool {
 	return true
 }
 
-func (a *accountSet) MarshalJSON() ([]byte, error) {
-	return json.Marshal(a.accounts)
-}
-
-func (a *accountSet) UnmarshalJSON(buf []byte) error {
-	var m map[string]Account
-
-	if err := json.Unmarshal(buf, &m); err != nil {
-		return err
-	}
-
-	// Now we just need to copy each entry into the set itself
-	for id, val := range m {
-		a.Add(id, val)
-	}
-
-	return nil
-}
-
 func (a *accountSet) ReplaceWith(other []Account) {
-	if a.accounts == nil {
-		a.accounts = make(map[string]*Account)
-	}
+	a.ensureInit()
 
 	m := map[string]struct{}{}
 	for _, acc := range other {
@@ -186,41 +161,15 @@ func (a accountSet) WriteTable(w io.Writer, withHeaders bool) {
 
 // Config stores all information related to the user
 type Config struct {
-	Accounts        *accountSet `json:"accounts"`
-	TTL             uint        `json:"ttl"`
-	TimeRemaining   uint        `json:"time_remaining"`
-	LastUsedAccount *string     `json:"last_used_account"`
-}
-
-// Encode writes the config to the file provided overwriting the file if it exists
-func (c *Config) Encode(w io.Writer) error {
-	enc := json.NewEncoder(w)
-	return enc.Encode(c)
-}
-
-// Decode populates all member values of config using default values where needed
-func (c *Config) Decode(reader io.Reader) error {
-	dec := json.NewDecoder(reader)
-	// If we encounter an end of file, use the default values and don't treat it as an error
-	// This also conveniently allows someone to use /dev/null for the config file.
-	if err := dec.Decode(c); err != nil && !errors.Is(err, io.EOF) {
-		return err
-	}
-
-	if c.Accounts == nil {
-		c.Accounts = &accountSet{}
-	}
-
-	if c.TTL < 1 {
-		c.TTL = DefaultTTL
-	}
-
-	return nil
+	Accounts        *accountSet
+	TTL             uint
+	TimeRemaining   uint
+	LastUsedAccount *string
 }
 
 func (c *Config) AddAccount(id string, account Account) {
 	if c.Accounts == nil {
-		c.Accounts = &accountSet{accounts: make(map[string]*Account)}
+		c.Accounts = &accountSet{}
 	}
 
 	c.Accounts.Add(id, account)
@@ -263,56 +212,4 @@ func (c *Config) UpdateAccounts(entries []Account) {
 
 func (c *Config) DumpAccounts(w io.Writer, withHeaders bool) {
 	c.Accounts.WriteTable(w, withHeaders)
-}
-
-func ensureConfigFileExists(fp string) (io.ReadWriteCloser, error) {
-	if err := os.MkdirAll(filepath.Dir(fp), os.ModeDir|os.FileMode(0755)); err != nil {
-		return nil, err
-	}
-
-	return os.OpenFile(fp, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
-}
-
-func findConfigPath() (string, error) {
-	dir, err := os.UserConfigDir()
-	if err != nil {
-		return "", err
-	}
-	return filepath.Join(dir, "keyconjurer", "config.json"), nil
-}
-
-func loadConfig() (Config, error) {
-	var config Config
-	path, err := findConfigPath()
-	if err != nil {
-		return config, fmt.Errorf("find config path: %s", err)
-	}
-
-	file, err := ensureConfigFileExists(path)
-	if err != nil {
-		return config, err
-	}
-
-	err = config.Decode(file)
-	return config, err
-}
-
-func saveConfig(config *Config) error {
-	path, err := findConfigPath()
-	if err != nil {
-		return fmt.Errorf("find config path: %s", err)
-	}
-
-	if err := os.MkdirAll(filepath.Dir(path), os.ModeDir|os.FileMode(0755)); err != nil {
-		return err
-	}
-
-	w, err := os.Create(path)
-	if err != nil {
-		return fmt.Errorf("unable to create %s reason: %w", path, err)
-	}
-	defer w.Close()
-
-	err = config.Encode(w)
-	return err
 }
