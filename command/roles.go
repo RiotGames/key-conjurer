@@ -1,35 +1,47 @@
 package command
 
 import (
+	"context"
+	"fmt"
 	"strings"
 
 	"github.com/RobotsAndPencils/go-saml"
 	"github.com/riotgames/key-conjurer/pkg/oauth2cli"
-	"github.com/spf13/cobra"
+	"github.com/urfave/cli/v3"
 )
 
-var rolesCmd = cobra.Command{
-	Use:   "roles <accountName/alias>",
-	Short: "Returns the roles that you have access to in the given account.",
-	Args:  cobra.ExactArgs(1),
-	RunE: func(cmd *cobra.Command, args []string) error {
-		config := ConfigFromCommand(cmd)
-		oidcDomain, _ := cmd.Flags().GetString(FlagOIDCDomain)
-		clientID, _ := cmd.Flags().GetString(FlagClientID)
+var rolesCmd = &cli.Command{
+	Name:  "roles",
+	Usage: "Returns the roles that you have access to in the given account.",
+	Arguments: []cli.Argument{
+		&cli.StringArg{
+			Name: "accountName/alias",
+			Config: cli.StringConfig{
+				TrimSpace: true,
+			},
+		},
+	},
+	Action: func(ctx context.Context, cmd *cli.Command) error {
+		config := ConfigFromContext(ctx)
+		oidcDomain := cmd.String(FlagOIDCDomain)
+		clientID := cmd.String(FlagClientID)
+		var applicationID = cmd.Args().First()
+		if applicationID == "" {
+			return cli.Exit("accountName/alias is required", 1)
+		}
 
-		var applicationID = args[0]
 		account, ok := config.FindAccount(applicationID)
 		if ok {
 			applicationID = account.ID
 		}
 
-		samlResponse, _, err := oauth2cli.DiscoverConfigAndExchangeTokenForAssertion(cmd.Context(), &keychainTokenSource{}, oidcDomain, clientID, applicationID)
+		samlResponse, _, err := oauth2cli.DiscoverConfigAndExchangeTokenForAssertion(ctx, &keychainTokenSource{}, oidcDomain, clientID, applicationID)
 		if err != nil {
 			return err
 		}
 
 		for _, name := range listRoles(samlResponse) {
-			cmd.Println(name)
+			fmt.Fprintln(cmd.Writer, name)
 		}
 
 		return nil

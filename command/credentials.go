@@ -58,8 +58,8 @@ func LoadAWSCredentialsFromEnvironment() CloudCredentials {
 	}
 }
 
-func (c *CloudCredentials) ValidUntil(account *Account, dur time.Duration) bool {
-	if account == nil || c == nil {
+func (c *CloudCredentials) ValidUntil(account Account, dur time.Duration) bool {
+	if c == nil {
 		return false
 	}
 

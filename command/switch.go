@@ -12,8 +12,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws/arn"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
-	"github.com/spf13/cobra"
-	"github.com/spf13/pflag"
+	"github.com/urfave/cli/v3"
 )
 
 var (
@@ -23,28 +22,48 @@ var (
 	FlagAWSCLIPath      = "awscli"
 )
 
-func init() {
-	switchCmd.Flags().String(FlagRoleSessionName, "KeyConjurer-AssumeRole", "the name of the role session name that will show up in CloudTrail logs")
-	switchCmd.Flags().StringP(FlagOutputType, "o", outputTypeEnvironmentVariable, "Format to save new credentials in. Supported outputs: env, awscli, json")
-	switchCmd.Flags().String(FlagShellType, shellTypeInfer, "If output type is env, determines which format to output credentials in - by default, the format is inferred based on the execution environment. WSL users may wish to overwrite this to `bash`")
-	switchCmd.Flags().String(FlagAWSCLIPath, "~/.aws/", "Path for directory used by the aws-cli tool. Default is \"~/.aws\".")
-}
+var switchCmd = &cli.Command{
+	Name:  "switch",
+	Usage: "Switch from the current AWS account into the one with the given Account ID.",
 
-var switchCmd = cobra.Command{
-	Use:   "switch <account-id>",
-	Short: "Switch from the current AWS account into the one with the given Account ID.",
-	Long: `Attempt to AssumeRole into the given AWS with the current credentials. You only need to use this if you are a power user or network engineer with access to many accounts.
+	Arguments: []cli.Argument{
+		&cli.StringArg{Name: "account"},
+	},
+
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  FlagRoleSessionName,
+			Value: "KeyConjurer-AssumeRole",
+			Usage: "the name of the role session name that will show up in CloudTrail logs",
+		},
+		&cli.StringFlag{
+			Name:    FlagOutputType,
+			Aliases: []string{"o"},
+			Value:   outputTypeEnvironmentVariable,
+			Usage:   "Format to save new credentials in. Supported outputs: env, awscli, json",
+		},
+		&cli.StringFlag{
+			Name:  FlagShellType,
+			Value: shellTypeInfer,
+			Usage: "If output type is env, determines which format to output credentials in - by default, the format is inferred based on the execution environment. WSL users may wish to overwrite this to `bash`",
+		},
+		&cli.StringFlag{
+			Name:  FlagAWSCLIPath,
+			Value: "~/.aws/",
+			Usage: "Path for directory used by the aws-cli tool. Default is \"~/.aws\".",
+		},
+	},
+
+	UsageText: `Attempt to AssumeRole into the given AWS with the current credentials. You only need to use this if you are a power user or network engineer with access to many accounts.
 
 This is used when a "bastion" account exists which users initially authenticate into and then pivot from that account into other accounts.
 
 This command will fail if you do not have active Cloud credentials.
 `,
-	Example: "keyconjurer switch 123456798",
-	Args:    cobra.ExactArgs(1),
 	Aliases: []string{"switch-account"},
-	RunE: func(cmd *cobra.Command, args []string) error {
+	Action: func(ctx context.Context, cmd *cli.Command) error {
 		var switchCmd SwitchCommand
-		if err := switchCmd.Parse(cmd.Flags(), args); err != nil {
+		if err := switchCmd.Parse(cmd, cmd.Args().Slice()); err != nil {
 			return err
 		}
 
@@ -52,7 +71,7 @@ This command will fail if you do not have active Cloud credentials.
 			return err
 		}
 
-		return switchCmd.Execute(cmd.Context())
+		return switchCmd.Execute(ctx)
 	},
 }
 
@@ -64,13 +83,13 @@ type SwitchCommand struct {
 	AccountID       string
 }
 
-func (s *SwitchCommand) Parse(flags *pflag.FlagSet, args []string) error {
-	s.OutputType, _ = flags.GetString(FlagOutputType)
-	s.ShellType, _ = flags.GetString(FlagShellType)
-	s.AWSCLIPath, _ = flags.GetString(FlagAWSCLIPath)
-	s.RoleSessionName, _ = flags.GetString(FlagRoleSessionName)
+func (s *SwitchCommand) Parse(flags flagSet, args []string) error {
+	s.OutputType = flags.String(FlagOutputType)
+	s.ShellType = flags.String(FlagShellType)
+	s.AWSCLIPath = flags.String(FlagAWSCLIPath)
+	s.RoleSessionName = flags.String(FlagRoleSessionName)
 	if len(args) == 0 {
-		return fmt.Errorf("account-id is required")
+		return cli.Exit("account-id is required", 1)
 	}
 
 	s.AccountID = args[0]
@@ -104,7 +123,7 @@ func (s SwitchCommand) Execute(ctx context.Context) error {
 		return nil
 	case outputTypeAWSCredentialsFile:
 		acc := Account{ID: s.AccountID, Name: s.AccountID}
-		newCliEntry := NewCloudCliEntry(creds, &acc, "")
+		newCliEntry := NewCloudCliEntry(creds, acc, "")
 		return SaveCloudCredentialInCLI(s.AWSCLIPath, newCliEntry)
 	default:
 		return fmt.Errorf("%s is an invalid output type", s.OutputType)

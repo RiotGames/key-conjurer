@@ -2,7 +2,6 @@ package command
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -13,8 +12,7 @@ import (
 	"github.com/coreos/go-oidc"
 	"github.com/pkg/browser"
 	"github.com/riotgames/key-conjurer/pkg/oauth2cli"
-	"github.com/spf13/cobra"
-	"github.com/spf13/pflag"
+	"github.com/urfave/cli/v3"
 	"golang.org/x/oauth2"
 	"golang.org/x/term"
 )
@@ -30,30 +28,38 @@ var (
 	FlagNoBrowser = "no-browser"
 )
 
-func init() {
-	loginCmd.Flags().BoolP(FlagURLOnly, "u", false, "Print only the URL to visit rather than a user-friendly message")
-	loginCmd.Flags().BoolP(FlagNoBrowser, "b", false, "Do not open a browser window, printing the URL instead")
-}
-
-var loginCmd = &cobra.Command{
-	Use:   "login",
-	Short: "Authenticate with KeyConjurer.",
-	Long:  "Login to KeyConjurer using OAuth2. You will be required to open the URL printed to the console or scan a QR code.",
-	RunE: func(cmd *cobra.Command, args []string) error {
+var loginCmd = &cli.Command{
+	Name:        "login",
+	Usage:       "Authenticate with KeyConjurer.",
+	Description: "Login to KeyConjurer using OAuth2. You will be required to open the URL printed to the console or scan a QR code.",
+	Action: func(ctx context.Context, cmd *cli.Command) error {
 		var loginCmd LoginCommand
-		if err := loginCmd.Parse(cmd.Flags(), args); err != nil {
+		if err := loginCmd.Parse(cmd, nil); err != nil {
 			return err
 		}
 
-		return loginCmd.Execute(cmd.Context(), ConfigFromCommand(cmd))
+		return loginCmd.Execute(ctx, ConfigFromContext(ctx))
+	},
+
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name:    FlagURLOnly,
+			Usage:   "Print only the URL to visit rather than a user-friendly message",
+			Aliases: []string{"u"},
+		},
+		&cli.BoolFlag{
+			Name:    FlagNoBrowser,
+			Usage:   "Do not open a browser window, printing the URL instead",
+			Aliases: []string{"b"},
+		},
 	},
 }
 
 // ShouldUseMachineOutput indicates whether or not we should write to standard output as if the user is a machine.
 //
 // What this means is implementation specific, but this usually indicates the user is trying to use this program in a script and we should avoid user-friendly output messages associated with values a user might find useful.
-func ShouldUseMachineOutput(flags *pflag.FlagSet) bool {
-	quiet, _ := flags.GetBool(FlagQuiet)
+func ShouldUseMachineOutput(flags flagSet) bool {
+	quiet := flags.Bool(FlagQuiet)
 	fi, _ := os.Stdout.Stat()
 	isPiped := fi.Mode()&os.ModeCharDevice == 0
 	return isPiped || quiet
@@ -66,11 +72,17 @@ type LoginCommand struct {
 	NoBrowser     bool
 }
 
-func (c *LoginCommand) Parse(flags *pflag.FlagSet, args []string) error {
-	c.OIDCDomain, _ = flags.GetString(FlagOIDCDomain)
-	c.ClientID, _ = flags.GetString(FlagClientID)
-	c.NoBrowser, _ = flags.GetBool(FlagNoBrowser)
-	urlOnly, _ := flags.GetBool(FlagURLOnly)
+type flagSet interface {
+	String(name string) string
+	Bool(name string) bool
+	Uint(name string) uint
+}
+
+func (c *LoginCommand) Parse(flags flagSet, args []string) error {
+	c.OIDCDomain = flags.String(FlagOIDCDomain)
+	c.ClientID = flags.String(FlagClientID)
+	c.NoBrowser = flags.Bool(FlagNoBrowser)
+	urlOnly := flags.Bool(FlagURLOnly)
 	c.MachineOutput = ShouldUseMachineOutput(flags) || urlOnly
 	return nil
 }
@@ -78,7 +90,7 @@ func (c *LoginCommand) Parse(flags *pflag.FlagSet, args []string) error {
 func (c LoginCommand) Execute(ctx context.Context, config *Config) error {
 	if checkKeychainLocked() {
 		// Don't go through the whole login flow if the keychain is locked, prompt the user to unlock it first
-		return ErrKeychainLocked
+		return &ErrKeychainLocked{}
 	}
 
 	serveURL := openBrowserToURL
@@ -133,7 +145,15 @@ func (c LoginCommand) Execute(ctx context.Context, config *Config) error {
 	return putAccountCredentialInKeychain(accessToken, idToken)
 }
 
-var errNoPortsAvailable = errors.New("no ports available")
+type ErrNoPortsAvailable struct{}
+
+func (e ErrNoPortsAvailable) Error() string {
+	return "no ports available"
+}
+
+func (e ErrNoPortsAvailable) ExitCode() int {
+	return ExitCodeConnectivityError
+}
 
 // findFirstFreePort will attempt to open a network listener for each port in turn, and return the first one that succeeded.
 //
@@ -153,7 +173,7 @@ func findFirstFreePort(ctx context.Context, broadcastAddr string, ports []string
 		slog.Debug("could not listen, trying a different addr", slog.String("addr", addr), slog.String("error", err.Error()))
 	}
 
-	return nil, errNoPortsAvailable
+	return nil, &ErrNoPortsAvailable{}
 }
 
 func printURLToConsole(url string) error {

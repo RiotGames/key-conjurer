@@ -3,7 +3,9 @@ package command
 import (
 	"encoding/json"
 	"errors"
+	"runtime"
 
+	"github.com/urfave/cli/v3"
 	"github.com/zalando/go-keyring"
 	"golang.org/x/oauth2"
 )
@@ -11,7 +13,21 @@ import (
 // ErrKeychainLocked indicates that the operating system keychain is locked and needs to be unlocked.
 //
 // This usually only occurs on Darwin systems.
-var ErrKeychainLocked = errors.New("keychain locked")
+type ErrKeychainLocked struct{}
+
+func (e ErrKeychainLocked) Error() string {
+	if runtime.GOOS == "darwin" {
+		return "The keychain used to store secrets is locked. It can be unlocked with the following command: `security unlock-keychain`. You may be asked to enter your password."
+	} else {
+		return "Keychain locked"
+	}
+}
+
+func (e ErrKeychainLocked) ExitCode() int {
+	return ExitCodeUnknownError
+}
+
+var _ cli.ExitCoder = &ErrKeychainLocked{}
 
 // keyringToken is a token stored in the operating system keyring.
 //
@@ -54,7 +70,7 @@ func putAccountCredentialInKeychain(tok *oauth2.Token, idToken string) error {
 	buf, _ := json.Marshal(tk)
 	err := keyring.Set("keyconjurer", "accounts-credential", string(buf))
 	if isKeychainLockedErr(err) {
-		return ErrKeychainLocked
+		return &ErrKeychainLocked{}
 	}
 	return err
 }

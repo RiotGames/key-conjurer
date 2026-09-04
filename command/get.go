@@ -12,7 +12,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/riotgames/key-conjurer/pkg/oauth2cli"
-	"github.com/spf13/cobra"
+	"github.com/urfave/cli/v3"
 )
 
 var (
@@ -35,61 +35,130 @@ var (
 	permittedShellTypes          = []string{shellTypePowershell, shellTypeBash, shellTypeBasic, shellTypeInfer}
 )
 
-func init() {
-	getCmd.Flags().String(FlagRegion, "us-west-2", "The AWS region to use")
-	getCmd.Flags().Uint(FlagTimeToLive, 1, "The key timeout in hours from 1 to 8.")
-	getCmd.Flags().UintP(FlagTimeRemaining, "t", DefaultTimeRemaining, "Request new keys if there are no keys in the environment or the current keys expire within <time-remaining> minutes. Defaults to 60.")
-	getCmd.Flags().StringP(FlagRoleName, "r", "", "The name of the role to assume.")
-	getCmd.Flags().String(FlagRoleSessionName, "KeyConjurer-AssumeRole", "the name of the role session name that will show up in CloudTrail logs")
-	getCmd.Flags().StringP(FlagOutputType, "o", outputTypeEnvironmentVariable, "Format to save new credentials in. Supported outputs: env, awscli, json")
-	getCmd.Flags().String(FlagShellType, shellTypeInfer, "If output type is env, determines which format to output credentials in - by default, the format is inferred based on the execution environment. WSL users may wish to overwrite this to `bash`")
-	getCmd.Flags().Bool(FlagBypassCache, false, "Do not check the cache for accounts and send the application ID as-is to Okta. This is useful if you have an ID you know is an Okta application ID and it is not stored in your local account cache.")
-	getCmd.Flags().Bool(FlagLogin, false, "Login to Okta before running the command")
-	getCmd.Flags().String(FlagAWSCLIPath, "~/.aws/", "Path for directory used by the aws CLI")
-	getCmd.Flags().BoolP(FlagURLOnly, "u", false, "Print only the URL to visit rather than a user-friendly message")
-	getCmd.Flags().BoolP(FlagNoBrowser, "b", false, "Do not open a browser window, printing the URL instead")
-	getCmd.Flags().StringP(FlagProfileName, "p", "", "The name of the awscli profile to save credentials. Only used if output type is awscli. Defaults to the account name.")
+var getCmd = &cli.Command{
+	Name:      "get",
+	Usage:     "Retrieves temporary cloud API credentials for the specified account.",
+	UsageText: `A role must be specified when using this command through the --role flag. You may list the roles you can assume through the roles command.`,
+	Action: func(ctx context.Context, cmd *cli.Command) error {
+		var getCmd GetCommand
+		if err := getCmd.Parse(cmd, cmd.Args().Slice()); err != nil {
+			return err
+		}
+
+		if err := getCmd.Validate(); err != nil {
+			return err
+		}
+
+		return getCmd.Execute(ctx, ConfigFromContext(ctx))
+	},
+
+	Arguments: []cli.Argument{
+		&cli.StringArg{Name: "account"},
+	},
+
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "region",
+			Usage: "The AWS region to use",
+			Value: "us-west-2",
+		},
+		&cli.UintFlag{
+			Name:  "ttl",
+			Usage: "The key timeout in hours from 1 to 8",
+			Value: 1,
+		},
+		&cli.UintFlag{
+			Name:    "time-remaining",
+			Usage:   "Request new keys if there are no keys in the environment or the current keys expire within <time-remaining> minutes. Defaults to 60",
+			Aliases: []string{"t"},
+			Value:   DefaultTimeRemaining,
+		},
+		&cli.StringFlag{
+			Name:     "role-name",
+			Usage:    "The name of the role to assume",
+			Aliases:  []string{"r"},
+			Required: true,
+		},
+		&cli.StringFlag{
+			Name:  "role-session-name",
+			Usage: "the name of the role session name that will show up in CloudTrail logs",
+			Value: "KeyConjurer-AssumeRole",
+		},
+		&cli.StringFlag{
+			Name:    "output-type",
+			Usage:   "Format to save new credentials in. Supported outputs: env, awscli, json",
+			Value:   outputTypeEnvironmentVariable,
+			Aliases: []string{"o"},
+		},
+		&cli.StringFlag{
+			Name:  "shell-type",
+			Usage: "If output type is env, determines which format to output credentials in - by default, the format is inferred based on the execution environment. WSL users may wish to overwrite this to `bash`",
+			Value: shellTypeInfer,
+		},
+		&cli.BoolFlag{
+			Name:  "bypass-cache",
+			Usage: "Do not check the cache for accounts and send the application ID as-is to Okta. This is useful if you have an ID you know is an Okta application ID and it is not stored in your local account cache.",
+		},
+		&cli.BoolFlag{
+			Name:  "login",
+			Usage: "Login to Okta before running the command",
+		},
+		&cli.StringFlag{
+			Name:  "awscli-path",
+			Usage: "Path for directory used by the aws CLI",
+			Value: "~/.aws/",
+		},
+		&cli.BoolFlag{
+			Name:    "url-only",
+			Aliases: []string{"u"},
+			Usage:   "Print only the URL to visit rather than a user-friendly message",
+		},
+		&cli.BoolFlag{
+			Name:    "no-browser",
+			Aliases: []string{"b"},
+			Usage:   "Do not open a browser window, printing the URL instead",
+		},
+		&cli.StringFlag{
+			Name:    "profile-name",
+			Aliases: []string{"p"},
+			Usage:   "The name of the awscli profile to save credentials. Only used if output type is awscli. Defaults to the account name.",
+		},
+	},
 }
 
-func resolveApplicationInfo(cfg *Config, bypassCache bool, nameOrID string) (*Account, bool) {
+func resolveApplicationInfo(cfg *Config, bypassCache bool, nameOrID string) (Account, bool) {
 	if bypassCache {
-		return &Account{ID: nameOrID, Name: nameOrID}, true
+		return Account{ID: nameOrID, Name: nameOrID}, true
 	}
 	return cfg.FindAccount(nameOrID)
 }
 
 type GetCommand struct {
-	AccountIDOrName                                                           string
-	TimeToLive                                                                uint
-	TimeRemaining                                                             uint
+	AccountIDOrName                                                                        string
+	TimeToLive                                                                             uint
+	TimeRemaining                                                                          uint
 	OutputType, ShellType, RoleName, AWSCLIPath, OIDCDomain, ClientID, Region, ProfileName string
 	Login, URLOnly, NoBrowser, BypassCache, MachineOutput                                  bool
-
-	UsageFunc  func() error
-	PrintErrln func(...any)
 }
 
-func (g *GetCommand) Parse(cmd *cobra.Command, args []string) error {
-	flags := cmd.Flags()
-	g.OIDCDomain, _ = flags.GetString(FlagOIDCDomain)
-	g.ClientID, _ = flags.GetString(FlagClientID)
-	g.TimeToLive, _ = flags.GetUint(FlagTimeToLive)
-	g.TimeRemaining, _ = flags.GetUint(FlagTimeRemaining)
-	g.OutputType, _ = flags.GetString(FlagOutputType)
-	g.ShellType, _ = flags.GetString(FlagShellType)
-	g.RoleName, _ = flags.GetString(FlagRoleName)
-	g.AWSCLIPath, _ = flags.GetString(FlagAWSCLIPath)
-	g.Login, _ = flags.GetBool(FlagLogin)
-	g.URLOnly, _ = flags.GetBool(FlagURLOnly)
-	g.NoBrowser, _ = flags.GetBool(FlagNoBrowser)
-	g.BypassCache, _ = flags.GetBool(FlagBypassCache)
-	g.ProfileName, _ = flags.GetString(FlagProfileName)
-	g.Region, _ = flags.GetString(FlagRegion)
-	g.UsageFunc = cmd.Usage
-	g.PrintErrln = cmd.PrintErrln
+func (g *GetCommand) Parse(flags flagSet, args []string) error {
+	g.OIDCDomain = flags.String(FlagOIDCDomain)
+	g.ClientID = flags.String(FlagClientID)
+	g.TimeToLive = flags.Uint(FlagTimeToLive)
+	g.TimeRemaining = flags.Uint(FlagTimeRemaining)
+	g.OutputType = flags.String(FlagOutputType)
+	g.ShellType = flags.String(FlagShellType)
+	g.RoleName = flags.String(FlagRoleName)
+	g.AWSCLIPath = flags.String(FlagAWSCLIPath)
+	g.Login = flags.Bool(FlagLogin)
+	g.URLOnly = flags.Bool(FlagURLOnly)
+	g.NoBrowser = flags.Bool(FlagNoBrowser)
+	g.BypassCache = flags.Bool(FlagBypassCache)
+	g.ProfileName = flags.String(FlagProfileName)
+	g.Region = flags.String(FlagRegion)
 	g.MachineOutput = ShouldUseMachineOutput(flags) || g.URLOnly
 	if len(args) == 0 {
-		return fmt.Errorf("account name or alias is required")
+		return cli.Exit("account name or alias is required", 1)
 	}
 	g.AccountIDOrName = args[0]
 	return nil
@@ -106,10 +175,6 @@ func (g GetCommand) Validate() error {
 	return nil
 }
 
-func (g GetCommand) printUsage() error {
-	return g.UsageFunc()
-}
-
 func (g GetCommand) Execute(ctx context.Context, config *Config) error {
 	var accountID string
 	if g.AccountIDOrName != "" {
@@ -118,7 +183,7 @@ func (g GetCommand) Execute(ctx context.Context, config *Config) error {
 		// No account specified. Can we use the most recent one?
 		accountID = *config.LastUsedAccount
 	} else {
-		return g.printUsage()
+		return errors.New("account name or alias is required")
 	}
 
 	account, ok := resolveApplicationInfo(config, g.BypassCache, accountID)
@@ -128,8 +193,7 @@ func (g GetCommand) Execute(ctx context.Context, config *Config) error {
 
 	if g.RoleName == "" {
 		if account.MostRecentRole == "" {
-			g.PrintErrln("You must specify the --role flag with this command")
-			return nil
+			return errors.New("You must specify the --role flag with this command")
 		}
 		g.RoleName = account.MostRecentRole
 	}
@@ -140,7 +204,7 @@ func (g GetCommand) Execute(ctx context.Context, config *Config) error {
 
 	credentials := LoadAWSCredentialsFromEnvironment()
 	if !credentials.ValidUntil(account, time.Duration(g.TimeRemaining)*time.Minute) {
-		newCredentials, err := g.fetchNewCredentials(ctx, *account, config)
+		newCredentials, err := g.fetchNewCredentials(ctx, account, config)
 		if errors.Is(err, ErrTokensExpiredOrAbsent) && g.Login {
 			loginCommand := LoginCommand{
 				OIDCDomain:    g.OIDCDomain,
@@ -152,7 +216,7 @@ func (g GetCommand) Execute(ctx context.Context, config *Config) error {
 			if err != nil {
 				return err
 			}
-			newCredentials, err = g.fetchNewCredentials(ctx, *account, config)
+			newCredentials, err = g.fetchNewCredentials(ctx, account, config)
 		}
 
 		if err != nil {
@@ -162,9 +226,7 @@ func (g GetCommand) Execute(ctx context.Context, config *Config) error {
 		credentials = *newCredentials
 	}
 
-	if account != nil {
-		account.MostRecentRole = g.RoleName
-	}
+	account.MostRecentRole = g.RoleName
 
 	config.LastUsedAccount = &accountID
 	return echoCredentials(account, g.ProfileName, credentials, g.OutputType, g.ShellType, g.AWSCLIPath)
@@ -214,27 +276,7 @@ func (g GetCommand) fetchNewCredentials(ctx context.Context, account Account, cf
 	}, nil
 }
 
-var getCmd = &cobra.Command{
-	Use:   "get <accountName/alias>",
-	Short: "Retrieves temporary cloud API credentials.",
-	Long: `Retrieves temporary cloud API credentials for the specified account.  It sends a push request to the first Duo device it finds associated with your account.
-
-A role must be specified when using this command through the --role flag. You may list the roles you can assume through the roles command.`,
-	RunE: func(cmd *cobra.Command, args []string) error {
-		var getCmd GetCommand
-		if err := getCmd.Parse(cmd, args); err != nil {
-			return err
-		}
-
-		if err := getCmd.Validate(); err != nil {
-			return err
-		}
-
-		return getCmd.Execute(cmd.Context(), ConfigFromCommand(cmd))
-	},
-}
-
-func echoCredentials(account *Account, profileName string, credentials CloudCredentials, outputType, shellType, cliPath string) error {
+func echoCredentials(account Account, profileName string, credentials CloudCredentials, outputType, shellType, cliPath string) error {
 	switch outputType {
 	case outputTypeJSON:
 		buf, err := json.Marshal(credentials)

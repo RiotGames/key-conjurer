@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func setEnv(t *testing.T, valid bool) *Account {
+func setEnv(t *testing.T, valid bool) Account {
 	t.Setenv("AWS_ACCESS_KEY_ID", "1234")
 	t.Setenv("AWS_SECRET_ACCESS_KEY", "accesskey")
 	t.Setenv("AWS_SESSION_TOKEN", "accesstoken")
@@ -20,7 +20,7 @@ func setEnv(t *testing.T, valid bool) *Account {
 		t.Setenv("AWSKEY_EXPIRATION", expire)
 	}
 
-	return &Account{
+	return Account{
 		ID:    "1234",
 		Name:  "account",
 		Alias: "account",

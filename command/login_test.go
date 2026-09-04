@@ -2,6 +2,7 @@ package command
 
 import (
 	"context"
+	"errors"
 	"net"
 	"regexp"
 	"strings"
@@ -31,7 +32,9 @@ func Test_findFirstFreePort_WorksCorrectly(t *testing.T) {
 func Test_findFirstFreePort_RejectsIfNoPortsAvailable(t *testing.T) {
 	var ports []string
 	_, err := findFirstFreePort(context.Background(), "127.0.0.1", ports)
-	assert.ErrorIs(t, errNoPortsAvailable, err)
+	if _, ok := errors.AsType[*ErrNoPortsAvailable](err); !ok {
+		t.Errorf("unexpected error: expected %T, got %T", &ErrNoPortsAvailable{}, err)
+	}
 }
 
 func Test_findFirstFreePort_RejectsIfAllProvidedPortsExhausted(t *testing.T) {
@@ -56,7 +59,9 @@ func Test_findFirstFreePort_RejectsIfAllProvidedPortsExhausted(t *testing.T) {
 	})
 
 	_, err := findFirstFreePort(context.Background(), "127.0.0.1", activePorts)
-	assert.ErrorIs(t, err, errNoPortsAvailable)
+	if _, ok := errors.AsType[*ErrNoPortsAvailable](err); !ok {
+		t.Errorf("unexpected error: expected %T, got %T", &ErrNoPortsAvailable{}, err)
+	}
 }
 
 func Test_osc8Hyperlink_ProducesExactOSC8Sequence(t *testing.T) {

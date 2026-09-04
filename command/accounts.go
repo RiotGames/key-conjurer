@@ -10,7 +10,7 @@ import (
 	"net/url"
 
 	"github.com/riotgames/key-conjurer/internal/api"
-	"github.com/spf13/cobra"
+	"github.com/urfave/cli/v3"
 	"golang.org/x/oauth2"
 )
 
@@ -21,31 +21,35 @@ var (
 	ErrSessionExpired = errors.New("session expired")
 )
 
-func init() {
-	accountsCmd.Flags().Bool(FlagNoRefresh, false, "Indicate that the account list should not be refreshed when executing this command. This is useful if you're not able to reach the account server.")
-	accountsCmd.Flags().String(FlagServerAddress, ServerAddress, "The address of the account server. This does not usually need to be changed or specified.")
-}
-
-var accountsCmd = &cobra.Command{
-	Use:   "accounts",
-	Short: "Prints and optionally refreshes the list of accounts you have access to.",
-	RunE: func(cmd *cobra.Command, args []string) error {
-		config := ConfigFromCommand(cmd)
-		stdOut := cmd.OutOrStdout()
-		noRefresh, _ := cmd.Flags().GetBool(FlagNoRefresh)
-		loud := !ShouldUseMachineOutput(cmd.Flags())
+var accountsCmd = &cli.Command{
+	Name:  "accounts",
+	Usage: "Fetches and displays the list of accounts you have access to.",
+	Flags: []cli.Flag{
+		&cli.BoolWithInverseFlag{
+			Name:  FlagNoRefresh,
+			Usage: "Indicate that the account list should not be refreshed when executing this command. This is useful if you're not able to reach the account server.",
+		},
+		&cli.StringFlag{
+			Name:  FlagServerAddress,
+			Value: ServerAddress,
+			Usage: "The address of the account server. This does not usually need to be changed or specified.",
+		},
+	},
+	Action: func(ctx context.Context, cmd *cli.Command) error {
+		config := ConfigFromContext(ctx)
+		noRefresh := cmd.Bool(FlagNoRefresh)
+		loud := !ShouldUseMachineOutput(cmd)
 		if noRefresh {
-			config.DumpAccounts(stdOut, loud)
+			config.DumpAccounts(cmd.Writer, loud)
 
 			if loud {
-				// intentionally uses PrintErrf was a warning
-				cmd.PrintErrf("--%s was specified - these results may be out of date, and you may not have access to accounts in this list.\n", FlagNoRefresh)
+				fmt.Fprintf(cmd.ErrWriter, "--%s was specified - these results may be out of date, and you may not have access to accounts in this list.\n", FlagNoRefresh)
 			}
 
 			return nil
 		}
 
-		serverAddr, _ := cmd.Flags().GetString(FlagServerAddress)
+		serverAddr := cmd.String(FlagServerAddress)
 		serverAddrURI, err := url.Parse(serverAddr)
 		if err != nil {
 			return genericError{
@@ -54,13 +58,13 @@ var accountsCmd = &cobra.Command{
 			}
 		}
 
-		accounts, err := refreshAccounts(cmd.Context(), serverAddrURI, &keychainTokenSource{})
+		accounts, err := refreshAccounts(ctx, serverAddrURI, &keychainTokenSource{})
 		if err != nil {
 			return fmt.Errorf("error refreshing accounts: %w", err)
 		}
 
 		config.UpdateAccounts(accounts)
-		config.DumpAccounts(stdOut, loud)
+		config.DumpAccounts(cmd.Writer, loud)
 		return nil
 	},
 }

@@ -17,13 +17,13 @@ type CloudCliEntry struct {
 	token       string
 }
 
-func NewCloudCliEntry(c CloudCredentials, a *Account, profileName string) CloudCliEntry {
-	name := a.Name                    // 1. Account name (fallback)
+func NewCloudCliEntry(c CloudCredentials, a Account, profileName string) CloudCliEntry {
+	name := a.Name // 1. Account name (fallback)
 	if a.Alias != "" {
-		name = a.Alias                // 2. Account alias (if set)
+		name = a.Alias // 2. Account alias (if set)
 	}
 	if profileName != "" {
-		name = profileName            // 3. Profile name override (if provided, highest priority)
+		name = profileName // 3. Profile name override (if provided, highest priority)
 	}
 
 	return CloudCliEntry{

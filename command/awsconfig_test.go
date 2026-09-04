@@ -18,31 +18,31 @@ func TestNewCloudCliEntry(t *testing.T) {
 
 	tests := []struct {
 		name                string
-		account             *Account
+		account             Account
 		profileName         string
 		expectedProfileName string
 	}{
 		{
 			name:                "uses account name when no alias or profile override",
-			account:             &Account{ID: "123", Name: "my-account"},
+			account:             Account{ID: "123", Name: "my-account"},
 			profileName:         "",
 			expectedProfileName: "my-account",
 		},
 		{
 			name:                "uses alias over account name",
-			account:             &Account{ID: "123", Name: "my-account", Alias: "my-alias"},
+			account:             Account{ID: "123", Name: "my-account", Alias: "my-alias"},
 			profileName:         "",
 			expectedProfileName: "my-alias",
 		},
 		{
 			name:                "profile override takes precedence over account name",
-			account:             &Account{ID: "123", Name: "my-account"},
+			account:             Account{ID: "123", Name: "my-account"},
 			profileName:         "custom-profile",
 			expectedProfileName: "custom-profile",
 		},
 		{
 			name:                "profile override takes precedence over alias",
-			account:             &Account{ID: "123", Name: "my-account", Alias: "my-alias"},
+			account:             Account{ID: "123", Name: "my-account", Alias: "my-alias"},
 			profileName:         "custom-profile",
 			expectedProfileName: "custom-profile",
 		},

@@ -1,53 +1,78 @@
 package command
 
 import (
+	"context"
 	"fmt"
-	"strconv"
 
-	"github.com/spf13/cobra"
+	"github.com/urfave/cli/v3"
 )
 
-func init() {
-	setCmd.AddCommand(setTTLCmd)
-	setCmd.AddCommand(setTimeRemainingCmd)
+var cfgCmd = &cli.Command{
+	Name:  "config",
+	Usage: "Commands to manage KeyConjurer's configuration",
+	Commands: []*cli.Command{
+		setCmd,
+		pathCmd,
+	},
 }
 
-var setCmd = &cobra.Command{
-	Use:   "set",
-	Short: "Sets config values.",
-	Long:  "Sets config values.",
+var setCmd = &cli.Command{
+	Name:  "set",
+	Usage: "Set configuration values",
+	Commands: []*cli.Command{
+		setTTLCmd,
+		setTimeRemainingCmd,
+	},
 }
 
-var setTTLCmd = &cobra.Command{
-	Use:   "ttl <ttl>",
-	Short: "Sets ttl value in number of hours.",
-	Long:  "Sets ttl value in number of hours.",
-	Args:  cobra.ExactArgs(1),
-	RunE: func(cmd *cobra.Command, args []string) error {
-		config := ConfigFromCommand(cmd)
-		ttl, err := strconv.ParseUint(args[0], 10, 32)
+var pathCmd = &cli.Command{
+	Name:  "path",
+	Usage: "Print the absolute path to the configuration file",
+	Action: func(_ context.Context, cmd *cli.Command) error {
+		path, err := findConfigPath()
 		if err != nil {
-			return fmt.Errorf("unable to parse value %s", args[0])
+			return err
 		}
-
-		config.TTL = uint(ttl)
+		fmt.Fprintln(cmd.Writer, path)
 		return nil
 	},
 }
 
-var setTimeRemainingCmd = &cobra.Command{
-	Use:   "time-remaining <timeRemaining>",
-	Short: "Sets time remaining value in number of minutes.",
-	Long:  "Sets time remaining value in number of minutes. Using minutes is an artifact from when keys could only live for 1 hour.",
-	Args:  cobra.ExactArgs(1),
-	RunE: func(cmd *cobra.Command, args []string) error {
-		config := ConfigFromCommand(cmd)
-		timeRemaining, err := strconv.ParseUint(args[0], 10, 32)
-		if err != nil {
-			return fmt.Errorf("unable to parse value %s", args[0])
+var setTTLCmd = &cli.Command{
+	Name:  "ttl",
+	Usage: "Sets ttl value in number of hours. Keys are requested to last at least this long.",
+	Arguments: []cli.Argument{
+		&cli.UintArg{Name: "ttl"},
+	},
+	Action: func(ctx context.Context, cmd *cli.Command) error {
+		hours := cmd.UintArg("ttl")
+		if hours == 0 {
+			return cli.Exit("No ttl provided", 1)
 		}
 
-		config.TimeRemaining = uint(timeRemaining)
+		if hours > 8 || hours < 1 {
+			return cli.Exit("ttl must be between 1 and 8 hours", 1)
+		}
+
+		config := ConfigFromContext(ctx)
+		config.TTL = hours
+		return nil
+	},
+}
+
+var setTimeRemainingCmd = &cli.Command{
+	Name:  "time-remaining",
+	Usage: "Sets time remaining value in number of minutes. Keys will be refreshed if they expire within this time period.",
+	Arguments: []cli.Argument{
+		&cli.UintArg{Name: "time-remaining"},
+	},
+	Action: func(ctx context.Context, cmd *cli.Command) error {
+		timeRemaining := cmd.UintArg("time-remaining")
+		if timeRemaining == 0 {
+			return cli.Exit("No time remaining provided", 1)
+		}
+		config := ConfigFromContext(ctx)
+		config.TimeRemaining = timeRemaining
 		return nil
 	},
 }

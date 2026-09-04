@@ -5,14 +5,12 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"runtime"
 	"strings"
 	"syscall"
 
 	"log/slog"
 
 	"github.com/riotgames/key-conjurer/command"
-	"github.com/spf13/cobra"
 )
 
 const (
@@ -39,30 +37,15 @@ func init() {
 }
 
 func main() {
-	args := os.Args[1:]
+	args := os.Args
 	if flag, ok := os.LookupEnv("KEYCONJURERFLAGS"); ok {
 		args = append(args, strings.Split(flag, " ")...)
 	}
 
 	err := command.Execute(context.Background(), args)
-	if IsWindowsPortAccessError(err) {
-		fmt.Fprintf(os.Stderr, "Encountered an issue when opening the port for KeyConjurer: %s\n", err)
-		fmt.Fprintln(os.Stderr, "Consider running `net stop hns` and then `net start hns`")
-		os.Exit(command.ExitCodeConnectivityError)
-	}
-
-	if errors.Is(err, command.ErrKeychainLocked) && runtime.GOOS == "darwin" {
-		fmt.Fprintln(os.Stderr, "The keychain used to store secrets is locked. It can be unlocked with the following command: `security unlock-keychain`. You may be asked to enter your password.")
-		os.Exit(command.ExitCodeUnknownError)
-	}
-
+	// err is only non-nil here if we reach this point with an error that did not implement cli.ExitCoder
 	if err != nil {
-		cobra.CheckErr(err)
-
-		errorCode, ok := command.GetExitCode(err)
-		if !ok {
-			errorCode = command.ExitCodeUnknownError
-		}
-		os.Exit(errorCode)
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(command.ExitCodeUnknownError)
 	}
 }

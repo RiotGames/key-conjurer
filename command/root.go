@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/coreos/go-oidc"
-	"github.com/spf13/cobra"
+	"github.com/urfave/cli/v3"
 )
 
 var (
@@ -19,77 +19,80 @@ var (
 )
 
 func init() {
-	rootCmd.PersistentFlags().String(FlagOIDCDomain, OIDCDomain, "The domain name of your OIDC server")
-	rootCmd.PersistentFlags().String(FlagClientID, ClientID, "The OAuth2 Client ID for the application registered with your OIDC server")
-	rootCmd.PersistentFlags().Int(FlagTimeout, 120, "the amount of time in seconds to wait for keyconjurer to respond")
-	rootCmd.PersistentFlags().Bool(FlagQuiet, false, "tells the CLI to be quiet; stdout will not contain human-readable informational messages")
-	rootCmd.AddCommand(loginCmd)
-	rootCmd.AddCommand(accountsCmd)
-	rootCmd.AddCommand(getCmd)
-	rootCmd.AddCommand(setCmd)
-	rootCmd.AddCommand(&switchCmd)
-	rootCmd.AddCommand(&aliasCmd)
-	rootCmd.AddCommand(&unaliasCmd)
-	rootCmd.AddCommand(&rolesCmd)
-	rootCmd.AddCommand(&cobra.Command{
-		Use:   "config-path",
-		Short: "Print the absolute path to the configuration file",
-		RunE: func(cmd *cobra.Command, _ []string) error {
-			path, err := findConfigPath()
-			if err != nil {
-				return err
-			}
-			fmt.Fprintln(cmd.OutOrStdout(), path)
-			return nil
-		},
-	})
-	rootCmd.SetVersionTemplate("{{.Version}}\n")
-
-	rootCmd.PersistentFlags().MarkHidden(FlagOIDCDomain)
-	rootCmd.PersistentFlags().MarkHidden(FlagClientID)
+	cli.VersionPrinter = func(cmd *cli.Command) {
+		fmt.Fprintln(cmd.Writer, cmd.Version)
+	}
 }
 
 // rootCmd represents the base command when called without any subcommands
-var rootCmd = &cobra.Command{
-	Use:     "keyconjurer",
+var rootCmd = &cli.Command{
+	Name:    "keyconjurer",
 	Version: fmt.Sprintf("keyconjurer-%s-%s %s (%s)", runtime.GOOS, runtime.GOARCH, Version, BuildTimestamp),
-	Short:   "Retrieve temporary cloud credentials.",
-	Long: `KeyConjurer retrieves temporary credentials from Okta with the assistance of an optional API.
+	Usage:   "Retrieve temporary cloud credentials.",
+	Description: `KeyConjurer retrieves temporary credentials from Okta with the assistance of an optional API.
 
 To get started run the following commands:
   keyconjurer login
   keyconjurer accounts
   keyconjurer get <accountName>
 `,
-	FParseErrWhitelist: cobra.FParseErrWhitelist{
-		UnknownFlags: true,
+
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:   FlagOIDCDomain,
+			Usage:  "The OIDC domain to use for authentication",
+			Hidden: true,
+		},
+		&cli.StringFlag{
+			Name:   FlagClientID,
+			Usage:  "The client ID to use for authentication",
+			Hidden: true,
+		},
+		&cli.DurationFlag{
+			Name:  FlagTimeout,
+			Usage: "The amount of time to wait for keyconjurer to respond",
+			Value: 2 * time.Minute,
+		},
+		&cli.BoolFlag{
+			Name:  FlagQuiet,
+			Usage: "Tells the CLI to be quiet; stdout will not contain human-readable informational messages",
+		},
 	},
-	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+
+	Commands: []*cli.Command{
+		loginCmd,
+		getCmd,
+		accountsCmd,
+		rolesCmd,
+		cfgCmd,
+		switchCmd,
+		aliasCmd,
+		unaliasCmd,
+	},
+
+	Before: func(ctx context.Context, cmd *cli.Command) (context.Context, error) {
 		config, err := loadConfig()
 		if err != nil {
-			return fmt.Errorf("failed to load config: %s", err)
+			return ctx, fmt.Errorf("failed to load config: %s", err)
 		}
 
 		// We don't care about this being cancelled.
-		timeout, _ := cmd.Flags().GetInt(FlagTimeout)
-		nextCtx, _ := context.WithTimeout(cmd.Context(), time.Duration(timeout)*time.Second)
-		cmd.SetContext(ConfigContext(nextCtx, &config))
-		return nil
+		timeout := cmd.Duration(FlagTimeout)
+		nextCtx, _ := context.WithTimeout(ctx, timeout)
+		return context.WithValue(nextCtx, ctxKeyConfig{}, &config), nil
 	},
-	PersistentPostRunE: func(cmd *cobra.Command, _ []string) error {
-		config := ConfigFromCommand(cmd)
+
+	After: func(ctx context.Context, _ *cli.Command) error {
+		config := ctx.Value(ctxKeyConfig{}).(*Config)
 		if err := saveConfig(config); err != nil {
 			return fmt.Errorf("failed to save config: %s", err)
 		}
 		return nil
 	},
-	SilenceErrors: true,
-	SilenceUsage:  true,
 }
 
 func Execute(ctx context.Context, args []string) error {
 	client := &http.Client{Transport: LogRoundTripper{http.DefaultTransport}}
 	ctx = oidc.ClientContext(ctx, client)
-	rootCmd.SetArgs(args)
-	return rootCmd.ExecuteContext(ctx)
+	return rootCmd.Run(ctx, args)
 }

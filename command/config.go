@@ -49,7 +49,7 @@ func (a *Account) IsNameMatch(name string) bool {
 }
 
 type accountSet struct {
-	accounts map[string]*Account
+	accounts map[string]Account
 }
 
 func generateDefaultAlias(name string) string {
@@ -64,7 +64,7 @@ func generateDefaultAlias(name string) string {
 
 func (a *accountSet) ForEach(f func(id string, account Account, alias string)) {
 	// Golang does not maintain the order of maps, so we create a slice which is sorted instead.
-	var accounts []*Account
+	var accounts []Account
 	for _, acc := range a.accounts {
 		accounts = append(accounts, acc)
 	}
@@ -74,25 +74,27 @@ func (a *accountSet) ForEach(f func(id string, account Account, alias string)) {
 	})
 
 	for _, acc := range accounts {
-		f(acc.ID, *acc, acc.Alias)
+		f(acc.ID, acc, acc.Alias)
 	}
 }
 
 // Add adds an account to the set.
 func (a *accountSet) Add(id string, account Account) {
-	// TODO: This is bad
 	if a.accounts == nil {
-		a.accounts = make(map[string]*Account)
+		a.accounts = make(map[string]Account)
 	}
 
-	a.accounts[id] = &account
+	a.accounts[id] = account
 }
 
 // Unalias will remove all aliases for an account that matches the given name or given alias.
 func (a *accountSet) Unalias(name string) bool {
 	for _, acc := range a.accounts {
 		if acc.IsNameMatch(name) {
-			acc.Alias = ""
+			// The original stored in the map won't be modified, we must re-assign
+			acc2 := acc
+			acc2.Alias = ""
+			a.accounts[acc.ID] = acc2
 			return true
 		}
 	}
@@ -100,7 +102,7 @@ func (a *accountSet) Unalias(name string) bool {
 	return false
 }
 
-func (a accountSet) Resolve(name string) (*Account, bool) {
+func (a accountSet) Resolve(name string) (Account, bool) {
 	for k, acc := range a.accounts {
 		if k == name {
 			return acc, true
@@ -111,7 +113,7 @@ func (a accountSet) Resolve(name string) (*Account, bool) {
 		}
 	}
 
-	return nil, false
+	return Account{}, false
 }
 
 func (a accountSet) Alias(id, name string) bool {
@@ -145,7 +147,7 @@ func (a *accountSet) UnmarshalJSON(buf []byte) error {
 
 func (a *accountSet) ReplaceWith(other []Account) {
 	if a.accounts == nil {
-		a.accounts = make(map[string]*Account)
+		a.accounts = make(map[string]Account)
 	}
 
 	m := map[string]struct{}{}
@@ -156,7 +158,7 @@ func (a *accountSet) ReplaceWith(other []Account) {
 			// The name is the only thing that might change.
 			entry.Name = acc.Name
 		} else {
-			a.accounts[acc.ID] = &clone
+			a.accounts[acc.ID] = clone
 		}
 
 		m[acc.ID] = struct{}{}
@@ -220,7 +222,7 @@ func (c *Config) Decode(reader io.Reader) error {
 
 func (c *Config) AddAccount(id string, account Account) {
 	if c.Accounts == nil {
-		c.Accounts = &accountSet{accounts: make(map[string]*Account)}
+		c.Accounts = &accountSet{accounts: make(map[string]Account)}
 	}
 
 	c.Accounts.Add(id, account)
@@ -233,6 +235,7 @@ func (c *Config) Alias(id, name string) {
 	}
 
 	acc.Alias = name
+	c.Accounts.accounts[id] = acc
 }
 
 func (c *Config) Unalias(name string) {
@@ -242,11 +245,12 @@ func (c *Config) Unalias(name string) {
 	}
 
 	acc.Alias = ""
+	c.Accounts.accounts[acc.ID] = acc
 }
 
-func (c *Config) FindAccount(name string) (*Account, bool) {
+func (c *Config) FindAccount(name string) (Account, bool) {
 	if c.Accounts == nil {
-		return &Account{}, false
+		return Account{}, false
 	}
 
 	val, ok := c.Accounts.Resolve(name)
@@ -254,7 +258,7 @@ func (c *Config) FindAccount(name string) (*Account, bool) {
 		return val, true
 	}
 
-	return &Account{}, false
+	return Account{}, false
 }
 
 func (c *Config) UpdateAccounts(entries []Account) {

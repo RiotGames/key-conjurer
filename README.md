@@ -26,7 +26,7 @@ fit.
 
 ## Dependencies
 
-- go 1.20+
+- go 1.27.1+
 - node 16.17.0+
 
 ### Administration

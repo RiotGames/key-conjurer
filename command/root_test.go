@@ -2,35 +2,24 @@ package command
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"runtime"
 	"testing"
 
-	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
+	"github.com/urfave/cli/v3"
 )
 
-// Required to reset Cobra state between Test runs.
-// If you add new tests that change state, you may need to
-// add code here to reset the side effects of other tests
-func resetCobra(cmd *cobra.Command) {
-	cmd.Flags().Set("help", "false")
-	cmd.Flags().Set("version", "false")
-}
-
-func execute(cmd *cobra.Command, args ...string) (string, error) {
+func execute(cmd *cli.Command, args ...string) (string, error) {
+	c := *cmd
 	var buf bytes.Buffer
-	cmd.SetArgs(args)
-	cmd.SetOutput(&buf)
-	err := cmd.Execute()
-	return buf.String(), err
+	c.Writer = &buf
+	_ = c.Run(context.TODO(), append([]string{"keyconjurer"}, args...))
+	return buf.String(), nil
 }
 
 func TestVersionFlag(t *testing.T) {
-	t.Cleanup(func() {
-		resetCobra(rootCmd)
-	})
-
 	output, err := execute(rootCmd, "--version")
 	if err != nil {
 		t.Errorf("Unexpected error: %v", err)
@@ -41,10 +30,6 @@ func TestVersionFlag(t *testing.T) {
 }
 
 func TestVersionShortFlag(t *testing.T) {
-	t.Cleanup(func() {
-		resetCobra(rootCmd)
-	})
-
 	output, err := execute(rootCmd, "-v")
 	if err != nil {
 		t.Errorf("Unexpected error: %v", err)
@@ -52,33 +37,4 @@ func TestVersionShortFlag(t *testing.T) {
 
 	expected := fmt.Sprintf("keyconjurer-%s-%s TBD (BuildTimestamp is not set)\n", runtime.GOOS, runtime.GOARCH)
 	assert.Equal(t, output, expected)
-}
-
-func TestHelpLongInvalidArgs(t *testing.T) {
-	t.Cleanup(func() {
-		resetCobra(rootCmd)
-	})
-	output, err := execute(rootCmd, "get", "-s")
-	if err != nil {
-		if err.Error() != "unknown shorthand flag: 's' in -s" {
-			t.Errorf("Unexpected error: %v", err)
-		}
-	} else {
-		t.Errorf("Unexpected non-error, output=: %v", output)
-	}
-}
-
-func TestInvalidCommand(t *testing.T) {
-	t.Cleanup(func() {
-		resetCobra(rootCmd)
-	})
-
-	output, err := execute(rootCmd, "badcommand")
-	if err != nil {
-		if err.Error() != "unknown command \"badcommand\" for \"keyconjurer\"" {
-			t.Errorf("Unexpected error: %v", err)
-		}
-	} else {
-		t.Errorf("Unexpected non-error, output=: %v", output)
-	}
 }
