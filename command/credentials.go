@@ -40,7 +40,13 @@ func getShellType() ShellType {
 	return shellTypeBash
 }
 
+// CredentialProcessVersion is the schema version required by the AWS SDKs'
+// credential_process protocol. It must always be 1.
+// See https://docs.aws.amazon.com/sdkref/latest/guide/feature-process-credentials.html
+const CredentialProcessVersion = 1
+
 type CloudCredentials struct {
+	Version         int    `json:"Version"`
 	AccountID       string `json:"AccountId"`
 	AccessKeyID     string `json:"AccessKeyId"`
 	SecretAccessKey string `json:"SecretAccessKey"`
@@ -50,6 +56,7 @@ type CloudCredentials struct {
 
 func LoadAWSCredentialsFromEnvironment() CloudCredentials {
 	return CloudCredentials{
+		Version:         CredentialProcessVersion,
 		AccessKeyID:     os.Getenv("AWS_ACCESS_KEY_ID"),
 		SecretAccessKey: os.Getenv("AWS_SECRET_ACCESS_KEY"),
 		SessionToken:    os.Getenv("AWS_SESSION_TOKEN"),

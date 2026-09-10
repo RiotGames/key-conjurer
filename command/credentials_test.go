@@ -1,6 +1,7 @@
 package command
 
 import (
+	"encoding/json"
 	"testing"
 	"time"
 
@@ -66,4 +67,23 @@ func TestTimeWindowEnvCreds(t *testing.T) {
 	t.Log("testing minutes window is outside 1hr period for test creds")
 	assert.False(t, creds.ValidUntil(account, 60*time.Minute), "credentials should be valid")
 	assert.False(t, creds.ValidUntil(account, 61*time.Minute), "credentials should be valid")
+}
+
+func TestCloudCredentialsJSONIncludesVersion(t *testing.T) {
+	// credential_process consumers (the AWS CLI, SDKs, and CDK) require a
+	// top-level "Version" field equal to 1; without it they reject the
+	// output before even looking at the other fields. See
+	// https://docs.aws.amazon.com/sdkref/latest/guide/feature-process-credentials.html
+	setEnv(t, true)
+	creds := LoadAWSCredentialsFromEnvironment()
+
+	buf, err := json.Marshal(creds)
+	assert.NoError(t, err)
+
+	var out map[string]interface{}
+	assert.NoError(t, json.Unmarshal(buf, &out))
+
+	version, ok := out["Version"].(float64)
+	assert.True(t, ok, "expected Version field to be present in JSON output")
+	assert.Equal(t, float64(1), version)
 }

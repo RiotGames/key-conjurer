@@ -167,6 +167,7 @@ func getAWSCredentials(ctx context.Context, accountID, roleSessionName string) (
 	}
 
 	creds = CloudCredentials{
+		Version:         CredentialProcessVersion,
 		AccountID:       accountID,
 		AccessKeyID:     *resp.Credentials.AccessKeyId,
 		SecretAccessKey: *resp.Credentials.SecretAccessKey,
