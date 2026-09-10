@@ -39,13 +39,22 @@ To get started run the following commands:
 
 	Flags: []cli.Flag{
 		&cli.StringFlag{
+			// Value must default to the build-time-injected OIDCDomain const (see
+			// consts.go / -ldflags -X). The pre-migration cobra version passed this
+			// as String(name, OIDCDomain, usage); the urfave/cli v3 rewrite dropped
+			// the default, so every command silently required --oidc-domain to be
+			// passed by hand or it fails with an empty OIDC issuer URL.
 			Name:   FlagOIDCDomain,
 			Usage:  "The OIDC domain to use for authentication",
+			Value:  OIDCDomain,
 			Hidden: true,
 		},
 		&cli.StringFlag{
+			// Same regression as FlagOIDCDomain above: must default to the
+			// build-time-injected ClientID const.
 			Name:   FlagClientID,
 			Usage:  "The client ID to use for authentication",
+			Value:  ClientID,
 			Hidden: true,
 		},
 		&cli.DurationFlag{
