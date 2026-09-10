@@ -80,7 +80,10 @@ var getCmd = &cli.Command{
 		&cli.StringFlag{
 			Name:     "role-name",
 			Usage:    "The name of the role to assume",
-			Aliases:  []string{"r"},
+			// "role" restores the pre-migration flag name (was FlagRoleName = "role"
+			// on cobra); existing credential_process configs pass --role verbatim
+			// and silently broke when this got renamed during the cli v3 migration.
+			Aliases:  []string{"r", "role"},
 			Required: true,
 		},
 		&cli.StringFlag{
@@ -89,10 +92,13 @@ var getCmd = &cli.Command{
 			Value: "KeyConjurer-AssumeRole",
 		},
 		&cli.StringFlag{
-			Name:    "output-type",
-			Usage:   "Format to save new credentials in. Supported outputs: env, awscli, json",
-			Value:   outputTypeEnvironmentVariable,
-			Aliases: []string{"o"},
+			Name:  "output-type",
+			Usage: "Format to save new credentials in. Supported outputs: env, awscli, json",
+			Value: outputTypeEnvironmentVariable,
+			// "out" restores the pre-migration flag name; credential_process
+			// wrapper scripts pass --out verbatim and broke when this got
+			// renamed to --output-type during the cli v3 migration.
+			Aliases: []string{"o", "out"},
 		},
 		&cli.StringFlag{
 			Name:  "shell-type",
