@@ -7,7 +7,7 @@ on:
 
 jobs:
   client-test:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v6
@@ -15,7 +15,7 @@ jobs:
           node-version: "16.17.0"
       - run: cd frontend && npm install && npm test
   go-test:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
