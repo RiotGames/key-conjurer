@@ -17,7 +17,7 @@ import (
 
 var (
 	FlagRegion        = "region"
-	FlagRoleName      = "role"
+	FlagRoleName      = "role-name"
 	FlagTimeRemaining = "time-remaining"
 	FlagTimeToLive    = "ttl"
 	FlagBypassCache   = "bypass-cache"
@@ -41,7 +41,11 @@ var getCmd = &cli.Command{
 	UsageText: `A role must be specified when using this command through the --role flag. You may list the roles you can assume through the roles command.`,
 	Action: func(ctx context.Context, cmd *cli.Command) error {
 		var getCmd GetCommand
-		if err := getCmd.Parse(cmd, cmd.Args().Slice()); err != nil {
+		// cmd.Arguments below claims the "account" positional argument, which
+		// means it is no longer present in cmd.Args() by the time this Action
+		// runs. Read it back via cmd.StringArg, not cmd.Args().Slice(), or
+		// AccountIDOrName will always be empty. See cli.Command.Arguments docs.
+		if err := getCmd.Parse(cmd, positionalArgs(cmd, "account")); err != nil {
 			return err
 		}
 
@@ -146,10 +150,15 @@ func (g *GetCommand) Parse(flags flagSet, args []string) error {
 	g.ClientID = flags.String(FlagClientID)
 	g.TimeToLive = flags.Uint(FlagTimeToLive)
 	g.TimeRemaining = flags.Uint(FlagTimeRemaining)
-	g.OutputType = flags.String(FlagOutputType)
-	g.ShellType = flags.String(FlagShellType)
+	// output-type, shell-type and awscli-path are read by literal name here,
+	// not via the shared FlagOutputType/FlagShellType/FlagAWSCLIPath vars
+	// declared in switch.go: this command registers its own flags under
+	// different names ("output-type" not "output", etc.), and those vars
+	// would always read back an empty string on this command.
+	g.OutputType = flags.String("output-type")
+	g.ShellType = flags.String("shell-type")
 	g.RoleName = flags.String(FlagRoleName)
-	g.AWSCLIPath = flags.String(FlagAWSCLIPath)
+	g.AWSCLIPath = flags.String("awscli-path")
 	g.Login = flags.Bool(FlagLogin)
 	g.URLOnly = flags.Bool(FlagURLOnly)
 	g.NoBrowser = flags.Bool(FlagNoBrowser)

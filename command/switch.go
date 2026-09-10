@@ -63,7 +63,9 @@ This command will fail if you do not have active Cloud credentials.
 	Aliases: []string{"switch-account"},
 	Action: func(ctx context.Context, cmd *cli.Command) error {
 		var switchCmd SwitchCommand
-		if err := switchCmd.Parse(cmd, cmd.Args().Slice()); err != nil {
+		// See positionalArgs' doc comment: cmd.Args() is empty here because
+		// the Arguments field below already consumed the "account" value.
+		if err := switchCmd.Parse(cmd, positionalArgs(cmd, "account")); err != nil {
 			return err
 		}
 

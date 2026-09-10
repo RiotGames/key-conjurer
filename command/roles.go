@@ -25,7 +25,10 @@ var rolesCmd = &cli.Command{
 		config := ConfigFromContext(ctx)
 		oidcDomain := cmd.String(FlagOIDCDomain)
 		clientID := cmd.String(FlagClientID)
-		var applicationID = cmd.Args().First()
+		// See positionalArgs' doc comment in cliargs.go: cmd.Args() is empty
+		// here because the Arguments field above already consumed the
+		// "accountName/alias" value; cmd.Args().First() always returns "".
+		var applicationID = cmd.StringArg("accountName/alias")
 		if applicationID == "" {
 			return cli.Exit("accountName/alias is required", 1)
 		}
