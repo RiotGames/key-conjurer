@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"runtime"
+	"time"
 
 	"github.com/urfave/cli/v3"
 	"github.com/zalando/go-keyring"
@@ -56,6 +57,12 @@ func getAccountCredentialFromKeychain() (*oauth2.Token, error) {
 		// bad JSON format
 		return nil, ErrTokensExpiredOrAbsent
 	}
+
+	if tok.Expiry.Before(time.Now()) {
+		// Expired
+		return nil, ErrTokensExpiredOrAbsent
+	}
+
 	// This is how we expect to find the ID token in the access token.
 	// Hacky, but this is also how OAuth2 APIs communicate it
 	extra := map[string]any{"id_token": tok.IDToken}
