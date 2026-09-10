@@ -78,13 +78,16 @@ var getCmd = &cli.Command{
 			Value:   DefaultTimeRemaining,
 		},
 		&cli.StringFlag{
-			Name:     "role-name",
-			Usage:    "The name of the role to assume",
+			Name:  "role-name",
+			Usage: "The name of the role to assume",
 			// "role" restores the pre-migration flag name (was FlagRoleName = "role"
 			// on cobra); existing credential_process configs pass --role verbatim
 			// and silently broke when this got renamed during the cli v3 migration.
-			Aliases:  []string{"r", "role"},
-			Required: true,
+			//
+			// Not Required: GetCommand.Parse falls back to account.MostRecentRole
+			// when this is empty (see below); Required:true short-circuited that
+			// fallback by refusing to run the Action at all without the flag.
+			Aliases: []string{"r", "role"},
 		},
 		&cli.StringFlag{
 			Name:  "role-session-name",
