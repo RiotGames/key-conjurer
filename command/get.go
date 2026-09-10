@@ -268,6 +268,7 @@ func (g GetCommand) fetchNewCredentials(ctx context.Context, account Account, cf
 	}
 
 	return &CloudCredentials{
+		Version:         CredentialProcessVersion,
 		AccountID:       account.ID,
 		AccessKeyID:     *resp.Credentials.AccessKeyId,
 		Expiration:      resp.Credentials.Expiration.Format(time.RFC3339),
