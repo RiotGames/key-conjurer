@@ -42,11 +42,13 @@ To get started run the following commands:
 			Name:   FlagOIDCDomain,
 			Usage:  "The OIDC domain to use for authentication",
 			Hidden: true,
+			Value:  OIDCDomain,
 		},
 		&cli.StringFlag{
 			Name:   FlagClientID,
 			Usage:  "The client ID to use for authentication",
 			Hidden: true,
+			Value:  ClientID,
 		},
 		&cli.DurationFlag{
 			Name:  FlagTimeout,
