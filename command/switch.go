@@ -41,11 +41,25 @@ var switchCmd = &cli.Command{
 			Aliases: []string{"o"},
 			Value:   outputTypeEnvironmentVariable,
 			Usage:   "Format to save new credentials in. Supported outputs: env, awscli, json",
+			Validator: func(s string) error {
+				if !slices.Contains(permittedOutputTypes, s) {
+					return ValueError{Value: s, ValidValues: permittedOutputTypes}
+				}
+				return nil
+			},
+			ValidateDefaults: true,
 		},
 		&cli.StringFlag{
 			Name:  FlagShellType,
 			Value: shellTypeInfer,
 			Usage: "If output type is env, determines which format to output credentials in - by default, the format is inferred based on the execution environment. WSL users may wish to overwrite this to `bash`",
+			Validator: func(s string) error {
+				if !slices.Contains(permittedShellTypes, s) {
+					return ValueError{Value: s, ValidValues: permittedShellTypes}
+				}
+				return nil
+			},
+			ValidateDefaults: true,
 		},
 		&cli.StringFlag{
 			Name:  FlagAWSCLIPath,
@@ -63,11 +77,7 @@ This command will fail if you do not have active Cloud credentials.
 	Aliases: []string{"switch-account"},
 	Action: func(ctx context.Context, cmd *cli.Command) error {
 		var switchCmd SwitchCommand
-		if err := switchCmd.Parse(cmd, cmd.Args().Slice()); err != nil {
-			return err
-		}
-
-		if err := switchCmd.Validate(); err != nil {
+		if err := switchCmd.Parse(cmd); err != nil {
 			return err
 		}
 
@@ -83,28 +93,15 @@ type SwitchCommand struct {
 	AccountID       string
 }
 
-func (s *SwitchCommand) Parse(flags flagSet, args []string) error {
+func (s *SwitchCommand) Parse(flags flagSet) error {
 	s.OutputType = flags.String(FlagOutputType)
 	s.ShellType = flags.String(FlagShellType)
 	s.AWSCLIPath = flags.String(FlagAWSCLIPath)
 	s.RoleSessionName = flags.String(FlagRoleSessionName)
-	if len(args) == 0 {
+	s.AccountID = flags.StringArg("account")
+	if s.AccountID == "" {
 		return cli.Exit("account-id is required", 1)
 	}
-
-	s.AccountID = args[0]
-	return nil
-}
-
-func (s SwitchCommand) Validate() error {
-	if !slices.Contains(permittedOutputTypes, s.OutputType) {
-		return ValueError{Value: s.OutputType, ValidValues: permittedOutputTypes}
-	}
-
-	if !slices.Contains(permittedShellTypes, s.ShellType) {
-		return ValueError{Value: s.ShellType, ValidValues: permittedShellTypes}
-	}
-
 	return nil
 }
 

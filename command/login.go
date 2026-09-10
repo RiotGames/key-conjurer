@@ -76,6 +76,7 @@ type flagSet interface {
 	String(name string) string
 	Bool(name string) bool
 	Uint(name string) uint
+	StringArg(name string) string
 }
 
 func (c *LoginCommand) Parse(flags flagSet, args []string) error {

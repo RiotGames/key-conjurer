@@ -41,11 +41,7 @@ var getCmd = &cli.Command{
 	UsageText: `A role must be specified when using this command through the --role flag. You may list the roles you can assume through the roles command.`,
 	Action: func(ctx context.Context, cmd *cli.Command) error {
 		var getCmd GetCommand
-		if err := getCmd.Parse(cmd, cmd.Args().Slice()); err != nil {
-			return err
-		}
-
-		if err := getCmd.Validate(); err != nil {
+		if err := getCmd.Parse(cmd); err != nil {
 			return err
 		}
 
@@ -74,10 +70,9 @@ var getCmd = &cli.Command{
 			Value:   DefaultTimeRemaining,
 		},
 		&cli.StringFlag{
-			Name:     "role-name",
-			Usage:    "The name of the role to assume",
-			Aliases:  []string{"r"},
-			Required: true,
+			Name:    "role",
+			Usage:   "The name of the role to assume",
+			Aliases: []string{"r"},
 		},
 		&cli.StringFlag{
 			Name:  "role-session-name",
@@ -85,15 +80,29 @@ var getCmd = &cli.Command{
 			Value: "KeyConjurer-AssumeRole",
 		},
 		&cli.StringFlag{
-			Name:    "output-type",
-			Usage:   "Format to save new credentials in. Supported outputs: env, awscli, json",
-			Value:   outputTypeEnvironmentVariable,
+			Name:    FlagOutputType,
 			Aliases: []string{"o"},
+			Value:   outputTypeEnvironmentVariable,
+			Usage:   "Format to save new credentials in. Supported outputs: env, awscli, json",
+			Validator: func(s string) error {
+				if !slices.Contains(permittedOutputTypes, s) {
+					return ValueError{Value: s, ValidValues: permittedOutputTypes}
+				}
+				return nil
+			},
+			ValidateDefaults: true,
 		},
 		&cli.StringFlag{
-			Name:  "shell-type",
-			Usage: "If output type is env, determines which format to output credentials in - by default, the format is inferred based on the execution environment. WSL users may wish to overwrite this to `bash`",
+			Name:  FlagShellType,
 			Value: shellTypeInfer,
+			Usage: "If output type is env, determines which format to output credentials in - by default, the format is inferred based on the execution environment. WSL users may wish to overwrite this to `bash`",
+			Validator: func(s string) error {
+				if !slices.Contains(permittedShellTypes, s) {
+					return ValueError{Value: s, ValidValues: permittedShellTypes}
+				}
+				return nil
+			},
+			ValidateDefaults: true,
 		},
 		&cli.BoolFlag{
 			Name:  "bypass-cache",
@@ -141,7 +150,7 @@ type GetCommand struct {
 	Login, URLOnly, NoBrowser, BypassCache, MachineOutput                                  bool
 }
 
-func (g *GetCommand) Parse(flags flagSet, args []string) error {
+func (g *GetCommand) Parse(flags flagSet) error {
 	g.OIDCDomain = flags.String(FlagOIDCDomain)
 	g.ClientID = flags.String(FlagClientID)
 	g.TimeToLive = flags.Uint(FlagTimeToLive)
@@ -157,20 +166,9 @@ func (g *GetCommand) Parse(flags flagSet, args []string) error {
 	g.ProfileName = flags.String(FlagProfileName)
 	g.Region = flags.String(FlagRegion)
 	g.MachineOutput = ShouldUseMachineOutput(flags) || g.URLOnly
-	if len(args) == 0 {
+	g.AccountIDOrName = flags.StringArg("account")
+	if g.AccountIDOrName == "" {
 		return cli.Exit("account name or alias is required", 1)
-	}
-	g.AccountIDOrName = args[0]
-	return nil
-}
-
-func (g GetCommand) Validate() error {
-	if !slices.Contains(permittedOutputTypes, g.OutputType) {
-		return ValueError{Value: g.OutputType, ValidValues: permittedOutputTypes}
-	}
-
-	if !slices.Contains(permittedShellTypes, g.ShellType) {
-		return ValueError{Value: g.ShellType, ValidValues: permittedShellTypes}
 	}
 	return nil
 }
