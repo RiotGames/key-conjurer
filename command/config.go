@@ -235,7 +235,7 @@ func (c *Config) Alias(id, name string) {
 	}
 
 	acc.Alias = name
-	c.Accounts.accounts[id] = acc
+	c.Accounts.accounts[acc.ID] = acc
 }
 
 func (c *Config) Unalias(name string) {

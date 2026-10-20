@@ -126,3 +126,16 @@ func TestGeneratesGoodAliases(t *testing.T) {
 		assert.Equal(t, pair[1], generateDefaultAlias(pair[0]))
 	}
 }
+
+func TestConfigAliasByAccountName(t *testing.T) {
+	cfg := Config{}
+	cfg.AddAccount("1234", Account{ID: "1234", Name: "AWS - Test Account", Alias: "test-account"})
+
+	cfg.Alias("AWS - Test Account", "my-alias")
+
+	assert.Len(t, cfg.Accounts.accounts, 1, "aliasing by name should not add a second entry")
+	acc, ok := cfg.FindAccount("my-alias")
+	assert.True(t, ok)
+	assert.Equal(t, "1234", acc.ID)
+	assert.Equal(t, "my-alias", cfg.Accounts.accounts["1234"].Alias)
+}
