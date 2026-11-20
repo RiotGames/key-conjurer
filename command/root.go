@@ -85,7 +85,14 @@ To get started run the following commands:
 	},
 
 	After: func(ctx context.Context, _ *cli.Command) error {
-		config := ctx.Value(ctxKeyConfig{}).(*Config)
+		cfgVal := ctx.Value(ctxKeyConfig{})
+		if cfgVal == nil {
+			return nil
+		}
+		config, ok := cfgVal.(*Config)
+		if !ok || config == nil {
+			return nil
+		}
 		if err := saveConfig(config); err != nil {
 			return fmt.Errorf("failed to save config: %s", err)
 		}

@@ -32,7 +32,8 @@ func Test_findFirstFreePort_WorksCorrectly(t *testing.T) {
 func Test_findFirstFreePort_RejectsIfNoPortsAvailable(t *testing.T) {
 	var ports []string
 	_, err := findFirstFreePort(context.Background(), "127.0.0.1", ports)
-	if _, ok := errors.AsType[*ErrNoPortsAvailable](err); !ok {
+	var noPortsErr *ErrNoPortsAvailable
+	if !errors.As(err, &noPortsErr) {
 		t.Errorf("unexpected error: expected %T, got %T", &ErrNoPortsAvailable{}, err)
 	}
 }
@@ -59,7 +60,8 @@ func Test_findFirstFreePort_RejectsIfAllProvidedPortsExhausted(t *testing.T) {
 	})
 
 	_, err := findFirstFreePort(context.Background(), "127.0.0.1", activePorts)
-	if _, ok := errors.AsType[*ErrNoPortsAvailable](err); !ok {
+	var noPortsErr *ErrNoPortsAvailable
+	if !errors.As(err, &noPortsErr) {
 		t.Errorf("unexpected error: expected %T, got %T", &ErrNoPortsAvailable{}, err)
 	}
 }
